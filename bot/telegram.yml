@@ -1,0 +1,24 @@
+settings:
+  parse_mode: html
+  token_env: BOT_TOKEN
+  long_poller:
+    Timeout: 10
+
+commands:
+  /start: 🚀 Start the telegram
+
+buttons:
+  # main menu
+  openMainMenu: '{{ text `open_main_menu` }}'
+
+  joinChannel:
+    unique: joinChannel
+    callback_data: joinChannel
+    text: '{{ text `join` }}'
+    url: '{{.Url}}'
+
+markups:
+  joinChannel:
+    - [ joinChannel ]
+  replyOpenMenu:
+    - [ openMainMenu ]
