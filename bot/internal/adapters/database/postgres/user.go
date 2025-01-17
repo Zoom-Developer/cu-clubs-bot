@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+
 	"github.com/Badsnus/cu-clubs-bot/internal/domain/entity"
 	"gorm.io/gorm"
 )

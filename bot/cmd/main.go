@@ -4,8 +4,9 @@ import (
 	"github.com/Badsnus/cu-clubs-bot/cmd/bot"
 	setupBot "github.com/Badsnus/cu-clubs-bot/internal/adapters/controller/telegram/setup"
 
-	"github.com/Badsnus/cu-clubs-bot/internal/adapters/config"
 	"log"
+
+	"github.com/Badsnus/cu-clubs-bot/internal/adapters/config"
 )
 
 func main() {

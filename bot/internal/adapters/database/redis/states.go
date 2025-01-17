@@ -4,9 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/Badsnus/cu-clubs-bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/internal/domain/common/errorz"
-	"time"
+	"github.com/redis/go-redis/v9"
 )
 
 type StatesStorage struct {

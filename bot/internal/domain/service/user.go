@@ -2,7 +2,10 @@ package service
 
 import (
 	"context"
+
 	"github.com/Badsnus/cu-clubs-bot/internal/domain/entity"
+
+	tele "gopkg.in/telebot.v3"
 )
 
 type UserStorage interface {

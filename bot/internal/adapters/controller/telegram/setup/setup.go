@@ -5,6 +5,8 @@ import (
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/controller/telegram/handlers"
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/controller/telegram/handlers/middlewares"
 	"github.com/spf13/viper"
+	tele "gopkg.in/telebot.v3"
+	"gopkg.in/telebot.v3/middleware"
 )
 
 func Setup(b *bot.Bot) {

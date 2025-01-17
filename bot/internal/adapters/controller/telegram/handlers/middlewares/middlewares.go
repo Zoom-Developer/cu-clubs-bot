@@ -2,6 +2,8 @@ package middlewares
 
 import (
 	"context"
+	"strings"
+
 	"github.com/Badsnus/cu-clubs-bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/postgres"
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/redis"
@@ -10,7 +12,6 @@ import (
 	"github.com/spf13/viper"
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/layout"
-	"strings"
 )
 
 type userService interface {

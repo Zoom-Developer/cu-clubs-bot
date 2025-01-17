@@ -2,6 +2,9 @@ package handlers
 
 import (
 	"context"
+	"strconv"
+	"strings"
+
 	"github.com/Badsnus/cu-clubs-bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/postgres"
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/redis"
@@ -11,8 +14,6 @@ import (
 	"github.com/Badsnus/cu-clubs-bot/internal/domain/service"
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/layout"
-	"strconv"
-	"strings"
 )
 
 type adminUserService interface {
