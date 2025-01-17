@@ -1,13 +1,14 @@
 package bot
 
 import (
+	"sync"
+
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/config"
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/logger"
 	"github.com/redis/go-redis/v9"
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/layout"
 	"gorm.io/gorm"
-	"sync"
 )
 
 type Bot struct {

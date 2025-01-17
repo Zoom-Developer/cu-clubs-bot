@@ -1,0 +1,14 @@
+run:
+  timeout: 5m
+linters:
+  enable:
+    - errcheck       # Проверяет, что ошибки обработаны
+    - govet          # Стандартный Go vet для поиска проблем в коде
+    - staticcheck    # Замена старых API, устаревших методов
+    - unused         # Нахождение неиспользуемых переменных и функций
+    - gosimple       # Упрощение кода
+    - stylecheck     # Проверяет стиль в духе Google Style Guide
+    - revive         # Линтер для стиля и ошибок
+    - gci            # Форматирует и группирует импорты
+issues:
+  exclude-use-default: false

@@ -3,6 +3,10 @@ package config
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
+	"time"
+
 	postgresStorage "github.com/Badsnus/cu-clubs-bot/internal/adapters/database/postgres"
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/logger"
 	"github.com/redis/go-redis/v9"
@@ -10,9 +14,6 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	gormLogger "gorm.io/gorm/logger"
-	"log"
-	"os"
-	"time"
 )
 
 type Config struct {
