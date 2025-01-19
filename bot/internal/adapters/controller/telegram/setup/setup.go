@@ -23,11 +23,6 @@ func Setup(b *bot.Bot) {
 
 	b.Use(b.Layout.Middleware("ru"))
 	b.Use(middleware.AutoRespond())
-	b.Use(middle.Authorized)
-	//b.Handle(b.Layout.Callback("english"), userHandler.OnLocalisation)
-	//b.Handle(b.Layout.Callback("russian"), userHandler.OnLocalisation)
-	//b.Use(middle.Localisation)
-	//b.Use(b.Layout.Middleware("en", middle.SetupLocalisation))
 
 	b.Handle(tele.OnText, onEventHandler.OnText)
 	b.Handle(tele.OnMedia, onEventHandler.OnMedia)
@@ -35,6 +30,13 @@ func Setup(b *bot.Bot) {
 
 	b.Handle("/start", userHandler.OnStart)
 	b.Use(middle.Subscribed)
+
+	b.Handle(b.Layout.Callback("decline"), userHandler.OnDeclinePersonalDataAgreement)
+	b.Handle(b.Layout.Callback("accept"), userHandler.OnAcceptPersonalDataAgreement)
+
+	b.Handle(b.Layout.Callback("external_user_auth"), userHandler.OnExternalUserAuth)
+	b.Handle(b.Layout.Callback("back_to_auth_menu"), userHandler.OnBackToAuthMenu)
+	b.Use(middle.Authorized)
 	//b.Handle(b.Layout.Callback("hide"), userHandler.Hide)
 
 	//b.Handle(b.Layout.Callback("backToMainMenu"), userHandler.EditMainMenu)

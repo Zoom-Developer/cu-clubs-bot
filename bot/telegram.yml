@@ -11,14 +11,48 @@ buttons:
   # main menu
   openMainMenu: '{{ text `open_main_menu` }}'
 
-  joinChannel:
-    unique: joinChannel
-    callback_data: joinChannel
-    text: '{{ text `join` }}'
-    url: '{{.Url}}'
+  accept:
+    unique: accept
+    callback_data: accept
+    text: "{{ text `accept` }}"
+
+  decline:
+    unique: decline
+    callback_data: decline
+    text: "{{ text `decline` }}"
+
+  external_user_auth:
+    unique: external_user_auth
+    callback_data: external_user_auth
+    text: "{{ text `external_user` }}"
+
+  grant_user_auth:
+    unique: grant_user_auth
+    callback_data: grant_user_auth
+    text: "{{ text `grant_user` }}"
+
+  student_auth:
+    unique: student_auth
+    callback_data: student_auth
+    text: "{{ text `student` }}"
+
+  back_to_auth_menu:
+    unique: back_to_auth_menu
+    callback_data: back_to_auth_menu
+    text: "{{ text `back` }}"
 
 markups:
-  joinChannel:
-    - [ joinChannel ]
   replyOpenMenu:
     - [ openMainMenu ]
+
+  personalDataAgreementMenu:
+    - [ accept, decline ]
+
+  authMenu:
+    - [ external_user_auth ]
+    - [ grant_user_auth ]
+    - [ student_auth ]
+
+  backToAuthMenu:
+    - [ back_to_auth_menu ]
+

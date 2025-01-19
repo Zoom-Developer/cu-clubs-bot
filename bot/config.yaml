@@ -1,21 +1,26 @@
 service:
   database:
-    host: "database"
+    host: "localhost"
     user: "user"
     password: "password"
     port: 5400
     name: "database"
 
   redis:
-    host: "redis"
+    host: "localhost"
     password: "password"
     port: 6380
 
 bot:
-  token: "BOT_TOKEN"
+  token: "8081256555:AAFv6X7SYrhVSF86VbQ9bbSXBLp_DLIY5ik"
   channel-id: -1002480092513 # id канала на который необходимо подписаться начинающийся с -100
+  grant-chat-id: -4615412504
   admin-ids:
     - 5863804676
+  valid-email-domains:
+    - edu.centraluniversity.ru
+    - centraluniversity.ru
+  domain: cu-clubs.ru
 
 settings:
   debug: false # дебаг мод

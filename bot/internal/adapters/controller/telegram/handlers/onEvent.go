@@ -2,8 +2,6 @@ package handlers
 
 import (
 	"context"
-	"slices"
-
 	"github.com/Badsnus/cu-clubs-bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/postgres"
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/redis"
@@ -14,6 +12,10 @@ import (
 	"github.com/spf13/viper"
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/layout"
+	"net/mail"
+	"regexp"
+	"slices"
+	"strings"
 )
 
 type onEventUserService interface {
@@ -47,6 +49,8 @@ func (h *OnEventHandler) OnText(c tele.Context) error {
 	switch stateData.State {
 	case states.WaitingForMailingContent:
 		return h.onMailing(c)
+	case states.WaitingExternalUserFio:
+		return h.onExternalUserFio(c)
 	default:
 		return c.Send(h.layout.Text(c, "unknown_command"))
 	}
@@ -82,4 +86,117 @@ func (h *OnEventHandler) onMailing(c tele.Context) error {
 
 func (h *OnEventHandler) checkForAdmin(userID int64) bool {
 	return slices.Contains(viper.GetIntSlice("bot.admin-ids"), int(userID))
+}
+
+func (h *OnEventHandler) onExternalUserFio(c tele.Context) error {
+	fio := c.Message().Text
+	if splitFio := strings.Split(fio, " "); len(splitFio) != 3 {
+		return c.Send(
+			h.layout.Text(c, "invalid_user_fio"),
+		)
+	}
+	re := regexp.MustCompile(`^[А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)? [А-ЯЁ][а-яё]+ [А-ЯЁ][а-яё]+$`)
+	if !re.MatchString(strings.TrimSpace(fio)) {
+		return c.Send(
+			h.layout.Text(c, "invalid_user_fio"),
+		)
+	}
+
+	user := entity.User{
+		ID:   c.Sender().ID,
+		Role: entity.ExternalUser,
+		FIO:  fio,
+	}
+	_, err := h.userService.Create(context.Background(), user)
+	if err != nil {
+		return c.Send(
+			h.layout.Text(c, "technical_issues"),
+		)
+	}
+
+	h.statesStorage.Clear(c.Sender().ID)
+
+	return c.Send(
+		h.layout.Text(c, "start"),
+		h.layout.Markup(c, "replyOpenMenu"),
+	)
+}
+
+func (h *OnEventHandler) onGrantUserFio(c tele.Context) error {
+	fio := c.Message().Text
+
+	if !validateFio(fio) {
+		return c.Send(
+			h.layout.Text(c, "invalid_user_fio"),
+		)
+	}
+
+	user := entity.User{
+		ID:   c.Sender().ID,
+		Role: entity.GrantUser,
+		FIO:  fio,
+	}
+	_, err := h.userService.Create(context.Background(), user)
+	if err != nil {
+		return c.Send(
+			h.layout.Text(c, "technical_issues"),
+		)
+	}
+
+	h.statesStorage.Clear(c.Sender().ID)
+
+	return c.Send(
+		h.layout.Text(c, "start"),
+		h.layout.Markup(c, "replyOpenMenu"),
+	)
+}
+
+func validateFio(fio string) bool {
+	if splitFio := strings.Split(fio, " "); len(splitFio) != 3 {
+		return false
+	}
+	re := regexp.MustCompile(`^[А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)? [А-ЯЁ][а-яё]+ [А-ЯЁ][а-яё]+$`)
+	if !re.MatchString(strings.TrimSpace(fio)) {
+		return false
+	}
+
+	return true
+}
+
+func (h *OnEventHandler) onStudentEmail(c tele.Context) error {
+	email := c.Message().Text
+	if !validateEmail(email) {
+		return c.Send(
+			h.layout.Text(c, "invalid_email"),
+		)
+	}
+
+}
+
+func validateEmail(email string) bool {
+	if !validateEmailFormat(email) {
+		return false
+	}
+
+	if !validateEmailDomain(email) {
+		return false
+	}
+
+	return true
+}
+
+func validateEmailFormat(email string) bool {
+	_, err := mail.ParseAddress(email)
+	return err == nil
+}
+
+func validateEmailDomain(email string) bool {
+	validDomains := viper.GetStringSlice("bot.valid-email-domains")
+
+	for _, domain := range validDomains {
+		if strings.HasSuffix(email, domain) {
+			return true
+		}
+	}
+	return false
 }
