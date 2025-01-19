@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"context"
+	"time"
+
 	"github.com/Badsnus/cu-clubs-bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/postgres"
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/redis"
@@ -40,13 +42,13 @@ func (h UserHandler) OnStart(c tele.Context) error {
 	if err != nil {
 		return c.Send(
 			h.layout.Text(c, "personal_data_agreement_text"),
-			h.layout.Markup(c, "personalDataAgreementMenu"),
+			h.layout.Markup(c, "personalData:agreementMenu"),
 		)
 	}
 
 	return c.Send(
 		h.layout.Text(c, "start"),
-		h.layout.Markup(c, "replyOpenMenu"),
+		h.layout.Markup(c, "mainMenu:open"),
 	)
 }
 
@@ -59,7 +61,7 @@ func (h UserHandler) OnDeclinePersonalDataAgreement(c tele.Context) error {
 func (h UserHandler) OnAcceptPersonalDataAgreement(c tele.Context) error {
 	return c.Edit(
 		h.layout.Text(c, "auth_menu_text"),
-		h.layout.Markup(c, "authMenu"),
+		h.layout.Markup(c, "auth:menu"),
 	)
 }
 
@@ -68,7 +70,7 @@ func (h UserHandler) OnExternalUserAuth(c tele.Context) error {
 
 	return c.Edit(
 		h.layout.Text(c, "fio_request"),
-		h.layout.Markup(c, "backToAuthMenu"),
+		h.layout.Markup(c, "auth:backToMenu"),
 	)
 }
 
@@ -84,35 +86,35 @@ func (h UserHandler) OnGrantUserAuth(c tele.Context) error {
 	if member.Role != tele.Creator && member.Role != tele.Administrator && member.Role != tele.Member {
 		return c.Send(
 			h.layout.Text(c, "grant_user_required"),
-			h.layout.Markup(c, "backToAuthMenu"),
+			h.layout.Markup(c, "auth:backToMenu"),
 		)
 	}
 
 	h.statesStorage.Set(c.Sender().ID, state.WaitingGrantUserFio, "", time.Minute*45)
 	return c.Edit(
 		h.layout.Text(c, "fio_request"),
-		h.layout.Markup(c, "backToAuthMenu"),
+		h.layout.Markup(c, "auth:backToMenu"),
 	)
 }
 
 func (h UserHandler) OnBackToAuthMenu(c tele.Context) error {
 	return c.Edit(
 		h.layout.Text(c, "auth_menu_text"),
-		h.layout.Markup(c, "authMenu"),
+		h.layout.Markup(c, "auth:menu"),
 	)
 }
 
 func (h UserHandler) SendMainMenu(c tele.Context) error {
 	return c.Send(
 		h.layout.Text(c, "main_menu_text", c.Sender().Username),
-		h.layout.Markup(c, "mainMenu"),
+		h.layout.Markup(c, "mainMenu:open"),
 	)
 }
 
 func (h UserHandler) EditMainMenu(c tele.Context) error {
 	return c.Edit(
 		h.layout.Text(c, "main_menu_text", c.Sender().Username),
-		h.layout.Markup(c, "mainMenu"),
+		h.layout.Markup(c, "mainMenu:open"),
 	)
 }
 

@@ -12,11 +12,10 @@ service:
     port: 6380
 
 bot:
-  token: "8081256555:AAFv6X7SYrhVSF86VbQ9bbSXBLp_DLIY5ik"
-  channel-id: -1002480092513 # id канала на который необходимо подписаться начинающийся с -100
-  grant-chat-id: -4615412504
+  token: "BOT_TOKEN"
+  grant-chat-id: -500000
   admin-ids:
-    - 5863804676
+    - 500000000
   valid-email-domains:
     - edu.centraluniversity.ru
     - centraluniversity.ru
@@ -27,4 +26,3 @@ settings:
   timezone: "GMT+3" # часовой пояс для логирования
   log-to-file: true # логирование в файл
   logs-dir: "./logs"
-
