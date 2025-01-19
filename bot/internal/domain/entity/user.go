@@ -13,13 +13,14 @@ const (
 )
 
 type User struct {
-	ID        int64 `gorm:"primaryKey"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Role      Role   `gorm:"not null"`
-	Email     string `gorm:"unique"`
-	FIO       string `gorm:"not null"`
-	IsBanned  bool
+	ID           int64 `gorm:"primaryKey"`
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	Localization string `gorm:"localization"`
+	Role         Role   `gorm:"not null"`
+	Email        string `gorm:"unique"`
+	FIO          string `gorm:"not null"`
+	IsBanned     bool
 }
 
 type ClubOwner struct {

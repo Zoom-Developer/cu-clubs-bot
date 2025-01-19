@@ -27,11 +27,9 @@ func NewUserService(userStorage UserStorage) *UserService {
 	}
 }
 
-func (s *UserService) Create(ctx context.Context, c tele.Context) (*entity.User, error) {
-	var user entity.User
-	user.ID = uint(c.Sender().ID)
-	user.FirstName = c.Sender().FirstName
-	user.Username = c.Sender().Username
+func (s *UserService) Create(ctx context.Context, user entity.User) (*entity.User, error) {
+	user.Localization = "ru"
+
 	return s.userStorage.Create(ctx, &user)
 }
 
@@ -52,19 +50,8 @@ func (s *UserService) UpdateData(ctx context.Context, c tele.Context) (*entity.U
 	if err != nil {
 		return nil, err
 	}
-	user.ID = uint(c.Sender().ID)
-	user.Username = c.Sender().Username
-	user.FirstName = c.Sender().FirstName
+	user.ID = c.Sender().ID
 
-	return s.userStorage.Update(ctx, user)
-}
-
-func (s *UserService) UpdateLocalisation(ctx context.Context, userID int64, localisation string) (*entity.User, error) {
-	user, err := s.Get(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	user.Localisation = localisation
 	return s.userStorage.Update(ctx, user)
 }
 
@@ -81,6 +68,6 @@ func (s *UserService) Ban(ctx context.Context, userID int64) (*entity.User, erro
 	if err != nil {
 		return nil, err
 	}
-	user.Banned = !user.Banned
+	user.IsBanned = !user.IsBanned
 	return s.userStorage.Update(ctx, user)
 }
