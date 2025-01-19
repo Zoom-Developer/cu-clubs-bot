@@ -64,7 +64,7 @@ func (h UserHandler) OnAcceptPersonalDataAgreement(c tele.Context) error {
 }
 
 func (h UserHandler) OnExternalUserAuth(c tele.Context) error {
-	h.statesStorage.Set(c.Sender().ID, state.WaitingExternalUserFio, "")
+	h.statesStorage.Set(c.Sender().ID, state.WaitingExternalUserFio, "", time.Minute*45)
 
 	return c.Edit(
 		h.layout.Text(c, "fio_request"),
@@ -88,7 +88,7 @@ func (h UserHandler) OnGrantUserAuth(c tele.Context) error {
 		)
 	}
 
-	h.statesStorage.Set(c.Sender().ID, state.WaitingGrantUserFio, "")
+	h.statesStorage.Set(c.Sender().ID, state.WaitingGrantUserFio, "", time.Minute*45)
 	return c.Edit(
 		h.layout.Text(c, "fio_request"),
 		h.layout.Markup(c, "backToAuthMenu"),
