@@ -18,7 +18,7 @@ type StatesStorage struct {
 
 func NewStatesStorage(b *bot.Bot) *StatesStorage {
 	return &StatesStorage{
-		redis: b.Redis,
+		redis: b.StateRedis,
 	}
 }
 
@@ -53,8 +53,8 @@ func (s *StatesStorage) Get(userID int64) (State, error) {
 	return State{}, errorz.InvalidState
 }
 
-func (s *StatesStorage) Set(userID int64, state string, stateContext string) {
-	s.redis.Set(context.Background(), fmt.Sprintf("%d", userID), fmt.Sprintf("%s:%s", state, stateContext), time.Minute*45)
+func (s *StatesStorage) Set(userID int64, state string, stateContext string, expiration time.Duration) {
+	s.redis.Set(context.Background(), fmt.Sprintf("%d", userID), fmt.Sprintf("%s:%s", state, stateContext), expiration)
 }
 
 func (s *StatesStorage) Clear(userID int64) {
