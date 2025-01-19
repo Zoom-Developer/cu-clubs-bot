@@ -28,6 +28,7 @@ type OnEventHandler struct {
 	bot           *tele.Bot
 	userService   onEventUserService
 	statesStorage *redis.StatesStorage
+	codesStorage  *redis.CodesStorage
 }
 
 func NewOnEventHandler(b *bot.Bot) *OnEventHandler {
@@ -38,6 +39,7 @@ func NewOnEventHandler(b *bot.Bot) *OnEventHandler {
 		bot:           b.Bot,
 		userService:   service.NewUserService(userStorage),
 		statesStorage: redis.NewStatesStorage(b),
+		codesStorage:  redis.NewCodesStorage(b),
 	}
 }
 

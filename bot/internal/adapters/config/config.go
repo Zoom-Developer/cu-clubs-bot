@@ -17,8 +17,9 @@ import (
 )
 
 type Config struct {
-	Database *gorm.DB
-	Redis    *redis.Client
+	Database   *gorm.DB
+	StateRedis *redis.Client
+	CodeRedis  *redis.Client
 }
 
 func initConfig() {
@@ -85,12 +86,24 @@ func Get() *Config {
 		logger.Log.Panicf("Failed to migrate database: %v", errMigrate)
 	}
 
-	redisDB := redis.NewClient(&redis.Options{
+	stateRedisDB := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", viper.GetString("service.redis.host"), viper.GetInt("service.redis.port")),
 		Password: viper.GetString("service.redis.password"),
 		DB:       0,
 	})
-	err = redisDB.Ping(context.Background()).Err()
+	err = stateRedisDB.Ping(context.Background()).Err()
+	if err != nil {
+		logger.Log.Panicf("Failed to connect to redis: %v", err)
+	} else {
+		logger.Log.Info("Successfully connected to redis")
+	}
+
+	codeRedisDB := redis.NewClient(&redis.Options{
+		Addr:     fmt.Sprintf("%s:%d", viper.GetString("service.redis.host"), viper.GetInt("service.redis.port")),
+		Password: viper.GetString("service.redis.password"),
+		DB:       1,
+	})
+	err = codeRedisDB.Ping(context.Background()).Err()
 	if err != nil {
 		logger.Log.Panicf("Failed to connect to redis: %v", err)
 	} else {
@@ -98,7 +111,8 @@ func Get() *Config {
 	}
 
 	return &Config{
-		Database: database,
-		Redis:    redisDB,
+		Database:   database,
+		StateRedis: stateRedisDB,
+		CodeRedis:  codeRedisDB,
 	}
 }
