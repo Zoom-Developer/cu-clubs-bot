@@ -12,33 +12,33 @@ buttons:
   mainMenu:open: '{{ text `open_main_menu` }}'
 
   personalData:accept:
-    unique: personalData:accept
-    callback_data: personalData:accept
+    unique: personalData_accept
+    callback_data: personalData_accept
     text: "{{ text `accept` }}"
 
   personalData:decline:
-    unique: personalData:decline
-    callback_data: personalData:decline
+    unique: personalData_decline
+    callback_data: personalData_decline
     text: "{{ text `decline` }}"
 
   auth:external_user:
-    unique: auth:external_user
-    callback_data: auth:external_user
+    unique: auth_externalUser
+    callback_data: auth_externalUser
     text: "{{ text `external_user` }}"
 
   auth:grant_user:
-    unique: auth:grant_user
-    callback_data: auth:grant_user
+    unique: auth_grantUser
+    callback_data: auth_grantUser
     text: "{{ text `grant_user` }}"
 
   auth:student:
-    unique: auth:student
-    callback_data: auth:student
+    unique: auth_student
+    callback_data: auth_student
     text: "{{ text `student` }}"
 
   auth:back_to_menu:
-    unique: auth:back_to_menu
-    callback_data: auth:back_to_menu
+    unique: auth_backToMenu
+    callback_data: auth_backToMenu
     text: "{{ text `back` }}"
 
 markups:

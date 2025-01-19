@@ -30,12 +30,12 @@ func Setup(b *bot.Bot) {
 
 	b.Handle("/start", userHandler.OnStart)
 
-	b.Handle(b.Layout.Callback("decline"), userHandler.OnDeclinePersonalDataAgreement)
-	b.Handle(b.Layout.Callback("accept"), userHandler.OnAcceptPersonalDataAgreement)
+	b.Handle(b.Layout.Callback("personalData:accept"), userHandler.OnAcceptPersonalDataAgreement)
+	b.Handle(b.Layout.Callback("personalData:decline"), userHandler.OnDeclinePersonalDataAgreement)
 
-	b.Handle(b.Layout.Callback("external_user_auth"), userHandler.OnExternalUserAuth)
-	b.Handle(b.Layout.Callback("grant_user_auth"), userHandler.OnGrantUserAuth)
-	b.Handle(b.Layout.Callback("back_to_auth_menu"), userHandler.OnBackToAuthMenu)
+	b.Handle(b.Layout.Callback("auth:external_user"), userHandler.OnExternalUserAuth)
+	b.Handle(b.Layout.Callback("auth:grant_user"), userHandler.OnGrantUserAuth)
+	b.Handle(b.Layout.Callback("auth:back_to_menu"), userHandler.OnBackToAuthMenu)
 
 	b.Use(middle.Authorized)
 	//b.Handle(b.Layout.Callback("hide"), userHandler.Hide)
