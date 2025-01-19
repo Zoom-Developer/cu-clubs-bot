@@ -52,8 +52,8 @@ func (s *CodesStorage) Get(userID int64) (Code, error) {
 	return Code{}, errorz.InvalidCode
 }
 
-func (s *CodesStorage) Set(userID int64, code string, codeContext string) {
-	s.redis.Set(context.Background(), fmt.Sprintf("%d", userID), fmt.Sprintf("%s:%s", code, codeContext), time.Minute*45)
+func (s *CodesStorage) Set(userID int64, code string, codeContext string, expiration time.Duration) {
+	s.redis.Set(context.Background(), fmt.Sprintf("%d", userID), fmt.Sprintf("%s:%s", code, codeContext), expiration)
 }
 
 func (s *CodesStorage) Clear(userID int64) {
