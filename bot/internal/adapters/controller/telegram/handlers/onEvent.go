@@ -176,6 +176,7 @@ func (h *OnEventHandler) onStudentEmail(c tele.Context) error {
 		)
 	}
 
+	return nil
 }
 
 func validateEmail(email string) bool {
