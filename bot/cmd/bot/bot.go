@@ -13,10 +13,11 @@ import (
 
 type Bot struct {
 	*tele.Bot
-	Layout *layout.Layout
-	DB     *gorm.DB
-	Redis  *redis.Client
-	Logger *logger.Logger
+	Layout     *layout.Layout
+	DB         *gorm.DB
+	StateRedis *redis.Client
+	CodeRedis  *redis.Client
+	Logger     *logger.Logger
 }
 
 func New(config *config.Config) (*Bot, error) {
@@ -46,11 +47,12 @@ func New(config *config.Config) (*Bot, error) {
 	}
 
 	bot := &Bot{
-		Bot:    b,
-		Layout: lt,
-		DB:     config.Database,
-		Redis:  config.Redis,
-		Logger: botLogger,
+		Bot:        b,
+		Layout:     lt,
+		DB:         config.Database,
+		StateRedis: config.StateRedis,
+		CodeRedis:  config.CodeRedis,
+		Logger:     botLogger,
 	}
 
 	return bot, nil

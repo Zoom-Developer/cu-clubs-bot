@@ -20,6 +20,7 @@ import (
 
 type onEventUserService interface {
 	Get(ctx context.Context, userID int64) (*entity.User, error)
+	Create(ctx context.Context, user entity.User) (*entity.User, error)
 }
 
 type OnEventHandler struct {
@@ -51,6 +52,8 @@ func (h *OnEventHandler) OnText(c tele.Context) error {
 		return h.onMailing(c)
 	case states.WaitingExternalUserFio:
 		return h.onExternalUserFio(c)
+	case states.WaitingGrantUserFio:
+		return h.onGrantUserFio(c)
 	default:
 		return c.Send(h.layout.Text(c, "unknown_command"))
 	}

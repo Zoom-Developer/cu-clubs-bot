@@ -72,6 +72,36 @@ func (h UserHandler) OnExternalUserAuth(c tele.Context) error {
 	)
 }
 
+func (h UserHandler) OnGrantUserAuth(c tele.Context) error {
+	granChatID := int64(viper.GetInt("bot.grant-chat-id"))
+	member, err := c.Bot().ChatMemberOf(&tele.Chat{ID: granChatID}, &tele.User{ID: c.Sender().ID})
+	if err != nil {
+		return c.Send(
+			h.layout.Text(c, "technical_issues"),
+		)
+	}
+
+	if member.Role != tele.Creator && member.Role != tele.Administrator && member.Role != tele.Member {
+		return c.Send(
+			h.layout.Text(c, "grant_user_required"),
+			h.layout.Markup(c, "backToAuthMenu"),
+		)
+	}
+
+	h.statesStorage.Set(c.Sender().ID, state.WaitingGrantUserFio, "")
+	return c.Edit(
+		h.layout.Text(c, "fio_request"),
+		h.layout.Markup(c, "backToAuthMenu"),
+	)
+}
+
+func (h UserHandler) OnBackToAuthMenu(c tele.Context) error {
+	return c.Edit(
+		h.layout.Text(c, "auth_menu_text"),
+		h.layout.Markup(c, "authMenu"),
+	)
+}
+
 func (h UserHandler) SendMainMenu(c tele.Context) error {
 	return c.Send(
 		h.layout.Text(c, "main_menu_text", c.Sender().Username),
@@ -94,41 +124,5 @@ func (h UserHandler) Information(c tele.Context) error {
 	return c.Edit(
 		h.layout.Text(c, "info_text"),
 		h.layout.Markup(c, "information"),
-	)
-}
-
-func (h UserHandler) ChangeLocalisation(c tele.Context) error {
-	return c.Edit(
-		"<b>🌍 Выберите предпочтительный язык</b>\n"+
-			"<b>🌍 Choose your preferred language</b>\n",
-		h.layout.MarkupLocale("en", "pickLanguage"),
-	)
-}
-
-func (h UserHandler) Profile(c tele.Context) error {
-	user, err := h.userService.Get(context.Background(), c.Sender().ID)
-	if err != nil {
-		return err
-	}
-
-	return c.Edit(
-		h.layout.Text(c, "profile_text", struct {
-			User    entity.User
-			Expires int
-		}{
-			User: *user,
-		}),
-		h.layout.Markup(c, "profile"),
-	)
-}
-
-func (h UserHandler) SubscriptionInfo(c tele.Context) error {
-	return c.Edit(
-		h.layout.Text(c, "subscription_text", struct {
-			Price float64
-		}{
-			Price: h.subscriptionPrice,
-		}),
-		h.layout.Markup(c, "subscriptionInfo"),
 	)
 }
