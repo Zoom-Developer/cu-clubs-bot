@@ -50,7 +50,7 @@ func (s *StatesStorage) Get(userID int64) (State, error) {
 		}, nil
 	}
 
-	return State{}, errorz.InvalidState
+	return State{}, errorz.ErrInvalidState
 }
 
 func (s *StatesStorage) Set(userID int64, state string, stateContext string, expiration time.Duration) {

@@ -77,7 +77,7 @@ func (h *OnEventHandler) OnMedia(c tele.Context) error {
 
 func (h *OnEventHandler) onMailing(c tele.Context) error {
 	if !h.checkForAdmin(c.Sender().ID) {
-		return errorz.Forbidden
+		return errorz.ErrForbidden
 	}
 	h.statesStorage.Clear(c.Sender().ID)
 	chat, _ := h.bot.ChatByID(c.Sender().ID)
@@ -161,11 +161,7 @@ func validateFio(fio string) bool {
 		return false
 	}
 	re := regexp.MustCompile(`^[А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)? [А-ЯЁ][а-яё]+ [А-ЯЁ][а-яё]+$`)
-	if !re.MatchString(strings.TrimSpace(fio)) {
-		return false
-	}
-
-	return true
+	return re.MatchString(strings.TrimSpace(fio))
 }
 
 func (h *OnEventHandler) onStudentEmail(c tele.Context) error {
