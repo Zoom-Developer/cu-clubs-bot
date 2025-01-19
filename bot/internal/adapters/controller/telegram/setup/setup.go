@@ -29,7 +29,6 @@ func Setup(b *bot.Bot) {
 	b.Use(middle.ResetStateOnBack)
 
 	b.Handle("/start", userHandler.OnStart)
-	b.Use(middle.Subscribed)
 
 	b.Handle(b.Layout.Callback("decline"), userHandler.OnDeclinePersonalDataAgreement)
 	b.Handle(b.Layout.Callback("accept"), userHandler.OnAcceptPersonalDataAgreement)

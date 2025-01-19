@@ -9,50 +9,50 @@ commands:
 
 buttons:
   # main menu
-  openMainMenu: '{{ text `open_main_menu` }}'
+  mainMenu:open: '{{ text `open_main_menu` }}'
 
-  accept:
-    unique: accept
-    callback_data: accept
+  personalData:accept:
+    unique: personalData:accept
+    callback_data: personalData:accept
     text: "{{ text `accept` }}"
 
-  decline:
-    unique: decline
-    callback_data: decline
+  personalData:decline:
+    unique: personalData:decline
+    callback_data: personalData:decline
     text: "{{ text `decline` }}"
 
-  external_user_auth:
-    unique: external_user_auth
-    callback_data: external_user_auth
+  auth:external_user:
+    unique: auth:external_user
+    callback_data: auth:external_user
     text: "{{ text `external_user` }}"
 
-  grant_user_auth:
-    unique: grant_user_auth
-    callback_data: grant_user_auth
+  auth:grant_user:
+    unique: auth:grant_user
+    callback_data: auth:grant_user
     text: "{{ text `grant_user` }}"
 
-  student_auth:
-    unique: student_auth
-    callback_data: student_auth
+  auth:student:
+    unique: auth:student
+    callback_data: auth:student
     text: "{{ text `student` }}"
 
-  back_to_auth_menu:
-    unique: back_to_auth_menu
-    callback_data: back_to_auth_menu
+  auth:back_to_menu:
+    unique: auth:back_to_menu
+    callback_data: auth:back_to_menu
     text: "{{ text `back` }}"
 
 markups:
-  replyOpenMenu:
-    - [ openMainMenu ]
+  mainMenu:open:
+    - [ mainMenu:open ]
 
-  personalDataAgreementMenu:
-    - [ accept, decline ]
+  personalData:agreementMenu:
+    - [ personalData:accept, personalData:decline ]
 
-  authMenu:
-    - [ external_user_auth ]
-    - [ grant_user_auth ]
-    - [ student_auth ]
+  auth:menu:
+    - [ auth:external_user ]
+    - [ auth:grant_user ]
+    - [ auth:student ]
 
-  backToAuthMenu:
-    - [ back_to_auth_menu ]
+  auth:backToMenu:
+    - [ auth:back_to_menu ]
 
