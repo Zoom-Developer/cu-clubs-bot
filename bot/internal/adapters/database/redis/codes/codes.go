@@ -1,4 +1,4 @@
-package redis
+package codes
 
 import (
 	"context"
@@ -11,12 +11,12 @@ import (
 	"time"
 )
 
-type CodesStorage struct {
+type Storage struct {
 	redis *redis.Client
 }
 
-func NewCodesStorage(b *bot.Bot) *CodesStorage {
-	return &CodesStorage{
+func NewStorage(b *bot.Bot) *Storage {
+	return &Storage{
 		redis: b.CodeRedis,
 	}
 }
@@ -26,7 +26,7 @@ type Code struct {
 	CodeContext string
 }
 
-func (s *CodesStorage) Get(userID int64) (Code, error) {
+func (s *Storage) Get(userID int64) (Code, error) {
 	codeData, err := s.redis.Get(context.Background(), fmt.Sprintf("%d", userID)).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
@@ -52,10 +52,10 @@ func (s *CodesStorage) Get(userID int64) (Code, error) {
 	return Code{}, errorz.ErrInvalidCode
 }
 
-func (s *CodesStorage) Set(userID int64, code string, codeContext string, expiration time.Duration) {
+func (s *Storage) Set(userID int64, code string, codeContext string, expiration time.Duration) {
 	s.redis.Set(context.Background(), fmt.Sprintf("%d", userID), fmt.Sprintf("%s:%s", code, codeContext), expiration)
 }
 
-func (s *CodesStorage) Clear(userID int64) {
+func (s *Storage) Clear(userID int64) {
 	s.redis.Del(context.Background(), fmt.Sprintf("%d", userID))
 }

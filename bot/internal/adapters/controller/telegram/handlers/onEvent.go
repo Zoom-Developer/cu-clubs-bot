@@ -6,8 +6,9 @@ import (
 	"encoding/hex"
 	"github.com/Badsnus/cu-clubs-bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/postgres"
-	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/redis"
-	states "github.com/Badsnus/cu-clubs-bot/internal/adapters/database/redis/state"
+	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/redis/codes"
+	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/redis/state"
+	states "github.com/Badsnus/cu-clubs-bot/internal/adapters/database/redis/states"
 	"github.com/Badsnus/cu-clubs-bot/internal/domain/common/errorz"
 	"github.com/Badsnus/cu-clubs-bot/internal/domain/entity"
 	"github.com/Badsnus/cu-clubs-bot/internal/domain/service"
@@ -36,8 +37,8 @@ type OnEventHandler struct {
 	bot           *tele.Bot
 	userService   onEventUserService
 	smtpClient    smtpClient
-	statesStorage *redis.StatesStorage
-	codesStorage  *redis.CodesStorage
+	statesStorage *states.Storage
+	codesStorage  *codes.Storage
 }
 
 func NewOnEventHandler(b *bot.Bot) *OnEventHandler {
@@ -48,8 +49,8 @@ func NewOnEventHandler(b *bot.Bot) *OnEventHandler {
 		bot:           b.Bot,
 		userService:   service.NewUserService(userStorage),
 		smtpClient:    smtp.NewClient(b.SMTPDialer),
-		statesStorage: redis.NewStatesStorage(b),
-		codesStorage:  redis.NewCodesStorage(b),
+		statesStorage: states.NewStorage(b),
+		codesStorage:  codes.NewStorage(b),
 	}
 }
 
@@ -60,15 +61,15 @@ func (h *OnEventHandler) OnText(c tele.Context) error {
 	}
 
 	switch stateData.State {
-	case states.WaitingForMailingContent:
+	case state.WaitingForMailingContent:
 		return h.onMailing(c)
-	case states.WaitingExternalUserFio:
+	case state.WaitingExternalUserFio:
 		return h.onExternalUserFio(c)
-	case states.WaitingGrantUserFio:
+	case state.WaitingGrantUserFio:
 		return h.onGrantUserFio(c)
-	case states.WaitingStudentEmail:
+	case state.WaitingStudentEmail:
 		return h.onStudentEmail(c)
-	case states.WaitingStudentEmailConfirmationCode:
+	case state.WaitingStudentEmailConfirmationCode:
 		return h.onStudentEmailConfirmationCode(c)
 	default:
 		return c.Send(h.layout.Text(c, "unknown_command"))
@@ -82,7 +83,7 @@ func (h *OnEventHandler) OnMedia(c tele.Context) error {
 	}
 
 	switch stateData.State {
-	case states.WaitingForMailingContent:
+	case state.WaitingForMailingContent:
 		return h.onMailing(c)
 	default:
 		return c.Send(h.layout.Text(c, "unknown_command"))
@@ -195,7 +196,7 @@ func (h *OnEventHandler) onStudentEmail(c tele.Context) error {
 	h.smtpClient.SendConfirmationEmail(email, code)
 
 	h.codesStorage.Set(c.Sender().ID, code, "", time.Minute*5)
-	h.statesStorage.Set(c.Sender().ID, states.WaitingStudentEmailConfirmationCode, "", time.Minute*5)
+	h.statesStorage.Set(c.Sender().ID, state.WaitingStudentEmailConfirmationCode, "", time.Minute*5)
 
 	return c.Send(
 		h.layout.Text(c, "email_confirmation_code_request"),

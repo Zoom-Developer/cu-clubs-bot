@@ -2,18 +2,17 @@ package handlers
 
 import (
 	"context"
+	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/redis/states"
 	"time"
 
 	"github.com/Badsnus/cu-clubs-bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/postgres"
-	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/redis"
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/redis/state"
 	"github.com/Badsnus/cu-clubs-bot/internal/domain/entity"
 	"github.com/Badsnus/cu-clubs-bot/internal/domain/service"
 	"github.com/spf13/viper"
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/layout"
-	"time"
 )
 
 type userService interface {
@@ -23,7 +22,7 @@ type userService interface {
 type UserHandler struct {
 	userService userService
 
-	statesStorage *redis.StatesStorage
+	statesStorage *states.Storage
 
 	layout *layout.Layout
 }
@@ -33,7 +32,7 @@ func NewUserHandler(b *bot.Bot) *UserHandler {
 
 	return &UserHandler{
 		userService:   service.NewUserService(userStorage),
-		statesStorage: redis.NewStatesStorage(b),
+		statesStorage: states.NewStorage(b),
 		layout:        b.Layout,
 	}
 }
