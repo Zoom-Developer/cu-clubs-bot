@@ -3,10 +3,11 @@ package config
 import (
 	"context"
 	"fmt"
-	"gopkg.in/gomail.v2"
 	"log"
 	"os"
 	"time"
+
+	"gopkg.in/gomail.v2"
 
 	postgresStorage "github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/postgres"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger"

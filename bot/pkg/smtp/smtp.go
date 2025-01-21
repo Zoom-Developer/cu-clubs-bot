@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Badsnus/cu-clubs-bot/internal/adapters/logger"
+	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
 	"gopkg.in/gomail.v2"

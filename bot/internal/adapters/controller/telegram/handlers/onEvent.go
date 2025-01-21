@@ -2,20 +2,27 @@ package handlers
 
 import (
 	"context"
+	"errors"
+	"net/mail"
+	"regexp"
+	"slices"
+	"strings"
+
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/codes"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/emails"
+	"github.com/Badsnus/cu-clubs-bot/bot/pkg/smtp"
+	"github.com/redis/go-redis/v9"
+
 	"github.com/Badsnus/cu-clubs-bot/bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/postgres"
-	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis"
-	states "github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/state"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/state"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/states"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/common/errorz"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/service"
 	"github.com/spf13/viper"
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/layout"
-	"net/mail"
-	"regexp"
-	"slices"
-	"strings"
 )
 
 type onEventUserService interface {

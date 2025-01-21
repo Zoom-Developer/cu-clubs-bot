@@ -2,12 +2,12 @@ package middlewares
 
 import (
 	"context"
-	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/redis/states"
 	"strings"
+
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/states"
 
 	"github.com/Badsnus/cu-clubs-bot/bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/postgres"
-	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/service"
 	tele "gopkg.in/telebot.v3"

@@ -1,11 +1,12 @@
 package bot
 
 import (
+	"sync"
+
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/service"
 	"github.com/spf13/viper"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/gomail.v2"
-	"sync"
 
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/config"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger"

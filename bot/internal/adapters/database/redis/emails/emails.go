@@ -3,11 +3,12 @@ package emails
 import (
 	"context"
 	"fmt"
-	"github.com/Badsnus/cu-clubs-bot/cmd/bot"
-	"github.com/Badsnus/cu-clubs-bot/internal/domain/common/errorz"
-	"github.com/redis/go-redis/v9"
 	"strings"
 	"time"
+
+	"github.com/Badsnus/cu-clubs-bot/bot/cmd/bot"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/common/errorz"
+	"github.com/redis/go-redis/v9"
 )
 
 type Storage struct {
