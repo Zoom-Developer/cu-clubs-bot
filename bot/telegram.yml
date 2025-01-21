@@ -41,6 +41,11 @@ buttons:
     callback_data: back_to_auth_menu
     text: "{{ text `back` }}"
 
+  resend_email_confirmation_code:
+    unique: resend_email_confirmation_code
+    callback_data: "{{ .Data }}"
+    text: "{{ text `resend` }}"
+
 markups:
   replyOpenMenu:
     - [ openMainMenu ]

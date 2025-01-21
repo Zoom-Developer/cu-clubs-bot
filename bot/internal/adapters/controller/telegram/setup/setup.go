@@ -29,13 +29,13 @@ func Setup(b *bot.Bot) {
 	b.Use(middle.ResetStateOnBack)
 
 	b.Handle("/start", userHandler.OnStart)
-	b.Use(middle.Subscribed)
 
 	b.Handle(b.Layout.Callback("decline"), userHandler.OnDeclinePersonalDataAgreement)
 	b.Handle(b.Layout.Callback("accept"), userHandler.OnAcceptPersonalDataAgreement)
 
 	b.Handle(b.Layout.Callback("external_user_auth"), userHandler.OnExternalUserAuth)
 	b.Handle(b.Layout.Callback("grant_user_auth"), userHandler.OnGrantUserAuth)
+	b.Handle(b.Layout.Callback("student_auth"), userHandler.OnStudentAuth)
 	b.Handle(b.Layout.Callback("back_to_auth_menu"), userHandler.OnBackToAuthMenu)
 
 	b.Use(middle.Authorized)

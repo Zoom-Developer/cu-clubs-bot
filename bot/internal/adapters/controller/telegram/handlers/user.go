@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/viper"
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/layout"
+	"time"
 )
 
 type userService interface {
@@ -91,6 +92,15 @@ func (h UserHandler) OnGrantUserAuth(c tele.Context) error {
 	h.statesStorage.Set(c.Sender().ID, state.WaitingGrantUserFio, "", time.Minute*45)
 	return c.Edit(
 		h.layout.Text(c, "fio_request"),
+		h.layout.Markup(c, "backToAuthMenu"),
+	)
+}
+
+func (h UserHandler) OnStudentAuth(c tele.Context) error {
+	h.statesStorage.Set(c.Sender().ID, state.WaitingStudentEmail, "", time.Minute*45)
+
+	return c.Edit(
+		h.layout.Text(c, "email_request"),
 		h.layout.Markup(c, "backToAuthMenu"),
 	)
 }
