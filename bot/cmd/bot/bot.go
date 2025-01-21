@@ -63,7 +63,6 @@ func New(config *config.Config) (*Bot, error) {
 }
 
 func (b *Bot) Start() {
-
 	var wg sync.WaitGroup
 	wg.Add(1)
 
