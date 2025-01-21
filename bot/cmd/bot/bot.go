@@ -5,6 +5,7 @@ import (
 
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/config"
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/logger"
+	"github.com/Badsnus/cu-clubs-bot/internal/adapters/logger/types"
 	"github.com/redis/go-redis/v9"
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/layout"
@@ -17,7 +18,7 @@ type Bot struct {
 	DB         *gorm.DB
 	StateRedis *redis.Client
 	CodeRedis  *redis.Client
-	Logger     *logger.Logger
+	Logger     *types.Logger
 }
 
 func New(config *config.Config) (*Bot, error) {
