@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"gopkg.in/gomail.v2"
 	"sync"
 
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/config"
@@ -17,6 +18,7 @@ type Bot struct {
 	DB         *gorm.DB
 	StateRedis *redis.Client
 	CodeRedis  *redis.Client
+	SMTPDialer *gomail.Dialer
 	Logger     *logger.Logger
 }
 
@@ -52,6 +54,7 @@ func New(config *config.Config) (*Bot, error) {
 		DB:         config.Database,
 		StateRedis: config.StateRedis,
 		CodeRedis:  config.CodeRedis,
+		SMTPDialer: config.SMTPDialer,
 		Logger:     botLogger,
 	}
 

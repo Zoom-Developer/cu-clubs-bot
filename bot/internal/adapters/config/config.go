@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"fmt"
+	"gopkg.in/gomail.v2"
 	"log"
 	"os"
 	"time"
@@ -20,6 +21,7 @@ type Config struct {
 	Database   *gorm.DB
 	StateRedis *redis.Client
 	CodeRedis  *redis.Client
+	SMTPDialer *gomail.Dialer
 }
 
 func initConfig() {
@@ -110,9 +112,17 @@ func Get() *Config {
 		logger.Log.Info("Successfully connected to redis")
 	}
 
+	dialer := gomail.NewDialer(
+		viper.GetString("bot.smtp-host"),
+		viper.GetInt("bot.smtp-port"),
+		viper.GetString("bot.smtp-login"),
+		viper.GetString("bot.smtp-pass"),
+	)
+
 	return &Config{
 		Database:   database,
 		StateRedis: stateRedisDB,
 		CodeRedis:  codeRedisDB,
+		SMTPDialer: dialer,
 	}
 }

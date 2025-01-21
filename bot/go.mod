@@ -3,6 +3,7 @@ module github.com/Badsnus/cu-clubs-bot
 go 1.22.3
 
 require (
+	github.com/google/uuid v1.1.2
 	github.com/redis/go-redis/v9 v9.6.1
 	github.com/spf13/viper v1.13.0
 	go.uber.org/zap v1.17.0
