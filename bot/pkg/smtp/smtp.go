@@ -2,11 +2,12 @@ package smtp
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/logger"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
 	"gopkg.in/gomail.v2"
-	"time"
 )
 
 // Client представляет почтовый клиент.
@@ -21,7 +22,6 @@ func NewClient(dialer *gomail.Dialer) *Client {
 
 // SendConfirmationEmail отправляет письмо с подтверждением почты.
 func (c *Client) SendConfirmationEmail(to string, code string) {
-	fmt.Println(1)
 	msg := gomail.NewMessage()
 
 	domain := viper.GetString("bot.domain")

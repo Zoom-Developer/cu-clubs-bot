@@ -35,6 +35,7 @@ func Setup(b *bot.Bot) {
 
 	b.Handle(b.Layout.Callback("auth:external_user"), userHandler.OnExternalUserAuth)
 	b.Handle(b.Layout.Callback("auth:grant_user"), userHandler.OnGrantUserAuth)
+	b.Handle(b.Layout.Callback("auth:student"), userHandler.OnStudentAuth)
 	b.Handle(b.Layout.Callback("auth:back_to_menu"), userHandler.OnBackToAuthMenu)
 
 	b.Use(middle.Authorized)

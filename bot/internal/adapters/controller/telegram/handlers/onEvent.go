@@ -4,11 +4,18 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
+	"net/mail"
+	"regexp"
+	"slices"
+	"strings"
+	"time"
+
 	"github.com/Badsnus/cu-clubs-bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/postgres"
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/redis/codes"
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/redis/state"
-	states "github.com/Badsnus/cu-clubs-bot/internal/adapters/database/redis/states"
+	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/redis/states"
 	"github.com/Badsnus/cu-clubs-bot/internal/domain/common/errorz"
 	"github.com/Badsnus/cu-clubs-bot/internal/domain/entity"
 	"github.com/Badsnus/cu-clubs-bot/internal/domain/service"
@@ -16,11 +23,6 @@ import (
 	"github.com/spf13/viper"
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/layout"
-	"net/mail"
-	"regexp"
-	"slices"
-	"strings"
-	"time"
 )
 
 type onEventUserService interface {
@@ -28,29 +30,36 @@ type onEventUserService interface {
 	Create(ctx context.Context, user entity.User) (*entity.User, error)
 }
 
+type onEventStudentDataService interface {
+	GetByLogin(ctx context.Context, login string) (*entity.StudentData, error)
+}
+
 type smtpClient interface {
 	SendConfirmationEmail(to string, code string)
 }
 
 type OnEventHandler struct {
-	layout        *layout.Layout
-	bot           *tele.Bot
-	userService   onEventUserService
-	smtpClient    smtpClient
-	statesStorage *states.Storage
-	codesStorage  *codes.Storage
+	layout             *layout.Layout
+	bot                *tele.Bot
+	userService        onEventUserService
+	studentDataService onEventStudentDataService
+	smtpClient         smtpClient
+	statesStorage      *states.Storage
+	codesStorage       *codes.Storage
 }
 
 func NewOnEventHandler(b *bot.Bot) *OnEventHandler {
 	userStorage := postgres.NewUserStorage(b.DB)
+	studentDataStorage := postgres.NewStudentDataStorage(b.DB)
 
 	return &OnEventHandler{
-		layout:        b.Layout,
-		bot:           b.Bot,
-		userService:   service.NewUserService(userStorage),
-		smtpClient:    smtp.NewClient(b.SMTPDialer),
-		statesStorage: states.NewStorage(b),
-		codesStorage:  codes.NewStorage(b),
+		layout:             b.Layout,
+		bot:                b.Bot,
+		userService:        service.NewUserService(userStorage),
+		studentDataService: service.NewStudentDataService(studentDataStorage),
+		smtpClient:         smtp.NewClient(b.SMTPDialer),
+		statesStorage:      states.NewStorage(b),
+		codesStorage:       codes.NewStorage(b),
 	}
 }
 
@@ -138,7 +147,7 @@ func (h *OnEventHandler) onExternalUserFio(c tele.Context) error {
 
 	return c.Send(
 		h.layout.Text(c, "start"),
-		h.layout.Markup(c, "replyOpenMenu"),
+		h.layout.Markup(c, "mainMenu:open"),
 	)
 }
 
@@ -167,7 +176,7 @@ func (h *OnEventHandler) onGrantUserFio(c tele.Context) error {
 
 	return c.Send(
 		h.layout.Text(c, "start"),
-		h.layout.Markup(c, "replyOpenMenu"),
+		h.layout.Markup(c, "mainMenu:open"),
 	)
 }
 
@@ -193,10 +202,18 @@ func (h *OnEventHandler) onStudentEmail(c tele.Context) error {
 			h.layout.Text(c, "technical_issues"),
 		)
 	}
-	h.smtpClient.SendConfirmationEmail(email, code)
 
-	h.codesStorage.Set(c.Sender().ID, code, "", time.Minute*5)
-	h.statesStorage.Set(c.Sender().ID, state.WaitingStudentEmailConfirmationCode, "", time.Minute*5)
+	login := strings.Split(email, "@")[0]
+
+	var data string
+	studentData, err := h.studentDataService.GetByLogin(context.Background(), login)
+	if err == nil {
+		h.smtpClient.SendConfirmationEmail(email, code)
+		data = fmt.Sprintf("%s;%s", email, studentData.Fio)
+	}
+
+	h.codesStorage.Set(c.Sender().ID, code, data, time.Minute*10)
+	h.statesStorage.Set(c.Sender().ID, state.WaitingStudentEmailConfirmationCode, "", time.Minute*10)
 
 	return c.Send(
 		h.layout.Text(c, "email_confirmation_code_request"),
@@ -248,11 +265,34 @@ func (h *OnEventHandler) onStudentEmailConfirmationCode(c tele.Context) error {
 			h.layout.Text(c, "invalid_email_confirmation_code"),
 		)
 	}
+
 	if inputCode != code.Code {
 		return c.Send(
 			h.layout.Text(c, "invalid_email_confirmation_code"),
 		)
 	}
 
-	return c.Send("good boy")
+	data := strings.Split(code.CodeContext, ";")
+	email, fio := data[0], data[1]
+
+	user := entity.User{
+		ID:    c.Sender().ID,
+		Role:  entity.Student,
+		Email: email,
+		FIO:   fio,
+	}
+
+	_, err = h.userService.Create(context.Background(), user)
+	if err != nil {
+		return c.Send(
+			h.layout.Text(c, "technical_issues"),
+		)
+	}
+
+	h.statesStorage.Clear(c.Sender().ID)
+
+	return c.Send(
+		h.layout.Text(c, "start"),
+		h.layout.Markup(c, "mainMenu:open"),
+	)
 }

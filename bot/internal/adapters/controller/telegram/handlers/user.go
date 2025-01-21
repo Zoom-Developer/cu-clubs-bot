@@ -2,8 +2,9 @@ package handlers
 
 import (
 	"context"
-	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/redis/states"
 	"time"
+
+	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/redis/states"
 
 	"github.com/Badsnus/cu-clubs-bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/postgres"
@@ -102,7 +103,7 @@ func (h UserHandler) OnStudentAuth(c tele.Context) error {
 
 	return c.Edit(
 		h.layout.Text(c, "email_request"),
-		h.layout.Markup(c, "backToAuthMenu"),
+		h.layout.Markup(c, "auth:backToMenu"),
 	)
 }
 

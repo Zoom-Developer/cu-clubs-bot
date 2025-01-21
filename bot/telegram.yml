@@ -41,8 +41,8 @@ buttons:
     callback_data: auth_backToMenu
     text: "{{ text `back` }}"
 
-  resend_email_confirmation_code:
-    unique: resend_email_confirmation_code
+  auth:resend_email_confirmation_code:
+    unique: auth_resendEmailConfirmationCode
     callback_data: "{{ .Data }}"
     text: "{{ text `resend` }}"
 
