@@ -27,7 +27,7 @@ type MiddlewareHandler struct {
 
 func New(b *bot.Bot) *MiddlewareHandler {
 	userStorageLocal := postgres.NewUserStorage(b.DB)
-	userServiceLocal := service.NewUserService(userStorageLocal)
+	userServiceLocal := service.NewUserService(userStorageLocal, nil, nil)
 
 	return &MiddlewareHandler{
 		bot:           b.Bot,

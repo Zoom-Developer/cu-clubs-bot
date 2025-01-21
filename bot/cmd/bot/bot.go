@@ -18,6 +18,7 @@ type Bot struct {
 	DB         *gorm.DB
 	StateRedis *redis.Client
 	CodeRedis  *redis.Client
+	EmailRedis *redis.Client
 	SMTPDialer *gomail.Dialer
 	Logger     *logger.Logger
 }
@@ -54,6 +55,7 @@ func New(config *config.Config) (*Bot, error) {
 		DB:         config.Database,
 		StateRedis: config.StateRedis,
 		CodeRedis:  config.CodeRedis,
+		EmailRedis: config.EmailRedis,
 		SMTPDialer: config.SMTPDialer,
 		Logger:     botLogger,
 	}

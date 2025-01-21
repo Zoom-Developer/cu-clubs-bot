@@ -2,7 +2,12 @@ package handlers
 
 import (
 	"context"
-	"time"
+	"errors"
+	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/redis/codes"
+	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/redis/emails"
+	"github.com/Badsnus/cu-clubs-bot/pkg/smtp"
+	"github.com/redis/go-redis/v9"
+	"strings"
 
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/redis/states"
 
@@ -18,22 +23,29 @@ import (
 
 type userService interface {
 	Get(ctx context.Context, userID int64) (*entity.User, error)
+	SendAuthCode(ctx context.Context, email string) (string, string, error)
 }
 
 type UserHandler struct {
 	userService userService
 
 	statesStorage *states.Storage
+	codesStorage  *codes.Storage
+	emailsStorage *emails.Storage
 
 	layout *layout.Layout
 }
 
 func NewUserHandler(b *bot.Bot) *UserHandler {
 	userStorage := postgres.NewUserStorage(b.DB)
+	studentDataStorage := postgres.NewStudentDataStorage(b.DB)
+	smtpClient := smtp.NewClient(b.SMTPDialer)
 
 	return &UserHandler{
-		userService:   service.NewUserService(userStorage),
+		userService:   service.NewUserService(userStorage, studentDataStorage, smtpClient),
 		statesStorage: states.NewStorage(b),
+		codesStorage:  codes.NewStorage(b),
+		emailsStorage: emails.NewStorage(b),
 		layout:        b.Layout,
 	}
 }
@@ -67,7 +79,7 @@ func (h UserHandler) OnAcceptPersonalDataAgreement(c tele.Context) error {
 }
 
 func (h UserHandler) OnExternalUserAuth(c tele.Context) error {
-	h.statesStorage.Set(c.Sender().ID, state.WaitingExternalUserFio, "", time.Minute*45)
+	h.statesStorage.Set(c.Sender().ID, state.WaitingExternalUserFio, "", viper.GetDuration("bot.session.ttl"))
 
 	return c.Edit(
 		h.layout.Text(c, "fio_request"),
@@ -91,7 +103,7 @@ func (h UserHandler) OnGrantUserAuth(c tele.Context) error {
 		)
 	}
 
-	h.statesStorage.Set(c.Sender().ID, state.WaitingGrantUserFio, "", time.Minute*45)
+	h.statesStorage.Set(c.Sender().ID, state.WaitingGrantUserFio, "", viper.GetDuration("bot.session.ttl"))
 	return c.Edit(
 		h.layout.Text(c, "fio_request"),
 		h.layout.Markup(c, "auth:backToMenu"),
@@ -99,7 +111,7 @@ func (h UserHandler) OnGrantUserAuth(c tele.Context) error {
 }
 
 func (h UserHandler) OnStudentAuth(c tele.Context) error {
-	h.statesStorage.Set(c.Sender().ID, state.WaitingStudentEmail, "", time.Minute*45)
+	h.statesStorage.Set(c.Sender().ID, state.WaitingStudentEmail, "", viper.GetDuration("bot.session.ttl"))
 
 	return c.Edit(
 		h.layout.Text(c, "email_request"),
@@ -111,6 +123,53 @@ func (h UserHandler) OnBackToAuthMenu(c tele.Context) error {
 	return c.Edit(
 		h.layout.Text(c, "auth_menu_text"),
 		h.layout.Markup(c, "auth:menu"),
+	)
+}
+
+func (h UserHandler) OnResendEmailConfirmationCode(c tele.Context) error {
+	_, err := h.codesStorage.Get(c.Sender().ID)
+	if err != nil && !errors.Is(err, redis.Nil) {
+		return c.Send(
+			h.layout.Text(c, "technical_issues"),
+		)
+	}
+
+	var data, code string
+	var email emails.Email
+	if errors.Is(err, redis.Nil) {
+		email, err = h.emailsStorage.Get(c.Sender().ID)
+		if err != nil && !errors.Is(err, redis.Nil) {
+			return c.Send(
+				h.layout.Text(c, "technical_issues"),
+			)
+		}
+
+		if errors.Is(err, redis.Nil) {
+			return c.Send(
+				h.layout.Text(c, "session_expire"),
+			)
+		}
+
+		data, code, err = h.userService.SendAuthCode(context.Background(), email.Email)
+		if err != nil {
+			return c.Send(
+				h.layout.Text(c, "technical_issues"),
+			)
+		}
+
+		h.emailsStorage.Set(c.Sender().ID, email.Email, "", viper.GetDuration("bot.session.email-ttl"))
+		h.codesStorage.Set(c.Sender().ID, code, data, viper.GetDuration("bot.session.auth-ttl"))
+		h.statesStorage.Set(c.Sender().ID, state.WaitingStudentEmailConfirmationCode, "", viper.GetDuration("bot.session.auth-ttl"))
+
+		return c.Edit(
+			h.layout.Text(c, "email_confirmation_code_request"),
+			h.layout.Markup(c, "auth:resendMenu"),
+		)
+	}
+
+	return c.Edit(
+		h.layout.Text(c, "resend_timeout"),
+		h.layout.Markup(c, "auth:resendMenu"),
 	)
 }
 

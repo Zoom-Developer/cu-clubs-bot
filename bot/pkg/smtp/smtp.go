@@ -24,12 +24,12 @@ func NewClient(dialer *gomail.Dialer) *Client {
 func (c *Client) SendConfirmationEmail(to string, code string) {
 	msg := gomail.NewMessage()
 
-	domain := viper.GetString("bot.domain")
+	domain := viper.GetString("service.smtp.domain")
 	messageID := generateMessageID(domain)
 
 	msg.SetHeader("Message-ID", messageID)
 	msg.SetHeader("Date", time.Now().Format(time.RFC1123Z))
-	msg.SetHeader("From", viper.GetString("bot.smtp-email"))
+	msg.SetHeader("From", viper.GetString("service.smtp.email"))
 	msg.SetHeader("To", to)
 	msg.SetHeader("Subject", "Email Confirmation")
 	msg.SetBody("text/plain", fmt.Sprintf("Отправьте этот код боту %s", code))

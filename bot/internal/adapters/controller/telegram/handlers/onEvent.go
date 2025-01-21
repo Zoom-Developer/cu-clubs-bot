@@ -2,64 +2,54 @@ package handlers
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
-	"fmt"
-	"net/mail"
-	"regexp"
-	"slices"
-	"strings"
-	"time"
-
+	"errors"
 	"github.com/Badsnus/cu-clubs-bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/postgres"
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/redis/codes"
+	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/redis/emails"
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/redis/state"
 	"github.com/Badsnus/cu-clubs-bot/internal/adapters/database/redis/states"
 	"github.com/Badsnus/cu-clubs-bot/internal/domain/common/errorz"
 	"github.com/Badsnus/cu-clubs-bot/internal/domain/entity"
 	"github.com/Badsnus/cu-clubs-bot/internal/domain/service"
 	"github.com/Badsnus/cu-clubs-bot/pkg/smtp"
+	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/layout"
+	"net/mail"
+	"regexp"
+	"slices"
+	"strings"
 )
 
 type onEventUserService interface {
 	Get(ctx context.Context, userID int64) (*entity.User, error)
 	Create(ctx context.Context, user entity.User) (*entity.User, error)
-}
-
-type onEventStudentDataService interface {
-	GetByLogin(ctx context.Context, login string) (*entity.StudentData, error)
-}
-
-type smtpClient interface {
-	SendConfirmationEmail(to string, code string)
+	SendAuthCode(ctx context.Context, email string) (string, string, error)
 }
 
 type OnEventHandler struct {
-	layout             *layout.Layout
-	bot                *tele.Bot
-	userService        onEventUserService
-	studentDataService onEventStudentDataService
-	smtpClient         smtpClient
-	statesStorage      *states.Storage
-	codesStorage       *codes.Storage
+	layout        *layout.Layout
+	bot           *tele.Bot
+	userService   onEventUserService
+	statesStorage *states.Storage
+	codesStorage  *codes.Storage
+	emailsStorage *emails.Storage
 }
 
 func NewOnEventHandler(b *bot.Bot) *OnEventHandler {
 	userStorage := postgres.NewUserStorage(b.DB)
 	studentDataStorage := postgres.NewStudentDataStorage(b.DB)
+	smtpClient := smtp.NewClient(b.SMTPDialer)
 
 	return &OnEventHandler{
-		layout:             b.Layout,
-		bot:                b.Bot,
-		userService:        service.NewUserService(userStorage),
-		studentDataService: service.NewStudentDataService(studentDataStorage),
-		smtpClient:         smtp.NewClient(b.SMTPDialer),
-		statesStorage:      states.NewStorage(b),
-		codesStorage:       codes.NewStorage(b),
+		layout:        b.Layout,
+		bot:           b.Bot,
+		userService:   service.NewUserService(userStorage, studentDataStorage, smtpClient),
+		statesStorage: states.NewStorage(b),
+		codesStorage:  codes.NewStorage(b),
+		emailsStorage: emails.NewStorage(b),
 	}
 }
 
@@ -195,28 +185,34 @@ func (h *OnEventHandler) onStudentEmail(c tele.Context) error {
 			h.layout.Text(c, "invalid_email"),
 		)
 	}
-
-	code, err := generateRandomCode(12)
-	if err != nil {
+	_, err := h.codesStorage.Get(c.Sender().ID)
+	if err != nil && !errors.Is(err, redis.Nil) {
 		return c.Send(
 			h.layout.Text(c, "technical_issues"),
 		)
 	}
+	var data, code string
+	if errors.Is(err, redis.Nil) {
+		data, code, err = h.userService.SendAuthCode(context.Background(), email)
+		if err != nil {
+			return c.Send(
+				h.layout.Text(c, "technical_issues"),
+			)
+		}
 
-	login := strings.Split(email, "@")[0]
+		h.emailsStorage.Set(c.Sender().ID, email, "", viper.GetDuration("bot.session.email-ttl"))
+		h.codesStorage.Set(c.Sender().ID, code, data, viper.GetDuration("bot.session.auth-ttl"))
+		h.statesStorage.Set(c.Sender().ID, state.WaitingStudentEmailConfirmationCode, "", viper.GetDuration("bot.session.auth-ttl"))
 
-	var data string
-	studentData, err := h.studentDataService.GetByLogin(context.Background(), login)
-	if err == nil {
-		h.smtpClient.SendConfirmationEmail(email, code)
-		data = fmt.Sprintf("%s;%s", email, studentData.Fio)
+		return c.Send(
+			h.layout.Text(c, "email_confirmation_code_request"),
+			h.layout.Markup(c, "auth:resendMenu"),
+		)
 	}
 
-	h.codesStorage.Set(c.Sender().ID, code, data, time.Minute*10)
-	h.statesStorage.Set(c.Sender().ID, state.WaitingStudentEmailConfirmationCode, "", time.Minute*10)
-
 	return c.Send(
-		h.layout.Text(c, "email_confirmation_code_request"),
+		h.layout.Text(c, "resend_timeout"),
+		h.layout.Markup(c, "auth:resendMenu"),
 	)
 }
 
@@ -238,7 +234,7 @@ func validateEmailFormat(email string) bool {
 }
 
 func validateEmailDomain(email string) bool {
-	validDomains := viper.GetStringSlice("bot.valid-email-domains")
+	validDomains := viper.GetStringSlice("bot.auth.valid-email-domains")
 
 	for _, domain := range validDomains {
 		if strings.HasSuffix(email, domain) {
@@ -246,14 +242,6 @@ func validateEmailDomain(email string) bool {
 		}
 	}
 	return false
-}
-
-func generateRandomCode(length int) (string, error) {
-	bytes := make([]byte, length)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(bytes)[:length], nil
 }
 
 func (h *OnEventHandler) onStudentEmailConfirmationCode(c tele.Context) error {

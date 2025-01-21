@@ -1,4 +1,4 @@
-package codes
+package emails
 
 import (
 	"context"
@@ -16,36 +16,36 @@ type Storage struct {
 
 func NewStorage(b *bot.Bot) *Storage {
 	return &Storage{
-		redis: b.CodeRedis,
+		redis: b.EmailRedis,
 	}
 }
 
-type Code struct {
-	Code        string
-	CodeContext string
+type Email struct {
+	Email        string
+	EmailContext string
 }
 
-func (s *Storage) Get(userID int64) (Code, error) {
-	codeData, err := s.redis.Get(context.Background(), fmt.Sprintf("%d", userID)).Result()
+func (s *Storage) Get(userID int64) (Email, error) {
+	emailData, err := s.redis.Get(context.Background(), fmt.Sprintf("%d", userID)).Result()
 	if err != nil {
-		return Code{}, err
+		return Email{}, err
 	}
-	codeSlice := strings.Split(codeData, ":")
-	if len(codeSlice) == 1 {
-		return Code{
-			Code:        codeSlice[0],
-			CodeContext: "",
+	emailSlice := strings.Split(emailData, ":")
+	if len(emailSlice) == 1 {
+		return Email{
+			Email:        emailSlice[0],
+			EmailContext: "",
 		}, nil
 	}
 
-	if len(codeSlice) == 2 {
-		return Code{
-			Code:        codeSlice[0],
-			CodeContext: codeSlice[1],
+	if len(emailSlice) == 2 {
+		return Email{
+			Email:        emailSlice[0],
+			EmailContext: emailSlice[1],
 		}, nil
 	}
 
-	return Code{}, errorz.ErrInvalidCode
+	return Email{}, errorz.ErrInvalidCode
 }
 
 func (s *Storage) Set(userID int64, code string, codeContext string, expiration time.Duration) {

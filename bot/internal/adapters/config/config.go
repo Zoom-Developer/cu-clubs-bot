@@ -21,6 +21,7 @@ type Config struct {
 	Database   *gorm.DB
 	StateRedis *redis.Client
 	CodeRedis  *redis.Client
+	EmailRedis *redis.Client
 	SMTPDialer *gomail.Dialer
 }
 
@@ -112,17 +113,30 @@ func Get() *Config {
 		logger.Log.Info("Successfully connected to redis")
 	}
 
+	emailRedisDB := redis.NewClient(&redis.Options{
+		Addr:     fmt.Sprintf("%s:%d", viper.GetString("service.redis.host"), viper.GetInt("service.redis.port")),
+		Password: viper.GetString("service.redis.password"),
+		DB:       2,
+	})
+	err = emailRedisDB.Ping(context.Background()).Err()
+	if err != nil {
+		logger.Log.Panicf("Failed to connect to redis: %v", err)
+	} else {
+		logger.Log.Info("Successfully connected to redis")
+	}
+
 	dialer := gomail.NewDialer(
-		viper.GetString("bot.smtp-host"),
-		viper.GetInt("bot.smtp-port"),
-		viper.GetString("bot.smtp-login"),
-		viper.GetString("bot.smtp-pass"),
+		viper.GetString("service.smtp.host"),
+		viper.GetInt("service.smtp.port"),
+		viper.GetString("service.smtp.login"),
+		viper.GetString("service.smtp.pass"),
 	)
 
 	return &Config{
 		Database:   database,
 		StateRedis: stateRedisDB,
 		CodeRedis:  codeRedisDB,
+		EmailRedis: emailRedisDB,
 		SMTPDialer: dialer,
 	}
 }
