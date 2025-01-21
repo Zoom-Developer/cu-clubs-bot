@@ -9,36 +9,36 @@ commands:
 
 buttons:
   # main menu
-  openMainMenu: '{{ text `open_main_menu` }}'
+  mainMenu:open: '{{ text `open_main_menu` }}'
 
-  accept:
-    unique: accept
-    callback_data: accept
+  personalData:accept:
+    unique: personalData_accept
+    callback_data: personalData_accept
     text: "{{ text `accept` }}"
 
-  decline:
-    unique: decline
-    callback_data: decline
+  personalData:decline:
+    unique: personalData_decline
+    callback_data: personalData_decline
     text: "{{ text `decline` }}"
 
-  external_user_auth:
-    unique: external_user_auth
-    callback_data: external_user_auth
+  auth:external_user:
+    unique: auth_externalUser
+    callback_data: auth_externalUser
     text: "{{ text `external_user` }}"
 
-  grant_user_auth:
-    unique: grant_user_auth
-    callback_data: grant_user_auth
+  auth:grant_user:
+    unique: auth_grantUser
+    callback_data: auth_grantUser
     text: "{{ text `grant_user` }}"
 
-  student_auth:
-    unique: student_auth
-    callback_data: student_auth
+  auth:student:
+    unique: auth_student
+    callback_data: auth_student
     text: "{{ text `student` }}"
 
-  back_to_auth_menu:
-    unique: back_to_auth_menu
-    callback_data: back_to_auth_menu
+  auth:back_to_menu:
+    unique: auth_backToMenu
+    callback_data: auth_backToMenu
     text: "{{ text `back` }}"
 
   resend_email_confirmation_code:
@@ -47,17 +47,17 @@ buttons:
     text: "{{ text `resend` }}"
 
 markups:
-  replyOpenMenu:
-    - [ openMainMenu ]
+  mainMenu:open:
+    - [ mainMenu:open ]
 
-  personalDataAgreementMenu:
-    - [ accept, decline ]
+  personalData:agreementMenu:
+    - [ personalData:accept, personalData:decline ]
 
-  authMenu:
-    - [ external_user_auth ]
-    - [ grant_user_auth ]
-    - [ student_auth ]
+  auth:menu:
+    - [ auth:external_user ]
+    - [ auth:grant_user ]
+    - [ auth:student ]
 
-  backToAuthMenu:
-    - [ back_to_auth_menu ]
+  auth:backToMenu:
+    - [ auth:back_to_menu ]
 

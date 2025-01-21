@@ -62,7 +62,6 @@ func New(config *config.Config) (*Bot, error) {
 }
 
 func (b *Bot) Start() {
-	defer logger.Log.Sync()
 
 	var wg sync.WaitGroup
 	wg.Add(1)

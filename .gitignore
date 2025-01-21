@@ -23,3 +23,6 @@ go.work.sum
 
 .env
 .history
+/bot/config.yaml
+
+.idea

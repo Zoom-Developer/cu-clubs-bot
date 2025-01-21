@@ -49,7 +49,7 @@ func (s *CodesStorage) Get(userID int64) (Code, error) {
 		}, nil
 	}
 
-	return Code{}, errorz.InvalidCode
+	return Code{}, errorz.ErrInvalidCode
 }
 
 func (s *CodesStorage) Set(userID int64, code string, codeContext string, expiration time.Duration) {
