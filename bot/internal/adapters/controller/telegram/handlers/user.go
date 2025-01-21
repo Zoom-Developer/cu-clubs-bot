@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger"
 	"time"
 
 	"github.com/Badsnus/cu-clubs-bot/bot/cmd/bot"
@@ -38,6 +39,7 @@ func NewUserHandler(b *bot.Bot) *UserHandler {
 }
 
 func (h UserHandler) OnStart(c tele.Context) error {
+	logger.Log.Errorf("User ID: %d", c.Sender().ID)
 	_, err := h.userService.Get(context.Background(), c.Sender().ID)
 	if err != nil {
 		return c.Send(

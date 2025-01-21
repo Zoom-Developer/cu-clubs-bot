@@ -14,13 +14,14 @@ type Logger struct {
 	Name     string
 }
 
+// Log represents a log entry
 type Log struct {
 	Timestamp  time.Time
 	Caller     string
 	LoggerName string
-	Level      string
+	Level      zapcore.Level
 	Message    string
 }
 
 // LogHook is a function that will be called for each log entry
-type LogHook func(log Log, fields []zapcore.Field)
+type LogHook func(log Log)

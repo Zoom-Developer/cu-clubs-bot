@@ -26,26 +26,8 @@ type Config struct {
 
 // SetLogHook sets a hook function that will be called for each log entry
 func SetLogHook(hook types.LogHook) {
+	Log.Debug("Log hook set")
 	logHook = hook
-}
-
-// customHook implements zapcore.Core to intercept log entries
-type customHook struct {
-	zapcore.Core
-}
-
-// Write intercepts the log entry and calls the hook function
-func (h *customHook) Write(entry zapcore.Entry, fields []zapcore.Field) error {
-	if logHook != nil {
-		logHook(types.Log{
-			Timestamp:  entry.Time,
-			Caller:     entry.Caller.String(),
-			LoggerName: entry.LoggerName,
-			Level:      entry.Level.String(),
-			Message:    entry.Message,
-		}, fields)
-	}
-	return h.Core.Write(entry, fields)
 }
 
 // Init is a function to initialize logger with extended configuration
@@ -127,10 +109,19 @@ func Init(config Config) error {
 	// Create combined core
 	combinedCore := zapcore.NewTee(cores...)
 
-	// Wrap the core with our custom hook
-	hookedCore := &customHook{combinedCore}
-
-	log := zap.New(hookedCore, zap.AddCaller())
+	// Create logger with hook
+	log := zap.New(combinedCore, zap.AddCaller(), zap.Hooks(func(entry zapcore.Entry) error {
+		if logHook != nil {
+			logHook(types.Log{
+				Timestamp:  entry.Time,
+				Caller:     entry.Caller.String(),
+				LoggerName: entry.LoggerName,
+				Level:      entry.Level,
+				Message:    entry.Message,
+			})
+		}
+		return nil
+	}))
 
 	l.SugaredLogger = log.Named(l.Name).Sugar()
 	Log = &l

@@ -15,8 +15,14 @@ hide: ❌ Скрыть
 technical_issues: ❌ Технические неполадки. ⏳ Вернитесь позднее
 auth_required: ❌ Вы ещё не авторизованы. Пожалуйста, пропишите /start для авторизации
 grant_user_required: ❌ Вы не находитесь в чате грантовиков
-
 join: 🔗 Присоединиться
+
+# logging
+log: |-
+  ❗️ <b>{{.Level.String}}</b> - <code>{{.Timestamp.Format "2006-01-02 15:04:05"}}</code>
+  <blockquote><b>{{.LoggerName}} - {{.Caller}}:</b>
+  
+  {{.Message}}</blockquote>
 
 # personal data agreement menu
 personal_data_agreement_text: |-

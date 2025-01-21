@@ -40,10 +40,10 @@ func Get() *Config {
 	initConfig()
 
 	err := logger.Init(logger.Config{
-		Debug:     viper.GetBool("settings.debug"),
-		TimeZone:  viper.GetString("settings.timezone"),
-		LogToFile: viper.GetBool("settings.log-to-file"),
-		LogsDir:   viper.GetString("settings.logs-dir"),
+		Debug:     viper.GetBool("settings.logging.debug"),
+		TimeZone:  viper.GetString("settings.logging.timezone"),
+		LogToFile: viper.GetBool("settings.logging.log-to-file"),
+		LogsDir:   viper.GetString("settings.logging.logs-dir"),
 	})
 	if err != nil {
 		panic(err)
