@@ -8,46 +8,45 @@
 erDiagram
     USERS {
         uuid id PK "Уникальный ID пользователя"
-        bigint telegram_id not null "Telegram ID пользователя"
-        string role not null "Роль: student, grant_user, external_user"
+        bigint telegram_id "Telegram ID пользователя"
+        string role "Роль: student, grant_user, external_user"
         string email "Email для студентов"
-        string fio not null "ФИО пользователя"
-        bool is_club_owner default false
-        timestamp created_at default current_timestamp "Дата создания записи"
-        timestamp updated_at
-        boolean is_banned default true "Активность пользователя"
+        string fio "ФИО пользователя"
+        timestamp created_at "Дата создания"
+        timestamp updated_at "Дата обновления"
+        boolean is_banned "Активность пользователя"
     }
 
     CLUBS {
         uuid id PK "Уникальный ID клуба"
-        string name not null "Название клуба"
-        string description not null  "Описание клуба"
-        timestamp created_at default current_timestamp "Дата создания"
-        timestamp updated_at
-        timestamp deleted_at
+        string name "Название клуба"
+        string description "Описание клуба"
+        timestamp created_at "Дата создания"
+        timestamp updated_at "Дата обновления"
+        timestamp deleted_at "Дата удаления"
     }
 
     CLUB_OWNERS {
         uuid user_id PK "ID пользователя (связь с USERS)"
         uuid club_id PK "ID клуба (связь с CLUBS)"
-        timestamp created_at default current_timestamp "Дата назначения роли"
+        timestamp created_at "Дата назначения роли"
     }
 
     EVENTS {
         uuid id PK "Уникальный ID мероприятия"
         uuid club_id FK "ID клуба (связь с CLUBS)"
-        string name not null "Название мероприятия"
-        string description not null "Описание мероприятия"
-        string after_registration_text
-        string location not null "Место проведения"
-        timestamp start_time not null "Время начала"
+        string name "Название мероприятия"
+        string description "Описание мероприятия"
+        string after_registration_text "Текст, показывающийся пользователю после регистрации на мероприятие"
+        string location "Место проведения"
+        timestamp start_time "Время начала"
         timestamp end_time "Время окончания"
         timestamp registration_end "Время окончания регистрации"
         int max_participants "Максимальное количество участников"
-        int expected_participants not null "Ожидаемое число участников"
-        timestamp created_at default current_timestamp "Дата создания"
-        timestamp updated_at
-        timestamp deleted_at
+        int expected_participants "Ожидаемое число участников"
+        timestamp created_at "Дата создания"
+        timestamp updated_at "Дата обновления"
+        timestamp deleted_at "Дата удаления"
     }
 
     EVENT_PARTICIPANTS {
@@ -55,7 +54,7 @@ erDiagram
         uuid user_id PK "ID пользователя (связь с USERS)"
         bool user_qr "Пришёл ли пользователь с своего qr"
         bool event_qr "Пришёл ли пользователь с qr мероприятия"
-        timestamp registered_at default current_timestamp "Дата регистрации"
+        timestamp registered_at "Дата регистрации"
     }
 
     %% Relationships

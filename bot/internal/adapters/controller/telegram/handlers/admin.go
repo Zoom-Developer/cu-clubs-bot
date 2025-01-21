@@ -2,9 +2,10 @@ package handlers
 
 import (
 	"context"
+
 	"github.com/Badsnus/cu-clubs-bot/bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/postgres"
-	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/states"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/service"
 	tele "gopkg.in/telebot.v3"
@@ -22,7 +23,7 @@ type adminUserService interface {
 type AdminHandler struct {
 	layout           *layout.Layout
 	adminUserService adminUserService
-	statesStorage    *redis.StatesStorage
+	statesStorage    *states.Storage
 	bot              *bot.Bot
 }
 
@@ -31,8 +32,8 @@ func NewAdminHandler(b *bot.Bot) *AdminHandler {
 
 	return &AdminHandler{
 		layout:           b.Layout,
-		adminUserService: service.NewUserService(userStorage),
-		statesStorage:    redis.NewStatesStorage(b),
+		adminUserService: service.NewUserService(userStorage, nil, nil),
+		statesStorage:    states.NewStorage(b),
 		bot:              b,
 	}
 }

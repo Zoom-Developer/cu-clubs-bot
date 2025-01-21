@@ -41,6 +41,11 @@ buttons:
     callback_data: auth_backToMenu
     text: "{{ text `back` }}"
 
+  auth:resend_email:
+    unique: auth_resendEmail
+    callback_data: auth_resendEmail
+    text: "{{ text `resend` }}"
+
 markups:
   mainMenu:open:
     - [ mainMenu:open ]
@@ -56,3 +61,6 @@ markups:
   auth:backToMenu:
     - [ auth:back_to_menu ]
 
+  auth:resendMenu:
+    - [ auth:resend_email ]
+    - [ auth:back_to_menu ]

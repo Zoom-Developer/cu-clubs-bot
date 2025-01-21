@@ -2,44 +2,56 @@ package handlers
 
 import (
 	"context"
+	"errors"
+	"net/mail"
+	"regexp"
+	"slices"
+	"strings"
+
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/codes"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/emails"
+	"github.com/Badsnus/cu-clubs-bot/bot/pkg/smtp"
+	"github.com/redis/go-redis/v9"
+
 	"github.com/Badsnus/cu-clubs-bot/bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/postgres"
-	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis"
-	states "github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/state"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/state"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/states"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/common/errorz"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/service"
 	"github.com/spf13/viper"
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/layout"
-	"net/mail"
-	"regexp"
-	"slices"
-	"strings"
 )
 
 type onEventUserService interface {
 	Get(ctx context.Context, userID int64) (*entity.User, error)
 	Create(ctx context.Context, user entity.User) (*entity.User, error)
+	SendAuthCode(ctx context.Context, email string) (string, string, error)
 }
 
 type OnEventHandler struct {
 	layout        *layout.Layout
 	bot           *tele.Bot
 	userService   onEventUserService
-	statesStorage *redis.StatesStorage
-	codesStorage  *redis.CodesStorage
+	statesStorage *states.Storage
+	codesStorage  *codes.Storage
+	emailsStorage *emails.Storage
 }
 
 func NewOnEventHandler(b *bot.Bot) *OnEventHandler {
 	userStorage := postgres.NewUserStorage(b.DB)
+	studentDataStorage := postgres.NewStudentDataStorage(b.DB)
+	smtpClient := smtp.NewClient(b.SMTPDialer)
 
 	return &OnEventHandler{
 		layout:        b.Layout,
 		bot:           b.Bot,
-		userService:   service.NewUserService(userStorage),
-		statesStorage: redis.NewStatesStorage(b),
-		codesStorage:  redis.NewCodesStorage(b),
+		userService:   service.NewUserService(userStorage, studentDataStorage, smtpClient),
+		statesStorage: states.NewStorage(b),
+		codesStorage:  codes.NewStorage(b),
+		emailsStorage: emails.NewStorage(b),
 	}
 }
 
@@ -50,12 +62,14 @@ func (h *OnEventHandler) OnText(c tele.Context) error {
 	}
 
 	switch stateData.State {
-	case states.WaitingForMailingContent:
+	case state.WaitingForMailingContent:
 		return h.onMailing(c)
-	case states.WaitingExternalUserFio:
+	case state.WaitingExternalUserFio:
 		return h.onExternalUserFio(c)
-	case states.WaitingGrantUserFio:
+	case state.WaitingGrantUserFio:
 		return h.onGrantUserFio(c)
+	case state.WaitingStudentEmail:
+		return h.onStudentEmail(c)
 	default:
 		return c.Send(h.layout.Text(c, "unknown_command"))
 	}
@@ -68,7 +82,7 @@ func (h *OnEventHandler) OnMedia(c tele.Context) error {
 	}
 
 	switch stateData.State {
-	case states.WaitingForMailingContent:
+	case state.WaitingForMailingContent:
 		return h.onMailing(c)
 	default:
 		return c.Send(h.layout.Text(c, "unknown_command"))
@@ -123,7 +137,7 @@ func (h *OnEventHandler) onExternalUserFio(c tele.Context) error {
 
 	return c.Send(
 		h.layout.Text(c, "start"),
-		h.layout.Markup(c, "replyOpenMenu"),
+		h.layout.Markup(c, "mainMenu:open"),
 	)
 }
 
@@ -152,7 +166,7 @@ func (h *OnEventHandler) onGrantUserFio(c tele.Context) error {
 
 	return c.Send(
 		h.layout.Text(c, "start"),
-		h.layout.Markup(c, "replyOpenMenu"),
+		h.layout.Markup(c, "mainMenu:open"),
 	)
 }
 
@@ -171,8 +185,34 @@ func (h *OnEventHandler) onStudentEmail(c tele.Context) error {
 			h.layout.Text(c, "invalid_email"),
 		)
 	}
+	_, err := h.codesStorage.Get(c.Sender().ID)
+	if err != nil && !errors.Is(err, redis.Nil) {
+		return c.Send(
+			h.layout.Text(c, "technical_issues"),
+		)
+	}
+	var data, code string
+	if errors.Is(err, redis.Nil) {
+		data, code, err = h.userService.SendAuthCode(context.Background(), email)
+		if err != nil {
+			return c.Send(
+				h.layout.Text(c, "technical_issues"),
+			)
+		}
 
-	return nil
+		h.emailsStorage.Set(c.Sender().ID, email, "", viper.GetDuration("bot.session.email-ttl"))
+		h.codesStorage.Set(c.Sender().ID, code, data, viper.GetDuration("bot.session.auth-ttl"))
+
+		return c.Send(
+			h.layout.Text(c, "email_confirmation_code_request"),
+			h.layout.Markup(c, "auth:resendMenu"),
+		)
+	}
+
+	return c.Send(
+		h.layout.Text(c, "resend_timeout"),
+		h.layout.Markup(c, "auth:resendMenu"),
+	)
 }
 
 func validateEmail(email string) bool {
@@ -193,7 +233,7 @@ func validateEmailFormat(email string) bool {
 }
 
 func validateEmailDomain(email string) bool {
-	validDomains := viper.GetStringSlice("bot.valid-email-domains")
+	validDomains := viper.GetStringSlice("bot.auth.valid-email-domains")
 
 	for _, domain := range validDomains {
 		if strings.HasSuffix(email, domain) {

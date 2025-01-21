@@ -1,4 +1,4 @@
-package redis
+package states
 
 import (
 	"context"
@@ -12,12 +12,12 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-type StatesStorage struct {
+type Storage struct {
 	redis *redis.Client
 }
 
-func NewStatesStorage(b *bot.Bot) *StatesStorage {
-	return &StatesStorage{
+func NewStorage(b *bot.Bot) *Storage {
+	return &Storage{
 		redis: b.StateRedis,
 	}
 }
@@ -27,7 +27,7 @@ type State struct {
 	StateContext string
 }
 
-func (s *StatesStorage) Get(userID int64) (State, error) {
+func (s *Storage) Get(userID int64) (State, error) {
 	stateData, err := s.redis.Get(context.Background(), fmt.Sprintf("%d", userID)).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
@@ -53,10 +53,10 @@ func (s *StatesStorage) Get(userID int64) (State, error) {
 	return State{}, errorz.ErrInvalidState
 }
 
-func (s *StatesStorage) Set(userID int64, state string, stateContext string, expiration time.Duration) {
+func (s *Storage) Set(userID int64, state string, stateContext string, expiration time.Duration) {
 	s.redis.Set(context.Background(), fmt.Sprintf("%d", userID), fmt.Sprintf("%s:%s", state, stateContext), expiration)
 }
 
-func (s *StatesStorage) Clear(userID int64) {
+func (s *Storage) Clear(userID int64) {
 	s.redis.Del(context.Background(), fmt.Sprintf("%d", userID))
 }

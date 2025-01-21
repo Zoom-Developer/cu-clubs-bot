@@ -1,10 +1,12 @@
 package bot
 
 import (
+	"sync"
+
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/service"
 	"github.com/spf13/viper"
 	"go.uber.org/zap/zapcore"
-	"sync"
+	"gopkg.in/gomail.v2"
 
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/config"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger"
@@ -21,6 +23,8 @@ type Bot struct {
 	DB         *gorm.DB
 	StateRedis *redis.Client
 	CodeRedis  *redis.Client
+	EmailRedis *redis.Client
+	SMTPDialer *gomail.Dialer
 	Logger     *types.Logger
 }
 
@@ -56,6 +60,8 @@ func New(config *config.Config) (*Bot, error) {
 		DB:         config.Database,
 		StateRedis: config.StateRedis,
 		CodeRedis:  config.CodeRedis,
+		EmailRedis: config.EmailRedis,
+		SMTPDialer: config.SMTPDialer,
 		Logger:     botLogger,
 	}
 

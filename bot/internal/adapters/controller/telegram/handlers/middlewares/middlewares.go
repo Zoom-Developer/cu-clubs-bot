@@ -4,9 +4,10 @@ import (
 	"context"
 	"strings"
 
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/states"
+
 	"github.com/Badsnus/cu-clubs-bot/bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/postgres"
-	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/service"
 	tele "gopkg.in/telebot.v3"
@@ -22,18 +23,18 @@ type MiddlewareHandler struct {
 	bot           *tele.Bot
 	layout        *layout.Layout
 	userService   userService
-	statesStorage *redis.StatesStorage
+	statesStorage *states.Storage
 }
 
 func New(b *bot.Bot) *MiddlewareHandler {
 	userStorageLocal := postgres.NewUserStorage(b.DB)
-	userServiceLocal := service.NewUserService(userStorageLocal)
+	userServiceLocal := service.NewUserService(userStorageLocal, nil, nil)
 
 	return &MiddlewareHandler{
 		bot:           b.Bot,
 		layout:        b.Layout,
 		userService:   userServiceLocal,
-		statesStorage: redis.NewStatesStorage(b),
+		statesStorage: states.NewStorage(b),
 	}
 }
 

@@ -9,4 +9,5 @@ var Migrations = []interface{}{
 	&entity.ClubOwner{},
 	&entity.Event{},
 	&entity.EventParticipant{},
+	&entity.StudentData{},
 }
