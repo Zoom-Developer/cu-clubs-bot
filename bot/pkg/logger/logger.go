@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/Badsnus/cu-clubs-bot/internal/adapters/logger/types"
+	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger/types"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )

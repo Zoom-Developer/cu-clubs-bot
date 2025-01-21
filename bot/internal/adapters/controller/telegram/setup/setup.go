@@ -1,9 +1,9 @@
 package setup
 
 import (
-	"github.com/Badsnus/cu-clubs-bot/cmd/bot"
-	"github.com/Badsnus/cu-clubs-bot/internal/adapters/controller/telegram/handlers"
-	"github.com/Badsnus/cu-clubs-bot/internal/adapters/controller/telegram/handlers/middlewares"
+	"github.com/Badsnus/cu-clubs-bot/bot/cmd/bot"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/handlers"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/handlers/middlewares"
 	"github.com/spf13/viper"
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/middleware"

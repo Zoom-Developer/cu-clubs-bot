@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	"github.com/Badsnus/cu-clubs-bot/internal/domain/entity"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 
 	tele "gopkg.in/telebot.v3"
 )

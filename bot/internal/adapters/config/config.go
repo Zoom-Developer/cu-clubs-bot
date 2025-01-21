@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	postgresStorage "github.com/Badsnus/cu-clubs-bot/internal/adapters/database/postgres"
-	"github.com/Badsnus/cu-clubs-bot/internal/adapters/logger"
+	postgresStorage "github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/postgres"
+	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger"
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
 	"gorm.io/driver/postgres"
