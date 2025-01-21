@@ -27,7 +27,7 @@ func New(config *config.Config) (*Bot, error) {
 	}
 
 	settings := lt.Settings()
-	botLogger, err := logger.GetPrefixed("bot")
+	botLogger, err := logger.Named("bot")
 	if err != nil {
 		return nil, err
 	}
