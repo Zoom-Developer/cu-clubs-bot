@@ -32,8 +32,8 @@ func (c *Client) SendConfirmationEmail(to string, code string) {
 	msg.SetHeader("From", viper.GetString("service.smtp.email"))
 	msg.SetHeader("To", to)
 	msg.SetHeader("Subject", "Email Confirmation")
-	msg.SetBody("text/plain", fmt.Sprintf("Отправьте этот код боту %s", code))
-	msg.AddAlternative("text/html", code)
+	msg.SetBody("text/plain", fmt.Sprintf("Перейдите по ссылке https://t.me/mega_bot_test_bot?start=%s", code))
+	msg.AddAlternative("text/html", fmt.Sprintf("Перейдите по ссылке https://t.me/mega_bot_test_bot?start=%s", code))
 	if err := c.dialer.DialAndSend(msg); err != nil {
 		logger.Log.Error(err)
 		return

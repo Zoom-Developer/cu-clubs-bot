@@ -68,8 +68,6 @@ func (h *OnEventHandler) OnText(c tele.Context) error {
 		return h.onGrantUserFio(c)
 	case state.WaitingStudentEmail:
 		return h.onStudentEmail(c)
-	case state.WaitingStudentEmailConfirmationCode:
-		return h.onStudentEmailConfirmationCode(c)
 	default:
 		return c.Send(h.layout.Text(c, "unknown_command"))
 	}
@@ -202,7 +200,6 @@ func (h *OnEventHandler) onStudentEmail(c tele.Context) error {
 
 		h.emailsStorage.Set(c.Sender().ID, email, "", viper.GetDuration("bot.session.email-ttl"))
 		h.codesStorage.Set(c.Sender().ID, code, data, viper.GetDuration("bot.session.auth-ttl"))
-		h.statesStorage.Set(c.Sender().ID, state.WaitingStudentEmailConfirmationCode, "", viper.GetDuration("bot.session.auth-ttl"))
 
 		return c.Send(
 			h.layout.Text(c, "email_confirmation_code_request"),
@@ -242,45 +239,4 @@ func validateEmailDomain(email string) bool {
 		}
 	}
 	return false
-}
-
-func (h *OnEventHandler) onStudentEmailConfirmationCode(c tele.Context) error {
-	inputCode := c.Message().Text
-
-	code, err := h.codesStorage.Get(c.Sender().ID)
-	if err != nil {
-		return c.Send(
-			h.layout.Text(c, "invalid_email_confirmation_code"),
-		)
-	}
-
-	if inputCode != code.Code {
-		return c.Send(
-			h.layout.Text(c, "invalid_email_confirmation_code"),
-		)
-	}
-
-	data := strings.Split(code.CodeContext, ";")
-	email, fio := data[0], data[1]
-
-	user := entity.User{
-		ID:    c.Sender().ID,
-		Role:  entity.Student,
-		Email: email,
-		FIO:   fio,
-	}
-
-	_, err = h.userService.Create(context.Background(), user)
-	if err != nil {
-		return c.Send(
-			h.layout.Text(c, "technical_issues"),
-		)
-	}
-
-	h.statesStorage.Clear(c.Sender().ID)
-
-	return c.Send(
-		h.layout.Text(c, "start"),
-		h.layout.Markup(c, "mainMenu:open"),
-	)
 }
