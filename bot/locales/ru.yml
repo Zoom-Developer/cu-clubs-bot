@@ -22,6 +22,13 @@ something_went_wrong: Что-то пошло не так, начните сна�
 
 join: 🔗 Присоединиться
 
+# logging
+log: |-
+  ❗️ <b>{{.Level.String}}</b> - <code>{{.Timestamp.Format "2006-01-02 15:04:05"}}</code>
+  <blockquote><b>{{.LoggerName}} - {{.Caller}}:</b>
+  
+  {{.Message}}</blockquote>
+
 # personal data agreement menu
 personal_data_agreement_text: |-
   <b>❓ Вы даёте согласие на обработку ваших персональных данных?</b>

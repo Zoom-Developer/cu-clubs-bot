@@ -1,11 +1,15 @@
 package bot
 
 import (
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/service"
+	"github.com/spf13/viper"
+	"go.uber.org/zap/zapcore"
 	"gopkg.in/gomail.v2"
 	"sync"
 
-	"github.com/Badsnus/cu-clubs-bot/internal/adapters/config"
-	"github.com/Badsnus/cu-clubs-bot/internal/adapters/logger"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/config"
+	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger"
+	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger/types"
 	"github.com/redis/go-redis/v9"
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/layout"
@@ -20,7 +24,7 @@ type Bot struct {
 	CodeRedis  *redis.Client
 	EmailRedis *redis.Client
 	SMTPDialer *gomail.Dialer
-	Logger     *logger.Logger
+	Logger     *types.Logger
 }
 
 func New(config *config.Config) (*Bot, error) {
@@ -30,7 +34,7 @@ func New(config *config.Config) (*Bot, error) {
 	}
 
 	settings := lt.Settings()
-	botLogger, err := logger.GetPrefixed("bot")
+	botLogger, err := logger.Named("bot")
 	if err != nil {
 		return nil, err
 	}
@@ -71,6 +75,25 @@ func (b *Bot) Start() {
 	go func() {
 		defer wg.Done()
 		logger.Log.Info("Bot starting")
+
+		if viper.GetBool("settings.logging.log-to-channel") {
+			notifyLogger, err := logger.Named("notify")
+			if err != nil {
+				logger.Log.Errorf("Failed to create notify logger: %v", err)
+			} else {
+				notifyService := service.NewNotifyService(b.Bot, b.Layout, notifyLogger)
+				logHook, err := notifyService.LogHook(
+					viper.GetInt64("settings.logging.channel-id"),
+					viper.GetString("settings.logging.locale"),
+					zapcore.Level(viper.GetInt("settings.logging.channel-log-level")),
+				)
+				if err != nil {
+					logger.Log.Errorf("Failed to create notify log hook: %v", err)
+				} else {
+					logger.SetLogHook(logHook)
+				}
+			}
+		}
 		b.Bot.Start()
 	}()
 

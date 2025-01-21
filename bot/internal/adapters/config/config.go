@@ -8,8 +8,8 @@ import (
 	"os"
 	"time"
 
-	postgresStorage "github.com/Badsnus/cu-clubs-bot/internal/adapters/database/postgres"
-	"github.com/Badsnus/cu-clubs-bot/internal/adapters/logger"
+	postgresStorage "github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/postgres"
+	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger"
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
 	"gorm.io/driver/postgres"
@@ -43,10 +43,10 @@ func Get() *Config {
 	initConfig()
 
 	err := logger.Init(logger.Config{
-		Debug:     viper.GetBool("settings.debug"),
-		TimeZone:  viper.GetString("settings.timezone"),
-		LogToFile: viper.GetBool("settings.log-to-file"),
-		LogsDir:   viper.GetString("settings.logs-dir"),
+		Debug:     viper.GetBool("settings.logging.debug"),
+		TimeZone:  viper.GetString("settings.logging.timezone"),
+		LogToFile: viper.GetBool("settings.logging.log-to-file"),
+		LogsDir:   viper.GetString("settings.logging.logs-dir"),
 	})
 	if err != nil {
 		panic(err)

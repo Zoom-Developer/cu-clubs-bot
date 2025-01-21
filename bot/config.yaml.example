@@ -22,7 +22,12 @@ bot:
   domain: cu-clubs.ru
 
 settings:
-  debug: false # дебаг мод
-  timezone: "GMT+3" # часовой пояс для логирования
-  log-to-file: true # логирование в файл
-  logs-dir: "./logs"
+    logging:
+      log-to-file: true # логирование в файл
+      logs-dir: "./logs"
+      timezone: "GMT+3" # часовой пояс для логирования
+      debug: true # дебаг мод
+      log-to-channel: true # логирование в канал
+      channel-id: -10000000000 # канал для логов
+      channel-log-level: 2 # от какого уровня лога будем отправлять его в канал
+      locale: "ru"

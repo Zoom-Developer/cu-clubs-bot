@@ -1,4 +1,4 @@
-module github.com/Badsnus/cu-clubs-bot
+module github.com/Badsnus/cu-clubs-bot/bot
 
 go 1.22.3
 
