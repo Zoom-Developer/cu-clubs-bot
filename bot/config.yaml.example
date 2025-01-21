@@ -11,15 +11,29 @@ service:
     password: "password"
     port: 6380
 
+  smtp:
+    domain: domain.ru
+    host: smtp.domain.ru
+    port: 587
+    login: 3587
+    pass: very-strong-password
+    email: email@domain.ru
+
 bot:
   token: "BOT_TOKEN"
   grant-chat-id: -500000
   admin-ids:
     - 500000000
-  valid-email-domains:
-    - edu.centraluniversity.ru
-    - centraluniversity.ru
-  domain: cu-clubs.ru
+  session:
+    ttl: 45m
+    auth-ttl: 10m
+    email-ttl: 120m
+  auth:
+    grant-chat-id: -40000000
+    valid-email-domains:
+        - edu.centraluniversity.ru
+        - centraluniversity.ru
+        - yandex.ru
 
 settings:
     logging:

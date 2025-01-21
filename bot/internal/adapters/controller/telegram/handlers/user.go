@@ -8,7 +8,6 @@ import (
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/codes"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/emails"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/states"
-	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/Badsnus/cu-clubs-bot/bot/cmd/bot"
@@ -54,7 +53,6 @@ func NewUserHandler(b *bot.Bot) *UserHandler {
 }
 
 func (h UserHandler) OnStart(c tele.Context) error {
-	logger.Log.Errorf("User ID: %d", c.Sender().ID)
 	_, err := h.userService.Get(context.Background(), c.Sender().ID)
 	if err != nil {
 		authCode := c.Message().Payload
