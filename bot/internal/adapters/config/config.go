@@ -1,15 +1,16 @@
 package config
 
 import (
-	"context"
 	"fmt"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis"
 	"log"
 	"os"
 	"time"
 
-	postgresStorage "github.com/Badsnus/cu-clubs-bot/internal/adapters/database/postgres"
-	"github.com/Badsnus/cu-clubs-bot/internal/adapters/logger"
-	"github.com/redis/go-redis/v9"
+	"gopkg.in/gomail.v2"
+
+	postgresStorage "github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/postgres"
+	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger"
 	"github.com/spf13/viper"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -17,8 +18,9 @@ import (
 )
 
 type Config struct {
-	Database *gorm.DB
-	Redis    *redis.Client
+	Database   *gorm.DB
+	Redis      *redis.Client
+	SMTPDialer *gomail.Dialer
 }
 
 func initConfig() {
@@ -39,10 +41,10 @@ func Get() *Config {
 	initConfig()
 
 	err := logger.Init(logger.Config{
-		Debug:     viper.GetBool("settings.debug"),
-		TimeZone:  viper.GetString("settings.timezone"),
-		LogToFile: viper.GetBool("settings.log-to-file"),
-		LogsDir:   viper.GetString("settings.logs-dir"),
+		Debug:     viper.GetBool("settings.logging.debug"),
+		TimeZone:  viper.GetString("settings.logging.timezone"),
+		LogToFile: viper.GetBool("settings.logging.log-to-file"),
+		LogsDir:   viper.GetString("settings.logging.logs-dir"),
 	})
 	if err != nil {
 		panic(err)
@@ -85,20 +87,25 @@ func Get() *Config {
 		logger.Log.Panicf("Failed to migrate database: %v", errMigrate)
 	}
 
-	redisDB := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", viper.GetString("service.redis.host"), viper.GetInt("service.redis.port")),
+	r, err := redis.New(redis.Options{
+		Host:     viper.GetString("service.redis.host"),
+		Port:     viper.GetString("service.redis.port"),
 		Password: viper.GetString("service.redis.password"),
-		DB:       0,
 	})
-	err = redisDB.Ping(context.Background()).Err()
 	if err != nil {
-		logger.Log.Panicf("Failed to connect to redis: %v", err)
-	} else {
-		logger.Log.Info("Successfully connected to redis")
+		logger.Log.Panicf("Failed to connect to the redis: %v", err)
 	}
 
+	dialer := gomail.NewDialer(
+		viper.GetString("service.smtp.host"),
+		viper.GetInt("service.smtp.port"),
+		viper.GetString("service.smtp.login"),
+		viper.GetString("service.smtp.pass"),
+	)
+
 	return &Config{
-		Database: database,
-		Redis:    redisDB,
+		Database:   database,
+		Redis:      r,
+		SMTPDialer: dialer,
 	}
 }

@@ -2,8 +2,12 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
+	"strings"
 
-	"github.com/Badsnus/cu-clubs-bot/internal/domain/entity"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 
 	tele "gopkg.in/telebot.v3"
 )
@@ -17,21 +21,31 @@ type UserStorage interface {
 	GetWithPagination(ctx context.Context, limit int, offset int, order string) ([]entity.User, error)
 }
 
-type UserService struct {
-	userStorage UserStorage
+type StudentDataStorage interface {
+	GetByLogin(ctx context.Context, login string) (*entity.StudentData, error)
 }
 
-func NewUserService(userStorage UserStorage) *UserService {
+type smtpClient interface {
+	SendConfirmationEmail(to string, code string)
+}
+
+type UserService struct {
+	userStorage        UserStorage
+	studentDataStorage StudentDataStorage
+	smtpClient         smtpClient
+}
+
+func NewUserService(userStorage UserStorage, studentDataStorage StudentDataStorage, smtpClient smtpClient) *UserService {
 	return &UserService{
-		userStorage: userStorage,
+		userStorage:        userStorage,
+		studentDataStorage: studentDataStorage,
+		smtpClient:         smtpClient,
 	}
 }
 
-func (s *UserService) Create(ctx context.Context, c tele.Context) (*entity.User, error) {
-	var user entity.User
-	user.ID = uint(c.Sender().ID)
-	user.FirstName = c.Sender().FirstName
-	user.Username = c.Sender().Username
+func (s *UserService) Create(ctx context.Context, user entity.User) (*entity.User, error) {
+	user.Localization = "ru"
+
 	return s.userStorage.Create(ctx, &user)
 }
 
@@ -52,19 +66,8 @@ func (s *UserService) UpdateData(ctx context.Context, c tele.Context) (*entity.U
 	if err != nil {
 		return nil, err
 	}
-	user.ID = uint(c.Sender().ID)
-	user.Username = c.Sender().Username
-	user.FirstName = c.Sender().FirstName
+	user.ID = c.Sender().ID
 
-	return s.userStorage.Update(ctx, user)
-}
-
-func (s *UserService) UpdateLocalisation(ctx context.Context, userID int64, localisation string) (*entity.User, error) {
-	user, err := s.Get(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	user.Localisation = localisation
 	return s.userStorage.Update(ctx, user)
 }
 
@@ -81,6 +84,32 @@ func (s *UserService) Ban(ctx context.Context, userID int64) (*entity.User, erro
 	if err != nil {
 		return nil, err
 	}
-	user.Banned = !user.Banned
+	user.IsBanned = !user.IsBanned
 	return s.userStorage.Update(ctx, user)
+}
+
+func (s *UserService) SendAuthCode(_ context.Context, email string) (string, string, error) {
+	code, err := generateRandomCode(12)
+	if err != nil {
+		return "", "", err
+	}
+
+	login := strings.Split(email, "@")[0]
+
+	var data string
+	studentData, err := s.studentDataStorage.GetByLogin(context.Background(), login)
+	if err == nil {
+		s.smtpClient.SendConfirmationEmail(email, code)
+		data = fmt.Sprintf("%s;%s", email, studentData.Fio)
+	}
+
+	return data, code, nil
+}
+
+func generateRandomCode(length int) (string, error) {
+	bytes := make([]byte, length)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes)[:length], nil
 }

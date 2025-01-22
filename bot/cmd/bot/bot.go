@@ -3,9 +3,17 @@ package bot
 import (
 	"sync"
 
-	"github.com/Badsnus/cu-clubs-bot/internal/adapters/config"
-	"github.com/Badsnus/cu-clubs-bot/internal/adapters/logger"
-	"github.com/redis/go-redis/v9"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis"
+	"github.com/Badsnus/cu-clubs-bot/bot/pkg/intele"
+
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/service"
+	"github.com/spf13/viper"
+	"go.uber.org/zap/zapcore"
+	"gopkg.in/gomail.v2"
+
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/config"
+	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger"
+	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger/types"
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/layout"
 	"gorm.io/gorm"
@@ -13,10 +21,12 @@ import (
 
 type Bot struct {
 	*tele.Bot
-	Layout *layout.Layout
-	DB     *gorm.DB
-	Redis  *redis.Client
-	Logger *logger.Logger
+	Layout     *layout.Layout
+	DB         *gorm.DB
+	Redis      *redis.Client
+	SMTPDialer *gomail.Dialer
+	Logger     *types.Logger
+	Input      *intele.InputManager
 }
 
 func New(config *config.Config) (*Bot, error) {
@@ -26,7 +36,7 @@ func New(config *config.Config) (*Bot, error) {
 	}
 
 	settings := lt.Settings()
-	botLogger, err := logger.GetPrefixed("bot")
+	botLogger, err := logger.Named("bot")
 	if err != nil {
 		return nil, err
 	}
@@ -49,22 +59,43 @@ func New(config *config.Config) (*Bot, error) {
 		Bot:    b,
 		Layout: lt,
 		DB:     config.Database,
-		Redis:  config.Redis,
-		Logger: botLogger,
+		Input: intele.NewInputManager(intele.InputOptions{
+			Storage: config.Redis.States,
+		}),
+		SMTPDialer: config.SMTPDialer,
+		Logger:     botLogger,
+		Redis:      config.Redis,
 	}
 
 	return bot, nil
 }
 
 func (b *Bot) Start() {
-	defer logger.Log.Sync()
-
 	var wg sync.WaitGroup
 	wg.Add(1)
 
 	go func() {
 		defer wg.Done()
 		logger.Log.Info("Bot starting")
+
+		if viper.GetBool("settings.logging.log-to-channel") {
+			notifyLogger, err := logger.Named("notify")
+			if err != nil {
+				logger.Log.Errorf("Failed to create notify logger: %v", err)
+			} else {
+				notifyService := service.NewNotifyService(b.Bot, b.Layout, notifyLogger)
+				logHook, err := notifyService.LogHook(
+					viper.GetInt64("settings.logging.channel-id"),
+					viper.GetString("settings.logging.locale"),
+					zapcore.Level(viper.GetInt("settings.logging.channel-log-level")),
+				)
+				if err != nil {
+					logger.Log.Errorf("Failed to create notify log hook: %v", err)
+				} else {
+					logger.SetLogHook(logHook)
+				}
+			}
+		}
 		b.Bot.Start()
 	}()
 

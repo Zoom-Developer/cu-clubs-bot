@@ -1,9 +1,9 @@
 package setup
 
 import (
-	"github.com/Badsnus/cu-clubs-bot/cmd/bot"
-	"github.com/Badsnus/cu-clubs-bot/internal/adapters/controller/telegram/handlers"
-	"github.com/Badsnus/cu-clubs-bot/internal/adapters/controller/telegram/handlers/middlewares"
+	"github.com/Badsnus/cu-clubs-bot/bot/cmd/bot"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/handlers"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/handlers/middlewares"
 	"github.com/spf13/viper"
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/middleware"
@@ -15,7 +15,7 @@ func Setup(b *bot.Bot) {
 
 	middle := middlewares.New(b)
 	userHandler := handlers.NewUserHandler(b)
-	onEventHandler := handlers.NewOnEventHandler(b)
+	//onEventHandler := handlers.NewOnEventHandler(b)
 
 	if viper.GetBool("settings.debug") {
 		b.Use(middleware.Logger())
@@ -23,18 +23,23 @@ func Setup(b *bot.Bot) {
 
 	b.Use(b.Layout.Middleware("ru"))
 	b.Use(middleware.AutoRespond())
-	b.Use(middle.Authorized)
-	//b.Handle(b.Layout.Callback("english"), userHandler.OnLocalisation)
-	//b.Handle(b.Layout.Callback("russian"), userHandler.OnLocalisation)
-	//b.Use(middle.Localisation)
-	//b.Use(b.Layout.Middleware("en", middle.SetupLocalisation))
 
-	b.Handle(tele.OnText, onEventHandler.OnText)
-	b.Handle(tele.OnMedia, onEventHandler.OnMedia)
+	b.Handle(tele.OnText, b.Input.Handler())
+	//b.Handle(tele.OnMedia, onEventHandler.OnMedia)
 	b.Use(middle.ResetStateOnBack)
 
 	b.Handle("/start", userHandler.OnStart)
-	b.Use(middle.Subscribed)
+
+	b.Handle(b.Layout.Callback("personalData:accept"), userHandler.OnAcceptPersonalDataAgreement)
+	b.Handle(b.Layout.Callback("personalData:decline"), userHandler.OnDeclinePersonalDataAgreement)
+
+	b.Handle(b.Layout.Callback("auth:external_user"), userHandler.OnExternalUserAuth)
+	b.Handle(b.Layout.Callback("auth:grant_user"), userHandler.OnGrantUserAuth)
+	b.Handle(b.Layout.Callback("auth:student"), userHandler.OnStudentAuth)
+	b.Handle(b.Layout.Callback("auth:resend_email"), userHandler.OnResendEmailConfirmationCode)
+	b.Handle(b.Layout.Callback("auth:back_to_menu"), userHandler.OnBackToAuthMenu)
+
+	b.Use(middle.Authorized)
 	//b.Handle(b.Layout.Callback("hide"), userHandler.Hide)
 
 	//b.Handle(b.Layout.Callback("backToMainMenu"), userHandler.EditMainMenu)

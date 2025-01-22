@@ -1,12 +1,38 @@
 package entity
 
-import "gorm.io/gorm"
+import (
+	"time"
+)
+
+type Role string
+
+const (
+	ExternalUser Role = "external_user"
+	GrantUser    Role = "grant_user"
+	Student      Role = "student"
+)
 
 type User struct {
-	gorm.Model
-	FirstName    string
-	Username     string
-	Localisation string
-	Banned       bool
-	//Subscriptions []Subscription `gorm:"foreignKey:UserID"`
+	ID           int64 `gorm:"primaryKey"`
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	Localization string `gorm:"localization"`
+	Role         Role   `gorm:"not null"`
+	Email        string `gorm:"unique"`
+	FIO          string `gorm:"not null"`
+	IsBanned     bool
+}
+
+type ClubOwner struct {
+	UserID    int64  `gorm:"primaryKey"`
+	ClubID    string `gorm:"primaryKey;type:uuid"`
+	CreatedAt time.Time
+}
+
+type EventParticipant struct {
+	EventID   string `gorm:"primaryKey;type:uuid"`
+	UserID    int64  `gorm:"primaryKey"`
+	CreatedAt time.Time
+	IsUserQr  bool
+	IsEventQr bool
 }

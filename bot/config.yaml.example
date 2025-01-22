@@ -1,0 +1,47 @@
+service:
+  database:
+    host: "database"
+    user: "user"
+    password: "password"
+    port: 5400
+    name: "database"
+
+  redis:
+    host: "redis"
+    password: "password"
+    port: 6380
+
+  smtp:
+    domain: domain.ru
+    host: smtp.domain.ru
+    port: 587
+    login: 3587
+    pass: very-strong-password
+    email: email@domain.ru
+
+bot:
+  token: "BOT_TOKEN"
+  grant-chat-id: -500000
+  admin-ids:
+    - 500000000
+  session:
+    ttl: 45m
+    auth-ttl: 10m
+    email-ttl: 120m
+  auth:
+    grant-chat-id: -40000000
+    valid-email-domains:
+        - edu.centraluniversity.ru
+        - centraluniversity.ru
+        - yandex.ru
+
+settings:
+    logging:
+      log-to-file: true # логирование в файл
+      logs-dir: "./logs"
+      timezone: "GMT+3" # часовой пояс для логирования
+      debug: true # дебаг мод
+      log-to-channel: true # логирование в канал
+      channel-id: -10000000000 # канал для логов
+      channel-log-level: 2 # от какого уровня лога будем отправлять его в канал
+      locale: "ru"
