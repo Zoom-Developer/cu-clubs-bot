@@ -5,7 +5,7 @@ settings:
     Timeout: 10
 
 commands:
-  /start: 🚀 Start the telegram
+  /start: 🚀 Запустить бота
 
 buttons:
   # main menu

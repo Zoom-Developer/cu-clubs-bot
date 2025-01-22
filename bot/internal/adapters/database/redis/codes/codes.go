@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Badsnus/cu-clubs-bot/bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/common/errorz"
 	"github.com/redis/go-redis/v9"
 )
@@ -15,9 +14,9 @@ type Storage struct {
 	redis *redis.Client
 }
 
-func NewStorage(b *bot.Bot) *Storage {
+func NewStorage(client *redis.Client) *Storage {
 	return &Storage{
-		redis: b.CodeRedis,
+		redis: client,
 	}
 }
 

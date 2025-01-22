@@ -1,13 +1,13 @@
 service:
   database:
-    host: "localhost"
+    host: "database"
     user: "user"
     password: "password"
     port: 5400
     name: "database"
 
   redis:
-    host: "localhost"
+    host: "redis"
     password: "password"
     port: 6380
 

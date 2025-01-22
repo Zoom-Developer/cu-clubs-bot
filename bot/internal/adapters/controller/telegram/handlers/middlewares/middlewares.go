@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/states"
+	"github.com/Badsnus/cu-clubs-bot/bot/pkg/intele"
 
 	"github.com/Badsnus/cu-clubs-bot/bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/postgres"
@@ -20,10 +20,10 @@ type userService interface {
 }
 
 type MiddlewareHandler struct {
-	bot           *tele.Bot
-	layout        *layout.Layout
-	userService   userService
-	statesStorage *states.Storage
+	bot         *tele.Bot
+	layout      *layout.Layout
+	userService userService
+	input       *intele.InputManager
 }
 
 func New(b *bot.Bot) *MiddlewareHandler {
@@ -31,10 +31,10 @@ func New(b *bot.Bot) *MiddlewareHandler {
 	userServiceLocal := service.NewUserService(userStorageLocal, nil, nil)
 
 	return &MiddlewareHandler{
-		bot:           b.Bot,
-		layout:        b.Layout,
-		userService:   userServiceLocal,
-		statesStorage: states.NewStorage(b),
+		bot:         b.Bot,
+		layout:      b.Layout,
+		userService: userServiceLocal,
+		input:       b.Input,
 	}
 }
 
@@ -89,7 +89,12 @@ func (h MiddlewareHandler) ResetStateOnBack(next tele.HandlerFunc) tele.HandlerF
 	return func(c tele.Context) error {
 		if c.Callback() != nil {
 			if strings.Contains(c.Callback().Data, "back") {
-				h.statesStorage.Clear(c.Sender().ID)
+				h.input.Cancel(c.Sender().ID)
+			}
+		}
+		if c.Message() != nil {
+			if strings.HasPrefix(c.Message().Text, "/") {
+				h.input.Cancel(c.Sender().ID)
 			}
 		}
 

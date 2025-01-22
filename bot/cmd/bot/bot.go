@@ -3,6 +3,9 @@ package bot
 import (
 	"sync"
 
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis"
+	"github.com/Badsnus/cu-clubs-bot/bot/pkg/intele"
+
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/service"
 	"github.com/spf13/viper"
 	"go.uber.org/zap/zapcore"
@@ -11,7 +14,6 @@ import (
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/config"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger/types"
-	"github.com/redis/go-redis/v9"
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/layout"
 	"gorm.io/gorm"
@@ -21,11 +23,10 @@ type Bot struct {
 	*tele.Bot
 	Layout     *layout.Layout
 	DB         *gorm.DB
-	StateRedis *redis.Client
-	CodeRedis  *redis.Client
-	EmailRedis *redis.Client
+	Redis      *redis.Client
 	SMTPDialer *gomail.Dialer
 	Logger     *types.Logger
+	Input      *intele.InputManager
 }
 
 func New(config *config.Config) (*Bot, error) {
@@ -55,14 +56,15 @@ func New(config *config.Config) (*Bot, error) {
 	}
 
 	bot := &Bot{
-		Bot:        b,
-		Layout:     lt,
-		DB:         config.Database,
-		StateRedis: config.StateRedis,
-		CodeRedis:  config.CodeRedis,
-		EmailRedis: config.EmailRedis,
+		Bot:    b,
+		Layout: lt,
+		DB:     config.Database,
+		Input: intele.NewInputManager(intele.InputOptions{
+			Storage: config.Redis.States,
+		}),
 		SMTPDialer: config.SMTPDialer,
 		Logger:     botLogger,
+		Redis:      config.Redis,
 	}
 
 	return bot, nil

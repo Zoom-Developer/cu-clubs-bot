@@ -1,10 +1,13 @@
 package storage
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
 
 // StateStorage interface for storing user states
 type StateStorage interface {
-	Set(userID int64, state string) error
+	Set(userID int64, state string, expiration time.Duration) error
 	Get(userID int64) (string, error)
 	Delete(userID int64)
 }
@@ -21,7 +24,8 @@ func NewMemoryStorage() *MemoryStorage {
 	}
 }
 
-func (m *MemoryStorage) Set(userID int64, state string) error {
+// Set sets the state for a user (expiration is ignored)
+func (m *MemoryStorage) Set(userID int64, state string, _ time.Duration) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.store[userID] = state

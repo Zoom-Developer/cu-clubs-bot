@@ -15,7 +15,7 @@ func Setup(b *bot.Bot) {
 
 	middle := middlewares.New(b)
 	userHandler := handlers.NewUserHandler(b)
-	onEventHandler := handlers.NewOnEventHandler(b)
+	//onEventHandler := handlers.NewOnEventHandler(b)
 
 	if viper.GetBool("settings.debug") {
 		b.Use(middleware.Logger())
@@ -24,8 +24,8 @@ func Setup(b *bot.Bot) {
 	b.Use(b.Layout.Middleware("ru"))
 	b.Use(middleware.AutoRespond())
 
-	b.Handle(tele.OnText, onEventHandler.OnText)
-	b.Handle(tele.OnMedia, onEventHandler.OnMedia)
+	b.Handle(tele.OnText, b.Input.Handler())
+	//b.Handle(tele.OnMedia, onEventHandler.OnMedia)
 	b.Use(middle.ResetStateOnBack)
 
 	b.Handle("/start", userHandler.OnStart)

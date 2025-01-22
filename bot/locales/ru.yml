@@ -22,12 +22,16 @@ something_went_wrong: Что-то пошло не так, начните сна�
 
 join: 🔗 Присоединиться
 
+# error
+input_error: |-
+  <b>❗️ Во время ввода произошла непредвиденная ошибка</b>
+  {{.}}
 # logging
 log: |-
   ❗️ <b>{{.Level.String}}</b> - <code>{{.Timestamp.Format "2006-01-02 15:04:05"}}</code>
   <blockquote><b>{{.LoggerName}} - {{.Caller}}:</b>
   
-  {{.Message}}</blockquote>
+  {{.Message}}</blockquote>  
 
 # personal data agreement menu
 personal_data_agreement_text: |-
@@ -59,11 +63,8 @@ invalid_email: |-
   <b>Некорректный почтовый адрес.
   Попробуйте ещё раз</b>
 
-email_confirmation_code_request: |-
+email_auth_link_sent: |-
   <b>На вашу почту была отправлена ссылка! Пожалуйста, перейдите по ней для завершения авторизации</b>
-
-invalid_email_confirmation_code: |-
-  <b>Некорректный код. Попробуйте ещё раз</b>
 
 
 # main menu

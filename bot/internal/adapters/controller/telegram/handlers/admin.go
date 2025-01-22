@@ -33,7 +33,7 @@ func NewAdminHandler(b *bot.Bot) *AdminHandler {
 	return &AdminHandler{
 		layout:           b.Layout,
 		adminUserService: service.NewUserService(userStorage, nil, nil),
-		statesStorage:    states.NewStorage(b),
+		statesStorage:    b.Redis.States,
 		bot:              b,
 	}
 }

@@ -3,16 +3,17 @@ package handlers
 import (
 	"context"
 	"errors"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/validator"
+	"github.com/Badsnus/cu-clubs-bot/bot/pkg/intele"
+	"github.com/Badsnus/cu-clubs-bot/bot/pkg/intele/collector"
 	"strings"
 
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/codes"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/emails"
-	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/states"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/Badsnus/cu-clubs-bot/bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/postgres"
-	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/state"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/service"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/smtp"
@@ -31,11 +32,10 @@ type userService interface {
 type UserHandler struct {
 	userService userService
 
-	statesStorage *states.Storage
 	codesStorage  *codes.Storage
 	emailsStorage *emails.Storage
-
-	layout *layout.Layout
+	input         *intele.InputManager
+	layout        *layout.Layout
 }
 
 func NewUserHandler(b *bot.Bot) *UserHandler {
@@ -45,10 +45,10 @@ func NewUserHandler(b *bot.Bot) *UserHandler {
 
 	return &UserHandler{
 		userService:   service.NewUserService(userStorage, studentDataStorage, smtpClient),
-		statesStorage: states.NewStorage(b),
-		codesStorage:  codes.NewStorage(b),
-		emailsStorage: emails.NewStorage(b),
+		codesStorage:  b.Redis.Codes,
+		emailsStorage: b.Redis.Emails,
 		layout:        b.Layout,
+		input:         b.Input,
 	}
 }
 
@@ -94,7 +94,6 @@ func (h UserHandler) OnStart(c tele.Context) error {
 			)
 		}
 
-		h.statesStorage.Clear(c.Sender().ID)
 		h.codesStorage.Clear(c.Sender().ID)
 		h.emailsStorage.Clear(c.Sender().ID)
 
@@ -124,17 +123,66 @@ func (h UserHandler) OnAcceptPersonalDataAgreement(c tele.Context) error {
 }
 
 func (h UserHandler) OnExternalUserAuth(c tele.Context) error {
-	h.statesStorage.Set(c.Sender().ID, state.WaitingExternalUserFio, "", viper.GetDuration("bot.session.ttl"))
-
-	return c.Edit(
+	inputCollector := collector.New()
+	_ = c.Edit(
 		h.layout.Text(c, "fio_request"),
 		h.layout.Markup(c, "auth:backToMenu"),
+	)
+	inputCollector.Collect(c.Message())
+
+	var (
+		fio  string
+		done bool
+	)
+	for {
+		message, canceled, err := h.input.Get(context.Background(), c.Sender().ID, 0)
+		if message != nil {
+			inputCollector.Collect(message)
+		}
+		switch {
+		case canceled:
+			return nil
+		case err != nil:
+			_ = inputCollector.Send(c,
+				h.layout.Text(c, "input_error", h.layout.Text(c, "fio_request")),
+				h.layout.Markup(c, "auth:backToMenu"),
+			)
+		case !validator.Fio(message.Text):
+			_ = inputCollector.Send(c,
+				h.layout.Text(c, "invalid_user_fio"),
+				h.layout.Markup(c, "auth:backToMenu"),
+			)
+		case validator.Fio(message.Text):
+			fio = message.Text
+			_ = inputCollector.Clear(c, true)
+			done = true
+		}
+		if done {
+			break
+		}
+	}
+
+	user := entity.User{
+		ID:   c.Sender().ID,
+		Role: entity.ExternalUser,
+		FIO:  fio,
+	}
+	_, err := h.userService.Create(context.Background(), user)
+	if err != nil {
+		return c.Send(
+			h.layout.Text(c, "technical_issues"),
+		)
+	}
+
+	return c.Send(
+		h.layout.Text(c, "start"),
+		h.layout.Markup(c, "mainMenu:open"),
 	)
 }
 
 func (h UserHandler) OnGrantUserAuth(c tele.Context) error {
-	granChatID := int64(viper.GetInt("bot.grant-chat-id"))
-	member, err := c.Bot().ChatMemberOf(&tele.Chat{ID: granChatID}, &tele.User{ID: c.Sender().ID})
+	grantChatID := int64(viper.GetInt("bot.grant-chat-id"))
+	member, err := c.Bot().ChatMemberOf(&tele.Chat{ID: grantChatID}, &tele.User{ID: c.Sender().ID})
 	if err != nil {
 		return c.Send(
 			h.layout.Text(c, "technical_issues"),
@@ -142,25 +190,135 @@ func (h UserHandler) OnGrantUserAuth(c tele.Context) error {
 	}
 
 	if member.Role != tele.Creator && member.Role != tele.Administrator && member.Role != tele.Member {
-		return c.Send(
+		return c.Edit(
 			h.layout.Text(c, "grant_user_required"),
 			h.layout.Markup(c, "auth:backToMenu"),
 		)
 	}
 
-	h.statesStorage.Set(c.Sender().ID, state.WaitingGrantUserFio, "", viper.GetDuration("bot.session.ttl"))
-	return c.Edit(
+	inputCollector := collector.New()
+	_ = c.Edit(
 		h.layout.Text(c, "fio_request"),
 		h.layout.Markup(c, "auth:backToMenu"),
+	)
+	inputCollector.Collect(c.Message())
+
+	var (
+		fio  string
+		done bool
+	)
+	for {
+		message, canceled, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
+		if message != nil {
+			inputCollector.Collect(message)
+		}
+		switch {
+		case canceled:
+			return nil
+		case errGet != nil:
+			_ = inputCollector.Send(c,
+				h.layout.Text(c, "input_error", h.layout.Text(c, "fio_request")),
+				h.layout.Markup(c, "auth:backToMenu"),
+			)
+		case !validator.Fio(message.Text):
+			_ = inputCollector.Send(c,
+				h.layout.Text(c, "invalid_user_fio"),
+				h.layout.Markup(c, "auth:backToMenu"),
+			)
+		case validator.Fio(message.Text):
+			fio = message.Text
+			_ = inputCollector.Clear(c, true)
+			done = true
+		}
+		if done {
+			break
+		}
+	}
+
+	user := entity.User{
+		ID:   c.Sender().ID,
+		Role: entity.GrantUser,
+		FIO:  fio,
+	}
+	_, err = h.userService.Create(context.Background(), user)
+	if err != nil {
+		return c.Send(
+			h.layout.Text(c, "technical_issues"),
+		)
+	}
+
+	return c.Send(
+		h.layout.Text(c, "start"),
+		h.layout.Markup(c, "mainMenu:open"),
 	)
 }
 
 func (h UserHandler) OnStudentAuth(c tele.Context) error {
-	h.statesStorage.Set(c.Sender().ID, state.WaitingStudentEmail, "", viper.GetDuration("bot.session.ttl"))
-
-	return c.Edit(
+	inputCollector := collector.New()
+	_ = c.Edit(
 		h.layout.Text(c, "email_request"),
 		h.layout.Markup(c, "auth:backToMenu"),
+	)
+	inputCollector.Collect(c.Message())
+
+	var (
+		email string
+		done  bool
+	)
+	for {
+		message, canceled, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
+		if message != nil {
+			inputCollector.Collect(message)
+		}
+		switch {
+		case canceled:
+			return nil
+		case errGet != nil:
+			_ = inputCollector.Send(c,
+				h.layout.Text(c, "input_error", h.layout.Text(c, "email_request")),
+				h.layout.Markup(c, "auth:backToMenu"),
+			)
+		case !validator.Email(message.Text):
+			_ = inputCollector.Send(c,
+				h.layout.Text(c, "invalid_email"),
+				h.layout.Markup(c, "auth:backToMenu"),
+			)
+		case validator.Email(message.Text):
+			email = message.Text
+			done = true
+		}
+		if done {
+			break
+		}
+	}
+
+	_, err := h.codesStorage.Get(c.Sender().ID)
+	if err != nil && !errors.Is(err, redis.Nil) {
+		return c.Send(
+			h.layout.Text(c, "technical_issues"),
+		)
+	}
+	var data, code string
+	if errors.Is(err, redis.Nil) {
+		data, code, err = h.userService.SendAuthCode(context.Background(), email)
+		if err != nil {
+			return c.Send(
+				h.layout.Text(c, "technical_issues"),
+			)
+		}
+
+		h.emailsStorage.Set(c.Sender().ID, email, "", viper.GetDuration("bot.session.email-ttl"))
+		h.codesStorage.Set(c.Sender().ID, code, data, viper.GetDuration("bot.session.auth-ttl"))
+
+		return c.Send(
+			h.layout.Text(c, "email_auth_link_sent"),
+			h.layout.Markup(c, "auth:resendMenu"),
+		)
+	}
+
+	return c.Send(
+		h.layout.Text(c, "resend_timeout"),
+		h.layout.Markup(c, "auth:resendMenu"),
 	)
 }
 
@@ -233,11 +391,4 @@ func (h UserHandler) EditMainMenu(c tele.Context) error {
 
 func (h UserHandler) Hide(c tele.Context) error {
 	return c.Delete()
-}
-
-func (h UserHandler) Information(c tele.Context) error {
-	return c.Edit(
-		h.layout.Text(c, "info_text"),
-		h.layout.Markup(c, "information"),
-	)
 }

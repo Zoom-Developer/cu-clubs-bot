@@ -1,8 +1,8 @@
 package config
 
 import (
-	"context"
 	"fmt"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis"
 	"log"
 	"os"
 	"time"
@@ -11,7 +11,6 @@ import (
 
 	postgresStorage "github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/postgres"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger"
-	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -20,9 +19,7 @@ import (
 
 type Config struct {
 	Database   *gorm.DB
-	StateRedis *redis.Client
-	CodeRedis  *redis.Client
-	EmailRedis *redis.Client
+	Redis      *redis.Client
 	SMTPDialer *gomail.Dialer
 }
 
@@ -90,40 +87,13 @@ func Get() *Config {
 		logger.Log.Panicf("Failed to migrate database: %v", errMigrate)
 	}
 
-	stateRedisDB := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", viper.GetString("service.redis.host"), viper.GetInt("service.redis.port")),
+	r, err := redis.New(redis.Options{
+		Host:     viper.GetString("service.redis.host"),
+		Port:     viper.GetString("service.redis.port"),
 		Password: viper.GetString("service.redis.password"),
-		DB:       0,
 	})
-	err = stateRedisDB.Ping(context.Background()).Err()
 	if err != nil {
-		logger.Log.Panicf("Failed to connect to redis: %v", err)
-	} else {
-		logger.Log.Info("Successfully connected to redis")
-	}
-
-	codeRedisDB := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", viper.GetString("service.redis.host"), viper.GetInt("service.redis.port")),
-		Password: viper.GetString("service.redis.password"),
-		DB:       1,
-	})
-	err = codeRedisDB.Ping(context.Background()).Err()
-	if err != nil {
-		logger.Log.Panicf("Failed to connect to redis: %v", err)
-	} else {
-		logger.Log.Info("Successfully connected to redis")
-	}
-
-	emailRedisDB := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", viper.GetString("service.redis.host"), viper.GetInt("service.redis.port")),
-		Password: viper.GetString("service.redis.password"),
-		DB:       2,
-	})
-	err = emailRedisDB.Ping(context.Background()).Err()
-	if err != nil {
-		logger.Log.Panicf("Failed to connect to redis: %v", err)
-	} else {
-		logger.Log.Info("Successfully connected to redis")
+		logger.Log.Panicf("Failed to connect to the redis: %v", err)
 	}
 
 	dialer := gomail.NewDialer(
@@ -135,9 +105,7 @@ func Get() *Config {
 
 	return &Config{
 		Database:   database,
-		StateRedis: stateRedisDB,
-		CodeRedis:  codeRedisDB,
-		EmailRedis: emailRedisDB,
+		Redis:      r,
 		SMTPDialer: dialer,
 	}
 }
