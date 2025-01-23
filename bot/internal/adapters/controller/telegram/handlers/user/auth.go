@@ -15,6 +15,7 @@ import (
 )
 
 func (h Handler) onStart(c tele.Context) error {
+	_ = c.Delete()
 	_, err := h.userService.Get(context.Background(), c.Sender().ID)
 	if err != nil {
 		authCode := c.Message().Payload
