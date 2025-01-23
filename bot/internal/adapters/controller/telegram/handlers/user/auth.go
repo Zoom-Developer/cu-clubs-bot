@@ -97,6 +97,7 @@ func (h Handler) onExternalUserAuth(c tele.Context) error {
 		}
 		switch {
 		case canceled:
+			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 			return nil
 		case err != nil:
 			_ = inputCollector.Send(c,
@@ -110,7 +111,7 @@ func (h Handler) onExternalUserAuth(c tele.Context) error {
 			)
 		case validator.Fio(message.Text):
 			fio = message.Text
-			_ = inputCollector.Clear(c, true)
+			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
 			done = true
 		}
 		if done {
@@ -167,6 +168,7 @@ func (h Handler) onGrantUserAuth(c tele.Context) error {
 		}
 		switch {
 		case canceled:
+			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 			return nil
 		case errGet != nil:
 			_ = inputCollector.Send(c,
@@ -180,7 +182,7 @@ func (h Handler) onGrantUserAuth(c tele.Context) error {
 			)
 		case validator.Fio(message.Text):
 			fio = message.Text
-			_ = inputCollector.Clear(c, true)
+			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
 			done = true
 		}
 		if done {

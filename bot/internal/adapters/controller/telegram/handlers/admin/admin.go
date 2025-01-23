@@ -86,6 +86,7 @@ func (h Handler) createClub(c tele.Context) error {
 		}
 		switch {
 		case canceled:
+			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 			return nil
 		case errGet != nil:
 			h.logger.Errorf("(user: %d) error while input club name: %v", c.Sender().ID, errGet)
@@ -100,7 +101,7 @@ func (h Handler) createClub(c tele.Context) error {
 			)
 		case validator.ClubName(message.Text):
 			clubName = message.Text
-			_ = inputCollector.Clear(c, true)
+			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
 			done = true
 		}
 		if done {

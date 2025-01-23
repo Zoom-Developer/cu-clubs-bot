@@ -34,13 +34,23 @@ func (mc *MessageCollector) GetMessages() []*tele.Message {
 	return mc.messages
 }
 
+type ClearOptions struct {
+	// IgnoreErrors will ignore all errors that occurred during deletion
+	IgnoreErrors bool
+	// ExcludeLast will exclude the last message and don't delete it
+	ExcludeLast bool
+}
+
 // Clear deletes all collected messages and cleans the collector
 //
 // If ignoreErrors is true, it will ignore all errors that occurred during deletion
-func (mc *MessageCollector) Clear(c tele.Context, ignoreErrors bool) error {
-	for _, message := range mc.messages {
+func (mc *MessageCollector) Clear(c tele.Context, opts ClearOptions) error {
+	for i, message := range mc.messages {
+		if opts.ExcludeLast && i == len(mc.messages)-1 {
+			continue
+		}
 		err := c.Bot().Delete(message)
-		if err != nil && !ignoreErrors {
+		if err != nil && !opts.IgnoreErrors {
 			return err
 		}
 	}
