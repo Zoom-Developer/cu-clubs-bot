@@ -51,7 +51,7 @@ func Get() *Config {
 	}
 
 	var gormConfig *gorm.Config
-	if viper.GetBool("settings.debug") {
+	if viper.GetBool("settings.logging.debug") {
 		newLogger := gormLogger.New(
 			log.New(os.Stdout, "\r\n", log.LstdFlags),
 			gormLogger.Config{

@@ -134,8 +134,8 @@ func (h Handler) createClub(c tele.Context) error {
 }
 
 func (h Handler) clubsList(c tele.Context) error {
-	h.logger.Infof("(user: %d) edit clubs list", c.Sender().ID)
 	const clubsOnPage = 10
+	h.logger.Infof("(user: %d) edit clubs list", c.Sender().ID)
 
 	var (
 		p          int
