@@ -31,7 +31,6 @@ func (h Handler) SendMenu(c tele.Context) error {
 	h.logger.Infof("(user: %d) send main menu (isAdmin=%t)", c.Sender().ID, isAdmin)
 	return c.Send(
 		h.layout.Text(c, "main_menu_text", c.Sender().Username),
-		h.layout.Markup(c, "mainMenu:open"),
 		menuMarkup,
 	)
 }
@@ -47,7 +46,6 @@ func (h Handler) EditMenu(c tele.Context) error {
 	h.logger.Infof("(user: %d) edit main menu (isAdmin=%t)", c.Sender().ID, isAdmin)
 	return c.Edit(
 		h.layout.Text(c, "main_menu_text", c.Sender().Username),
-		h.layout.Markup(c, "mainMenu:open"),
 		menuMarkup,
 	)
 }

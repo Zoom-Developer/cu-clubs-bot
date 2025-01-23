@@ -8,6 +8,16 @@ commands:
   /start: 🚀 Запустить бота
 
 buttons:
+  core:hide:
+    unique: core_hide
+    callback_data: core_hide
+    text: '{{ text `hide` }}'
+
+  core:back:
+    unique: core_back
+    callback_data: core_back
+    text: '{{ text `back` }}'
+
   core:page_counter:
     unique: core_pageCounter
     callback_data: core_pageCounter
@@ -47,8 +57,6 @@ buttons:
     unique: auth_resendEmail
     callback_data: auth_resendEmail
     text: '{{ text `resend` }}'
-
-  mainMenu:open: '{{ text `open_main_menu` }}'
 
   mainMenu:events:
     unique: mainMenu_events
@@ -110,8 +118,38 @@ buttons:
     callback_data: '{{.Page}}'
     text: '{{ text `prev` }}'
 
+  admin:clubs:back:
+    unique: admin_clubs_back
+    callback_data: '{{.Page}}'
+    text: '{{ text `back` }}'
+
+  admin:club:delete:
+    unique: admin_club_delete
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `delete` }}'
+
+  admin:club:add_owner:
+    unique: admin_club_addOwner
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `add_club_owner` }}'
+
+  admin:club:del_owner:
+    unique: admin_club_delOwner
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `remove_club_owner` }}'
+
+  admin:club:back:
+    unique: admin_club_back
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `back` }}'
+
 
 markups:
+  core:hide:
+    - [ core:hide ]
+  core:back:
+    - [ core:back ]
+
   auth:personalData:agreementMenu:
     - [ auth:personalData:accept, auth:personalData:decline ]
   auth:menu:
@@ -124,8 +162,6 @@ markups:
     - [ auth:resend_email ]
     - [ auth:back_to_menu ]
 
-  mainMenu:open:
-    - [ mainMenu:open ]
   mainMenu:menu:
     - [ mainMenu:events ]
     - [ mainMenu:my_events ]
@@ -137,4 +173,12 @@ markups:
     - [ mainMenu:back ]
   admin:backToMenu:
     - [ admin:back_to_menu ]
-
+  admin:clubs:back:
+    - [ admin:clubs:back ]
+  admin:club:menu:
+    - [ admin:club:add_owner ]
+    - [ admin:club:del_owner ]
+    - [ admin:club:delete ]
+    - [ admin:clubs:back ]
+  admin:club:back:
+    - [ admin:club:back ]

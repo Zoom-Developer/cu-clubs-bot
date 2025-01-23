@@ -1,12 +1,15 @@
 package entity
 
-import "time"
+import (
+	"gorm.io/gorm"
+	"time"
+)
 
 type Event struct {
 	ID                    string `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
 	CreatedAt             time.Time
 	UpdatedAt             time.Time
-	DeletedAt             time.Time
+	DeletedAt             gorm.DeletedAt
 	ClubID                string `gorm:"not null;type:uuid"`
 	Club                  Club
 	Name                  string `gorm:"not null"`

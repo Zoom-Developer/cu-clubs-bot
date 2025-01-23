@@ -18,9 +18,9 @@ type User struct {
 	UpdatedAt    time.Time
 	Localization string `gorm:"default:ru"`
 	Role         Role   `gorm:"not null"`
-	Email        string `gorm:"unique"`
+	Email        string `gorm:"uniqueIndex:idx_users_email,where:email <> ''"`
 	FIO          string `gorm:"not null"`
-	IsBanned     bool
+	IsBanned     bool   `gorm:"default:false"`
 }
 
 type ClubOwner struct {

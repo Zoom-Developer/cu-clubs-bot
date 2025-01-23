@@ -15,6 +15,7 @@ import (
 type UserStorage interface {
 	Create(ctx context.Context, user *entity.User) (*entity.User, error)
 	Get(ctx context.Context, id uint) (*entity.User, error)
+	GetMany(ctx context.Context, ids []int64) ([]entity.User, error)
 	GetAll(ctx context.Context) ([]entity.User, error)
 	Update(ctx context.Context, user *entity.User) (*entity.User, error)
 	Count(ctx context.Context) (int64, error)

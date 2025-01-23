@@ -19,7 +19,7 @@ func Setup(b *bot.Bot) {
 	adminHandler := admin.New(b)
 
 	//onEventHandler := handlers.NewOnEventHandler(b)
-	if viper.GetBool("settings.debug") {
+	if viper.GetBool("settings.logging.debug") {
 		b.Use(middleware.Logger())
 	}
 	b.Use(b.Layout.Middleware("ru"))
@@ -27,12 +27,13 @@ func Setup(b *bot.Bot) {
 	b.Handle(tele.OnText, b.Input.Handler())
 	b.Handle(tele.OnMedia, b.Input.Handler())
 	b.Use(middle.ResetInputOnBack)
+	b.Handle(b.Layout.Callback("core:hide"), userHandler.Hide)
+	b.Handle(b.Layout.Callback("core:back"), userHandler.Hide)
+	b.Use(middle.Authorized)
 
 	// Setup handlers
 	//User:
 	userHandler.AuthSetup(b.Group())
-	b.Use(middle.Authorized)
-	b.Handle(b.Layout.TextLocale("ru", "open_main_menu"), menuHandler.SendMenu)
 	b.Handle(b.Layout.Callback("mainMenu:back"), menuHandler.EditMenu)
 
 	//Admin:

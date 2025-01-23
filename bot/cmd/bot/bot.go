@@ -41,7 +41,11 @@ func New(config *config.Config) (*Bot, error) {
 		return nil, err
 	}
 	settings.OnError = func(err error, ctx tele.Context) {
-		botLogger.Errorf("(user: %d) | unique: %s | Error: %v", ctx.Sender().ID, ctx.Callback().Unique, err)
+		if ctx.Callback() == nil {
+			botLogger.Errorf("(user: %d) | Error: %v", ctx.Sender().ID, err)
+		} else {
+			botLogger.Errorf("(user: %d) | unique: %s | Error: %v", ctx.Sender().ID, ctx.Callback().Unique, err)
+		}
 	}
 
 	b, err := tele.NewBot(settings)

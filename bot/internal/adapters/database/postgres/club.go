@@ -33,8 +33,13 @@ func (s *ClubStorage) Update(ctx context.Context, club *entity.Club) (*entity.Cl
 	return club, err
 }
 
+// Delete is a function that deletes a club and all its events from the database.
 func (s *ClubStorage) Delete(ctx context.Context, id string) error {
 	err := s.db.WithContext(ctx).Where("id = ?", id).Delete(&entity.Club{}).Error
+	if err != nil {
+		return err
+	}
+	err = s.db.WithContext(ctx).Where("club_id = ?", id).Delete(&entity.Event{}).Error
 	return err
 }
 

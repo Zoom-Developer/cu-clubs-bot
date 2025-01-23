@@ -128,6 +128,7 @@ func (h Handler) onExternalUserAuth(c tele.Context) error {
 	if err != nil {
 		return c.Send(
 			h.layout.Text(c, "technical_issues", err.Error()),
+			h.layout.Markup(c, "auth:backToMenu"),
 		)
 	}
 
@@ -199,6 +200,7 @@ func (h Handler) onGrantUserAuth(c tele.Context) error {
 	if err != nil {
 		return c.Send(
 			h.layout.Text(c, "technical_issues", err.Error()),
+			h.layout.Markup(c, "auth:backToMenu"),
 		)
 	}
 
@@ -256,6 +258,7 @@ func (h Handler) onStudentAuth(c tele.Context) error {
 		if err != nil {
 			return c.Send(
 				h.layout.Text(c, "technical_issues", err.Error()),
+				h.layout.Markup(c, "auth:backToMenu"),
 			)
 		}
 

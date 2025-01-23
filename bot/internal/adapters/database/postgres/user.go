@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 	"gorm.io/gorm"
 )
@@ -30,6 +29,12 @@ func (s *UserStorage) Get(ctx context.Context, id uint) (*entity.User, error) {
 	return &user, err
 }
 
+func (s *UserStorage) GetMany(ctx context.Context, ids []int64) ([]entity.User, error) {
+	var users []entity.User
+	err := s.db.WithContext(ctx).Where("id IN ?", ids).Find(&users).Error
+	return users, err
+}
+
 // GetAll is a function that gets all users from the database.
 func (s *UserStorage) GetAll(ctx context.Context) ([]entity.User, error) {
 	var users []entity.User
@@ -39,7 +44,7 @@ func (s *UserStorage) GetAll(ctx context.Context) ([]entity.User, error) {
 
 // Update is a function that updates a user in the database.
 func (s *UserStorage) Update(ctx context.Context, user *entity.User) (*entity.User, error) {
-	err := s.db.WithContext(ctx).Save(&user).Error
+	err := s.db.WithContext(ctx).Save(user).Error
 	return user, err
 }
 

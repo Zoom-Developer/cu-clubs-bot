@@ -20,7 +20,9 @@ type ClubService struct {
 }
 
 func NewClubService(storage ClubStorage) *ClubService {
-	return &ClubService{storage}
+	return &ClubService{
+		storage: storage,
+	}
 }
 
 func (s *ClubService) Create(ctx context.Context, club *entity.Club) (*entity.Club, error) {

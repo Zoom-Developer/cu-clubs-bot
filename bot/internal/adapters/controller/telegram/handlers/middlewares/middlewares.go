@@ -45,7 +45,10 @@ func (h Handler) Authorized(next tele.HandlerFunc) tele.HandlerFunc {
 		}
 
 		if user.IsBanned {
-			return c.Send(h.layout.TextLocale(user.Localization, "banned"))
+			return c.Send(
+				h.layout.TextLocale(user.Localization, "banned"),
+				h.layout.MarkupLocale(user.Localization, "core:hide"),
+			)
 		}
 
 		return next(c)
@@ -86,8 +89,9 @@ func (h Handler) Authorized(next tele.HandlerFunc) tele.HandlerFunc {
 // ResetInputOnBack middleware clears the input state when the back button is pressed.
 func (h Handler) ResetInputOnBack(next tele.HandlerFunc) tele.HandlerFunc {
 	return func(c tele.Context) error {
+
 		if c.Callback() != nil {
-			if strings.Contains(c.Callback().Data, "back") {
+			if strings.Contains(c.Callback().Data, "back") || strings.Contains(c.Callback().Unique, "back") {
 				h.input.Cancel(c.Sender().ID)
 			}
 		}
