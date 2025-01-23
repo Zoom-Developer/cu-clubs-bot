@@ -1,65 +1,27 @@
-package handlers
+package user
 
 import (
 	"context"
 	"errors"
-	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/validator"
-	"github.com/Badsnus/cu-clubs-bot/bot/pkg/intele"
-	"github.com/Badsnus/cu-clubs-bot/bot/pkg/intele/collector"
-	"strings"
-
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/codes"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/emails"
-	"github.com/redis/go-redis/v9"
-
-	"github.com/Badsnus/cu-clubs-bot/bot/cmd/bot"
-	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/postgres"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
-	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/service"
-	"github.com/Badsnus/cu-clubs-bot/bot/pkg/smtp"
-
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/validator"
+	"github.com/Badsnus/cu-clubs-bot/bot/pkg/intele/collector"
+	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
 	tele "gopkg.in/telebot.v3"
-	"gopkg.in/telebot.v3/layout"
+	"strings"
 )
 
-type userService interface {
-	Create(ctx context.Context, user entity.User) (*entity.User, error)
-	Get(ctx context.Context, userID int64) (*entity.User, error)
-	SendAuthCode(ctx context.Context, email string) (string, string, error)
-}
-
-type UserHandler struct {
-	userService userService
-
-	codesStorage  *codes.Storage
-	emailsStorage *emails.Storage
-	input         *intele.InputManager
-	layout        *layout.Layout
-}
-
-func NewUserHandler(b *bot.Bot) *UserHandler {
-	userStorage := postgres.NewUserStorage(b.DB)
-	studentDataStorage := postgres.NewStudentDataStorage(b.DB)
-	smtpClient := smtp.NewClient(b.SMTPDialer)
-
-	return &UserHandler{
-		userService:   service.NewUserService(userStorage, studentDataStorage, smtpClient),
-		codesStorage:  b.Redis.Codes,
-		emailsStorage: b.Redis.Emails,
-		layout:        b.Layout,
-		input:         b.Input,
-	}
-}
-
-func (h UserHandler) OnStart(c tele.Context) error {
+func (h Handler) onStart(c tele.Context) error {
 	_, err := h.userService.Get(context.Background(), c.Sender().ID)
 	if err != nil {
 		authCode := c.Message().Payload
 		if authCode == "" {
 			return c.Send(
 				h.layout.Text(c, "personal_data_agreement_text"),
-				h.layout.Markup(c, "personalData:agreementMenu"),
+				h.layout.Markup(c, "auth:personalData:agreementMenu"),
 			)
 		}
 
@@ -90,39 +52,33 @@ func (h UserHandler) OnStart(c tele.Context) error {
 		_, err = h.userService.Create(context.Background(), user)
 		if err != nil {
 			return c.Send(
-				h.layout.Text(c, "technical_issues"),
+				h.layout.Text(c, "technical_issues", err.Error()),
 			)
 		}
 
 		h.codesStorage.Clear(c.Sender().ID)
 		h.emailsStorage.Clear(c.Sender().ID)
 
-		return c.Send(
-			h.layout.Text(c, "start"),
-			h.layout.Markup(c, "mainMenu:open"),
-		)
+		return h.menuHandler.SendMenu(c)
 	}
 
-	return c.Send(
-		h.layout.Text(c, "start"),
-		h.layout.Markup(c, "mainMenu:open"),
-	)
+	return h.menuHandler.SendMenu(c)
 }
 
-func (h UserHandler) OnDeclinePersonalDataAgreement(c tele.Context) error {
+func (h Handler) onDeclinePersonalDataAgreement(c tele.Context) error {
 	return c.Edit(
 		h.layout.Text(c, "decline_personal_data_agreement_text"),
 	)
 }
 
-func (h UserHandler) OnAcceptPersonalDataAgreement(c tele.Context) error {
+func (h Handler) onAcceptPersonalDataAgreement(c tele.Context) error {
 	return c.Edit(
 		h.layout.Text(c, "auth_menu_text"),
 		h.layout.Markup(c, "auth:menu"),
 	)
 }
 
-func (h UserHandler) OnExternalUserAuth(c tele.Context) error {
+func (h Handler) onExternalUserAuth(c tele.Context) error {
 	inputCollector := collector.New()
 	_ = c.Edit(
 		h.layout.Text(c, "fio_request"),
@@ -170,22 +126,19 @@ func (h UserHandler) OnExternalUserAuth(c tele.Context) error {
 	_, err := h.userService.Create(context.Background(), user)
 	if err != nil {
 		return c.Send(
-			h.layout.Text(c, "technical_issues"),
+			h.layout.Text(c, "technical_issues", err.Error()),
 		)
 	}
 
-	return c.Send(
-		h.layout.Text(c, "start"),
-		h.layout.Markup(c, "mainMenu:open"),
-	)
+	return h.menuHandler.SendMenu(c)
 }
 
-func (h UserHandler) OnGrantUserAuth(c tele.Context) error {
+func (h Handler) onGrantUserAuth(c tele.Context) error {
 	grantChatID := int64(viper.GetInt("bot.grant-chat-id"))
 	member, err := c.Bot().ChatMemberOf(&tele.Chat{ID: grantChatID}, &tele.User{ID: c.Sender().ID})
 	if err != nil {
 		return c.Send(
-			h.layout.Text(c, "technical_issues"),
+			h.layout.Text(c, "technical_issues", err.Error()),
 		)
 	}
 
@@ -243,17 +196,14 @@ func (h UserHandler) OnGrantUserAuth(c tele.Context) error {
 	_, err = h.userService.Create(context.Background(), user)
 	if err != nil {
 		return c.Send(
-			h.layout.Text(c, "technical_issues"),
+			h.layout.Text(c, "technical_issues", err.Error()),
 		)
 	}
 
-	return c.Send(
-		h.layout.Text(c, "start"),
-		h.layout.Markup(c, "mainMenu:open"),
-	)
+	return h.menuHandler.SendMenu(c)
 }
 
-func (h UserHandler) OnStudentAuth(c tele.Context) error {
+func (h Handler) onStudentAuth(c tele.Context) error {
 	inputCollector := collector.New()
 	_ = c.Edit(
 		h.layout.Text(c, "email_request"),
@@ -295,7 +245,7 @@ func (h UserHandler) OnStudentAuth(c tele.Context) error {
 	_, err := h.codesStorage.Get(c.Sender().ID)
 	if err != nil && !errors.Is(err, redis.Nil) {
 		return c.Send(
-			h.layout.Text(c, "technical_issues"),
+			h.layout.Text(c, "technical_issues", err.Error()),
 		)
 	}
 	var data, code string
@@ -303,7 +253,7 @@ func (h UserHandler) OnStudentAuth(c tele.Context) error {
 		data, code, err = h.userService.SendAuthCode(context.Background(), email)
 		if err != nil {
 			return c.Send(
-				h.layout.Text(c, "technical_issues"),
+				h.layout.Text(c, "technical_issues", err.Error()),
 			)
 		}
 
@@ -322,18 +272,18 @@ func (h UserHandler) OnStudentAuth(c tele.Context) error {
 	)
 }
 
-func (h UserHandler) OnBackToAuthMenu(c tele.Context) error {
+func (h Handler) onBackToAuthMenu(c tele.Context) error {
 	return c.Edit(
 		h.layout.Text(c, "auth_menu_text"),
 		h.layout.Markup(c, "auth:menu"),
 	)
 }
 
-func (h UserHandler) OnResendEmailConfirmationCode(c tele.Context) error {
+func (h Handler) onResendEmailConfirmationCode(c tele.Context) error {
 	_, err := h.codesStorage.Get(c.Sender().ID)
 	if err != nil && !errors.Is(err, redis.Nil) {
 		return c.Send(
-			h.layout.Text(c, "technical_issues"),
+			h.layout.Text(c, "technical_issues", err.Error()),
 		)
 	}
 
@@ -343,7 +293,7 @@ func (h UserHandler) OnResendEmailConfirmationCode(c tele.Context) error {
 		email, err = h.emailsStorage.Get(c.Sender().ID)
 		if err != nil && !errors.Is(err, redis.Nil) {
 			return c.Send(
-				h.layout.Text(c, "technical_issues"),
+				h.layout.Text(c, "technical_issues", err.Error()),
 			)
 		}
 
@@ -356,7 +306,7 @@ func (h UserHandler) OnResendEmailConfirmationCode(c tele.Context) error {
 		data, code, err = h.userService.SendAuthCode(context.Background(), email.Email)
 		if err != nil {
 			return c.Send(
-				h.layout.Text(c, "technical_issues"),
+				h.layout.Text(c, "technical_issues", err.Error()),
 			)
 		}
 
@@ -375,20 +325,13 @@ func (h UserHandler) OnResendEmailConfirmationCode(c tele.Context) error {
 	)
 }
 
-func (h UserHandler) SendMainMenu(c tele.Context) error {
-	return c.Send(
-		h.layout.Text(c, "main_menu_text", c.Sender().Username),
-		h.layout.Markup(c, "mainMenu:open"),
-	)
-}
-
-func (h UserHandler) EditMainMenu(c tele.Context) error {
-	return c.Edit(
-		h.layout.Text(c, "main_menu_text", c.Sender().Username),
-		h.layout.Markup(c, "mainMenu:open"),
-	)
-}
-
-func (h UserHandler) Hide(c tele.Context) error {
-	return c.Delete()
+func (h Handler) AuthSetup(group *tele.Group) {
+	group.Handle("/start", h.onStart)
+	group.Handle(h.layout.Callback("auth:personalData:accept"), h.onAcceptPersonalDataAgreement)
+	group.Handle(h.layout.Callback("auth:personalData:decline"), h.onDeclinePersonalDataAgreement)
+	group.Handle(h.layout.Callback("auth:external_user"), h.onExternalUserAuth)
+	group.Handle(h.layout.Callback("auth:grant_user"), h.onGrantUserAuth)
+	group.Handle(h.layout.Callback("auth:student"), h.onStudentAuth)
+	group.Handle(h.layout.Callback("auth:resend_email"), h.onResendEmailConfirmationCode)
+	group.Handle(h.layout.Callback("auth:back_to_menu"), h.onBackToAuthMenu)
 }

@@ -19,18 +19,18 @@ type userService interface {
 	UpdateData(ctx context.Context, c tele.Context) (*entity.User, error)
 }
 
-type MiddlewareHandler struct {
+type Handler struct {
 	bot         *tele.Bot
 	layout      *layout.Layout
 	userService userService
 	input       *intele.InputManager
 }
 
-func New(b *bot.Bot) *MiddlewareHandler {
+func New(b *bot.Bot) *Handler {
 	userStorageLocal := postgres.NewUserStorage(b.DB)
 	userServiceLocal := service.NewUserService(userStorageLocal, nil, nil)
 
-	return &MiddlewareHandler{
+	return &Handler{
 		bot:         b.Bot,
 		layout:      b.Layout,
 		userService: userServiceLocal,
@@ -38,7 +38,7 @@ func New(b *bot.Bot) *MiddlewareHandler {
 	}
 }
 
-func (h MiddlewareHandler) Authorized(next tele.HandlerFunc) tele.HandlerFunc {
+func (h Handler) Authorized(next tele.HandlerFunc) tele.HandlerFunc {
 	return func(c tele.Context) error {
 		user, err := h.userService.Get(context.Background(), c.Sender().ID)
 		if err != nil {
@@ -53,7 +53,7 @@ func (h MiddlewareHandler) Authorized(next tele.HandlerFunc) tele.HandlerFunc {
 	}
 }
 
-//func (h MiddlewareHandler) Localisation(next tele.HandlerFunc) tele.HandlerFunc {
+//func (h Handler) Localisation(next tele.HandlerFunc) tele.HandlerFunc {
 //	return func(c tele.Context) error {
 //		user, err := h.userService.Get(context.Background(), c.Sender().ID)
 //		if err != nil {
@@ -71,7 +71,7 @@ func (h MiddlewareHandler) Authorized(next tele.HandlerFunc) tele.HandlerFunc {
 //	}
 //}
 
-//func (h MiddlewareHandler) SetupLocalisation(r tele.Recipient) string {
+//func (h Handler) SetupLocalisation(r tele.Recipient) string {
 //	userID, err := strconv.Atoi(r.Recipient())
 //	if err != nil {
 //		return ""
@@ -84,8 +84,8 @@ func (h MiddlewareHandler) Authorized(next tele.HandlerFunc) tele.HandlerFunc {
 //	return user.Localisation
 //}
 
-// ResetStateOnBack middleware clears the input state when the back button is pressed.
-func (h MiddlewareHandler) ResetStateOnBack(next tele.HandlerFunc) tele.HandlerFunc {
+// ResetInputOnBack middleware clears the input state when the back button is pressed.
+func (h Handler) ResetInputOnBack(next tele.HandlerFunc) tele.HandlerFunc {
 	return func(c tele.Context) error {
 		if c.Callback() != nil {
 			if strings.Contains(c.Callback().Data, "back") {

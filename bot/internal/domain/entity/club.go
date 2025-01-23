@@ -7,6 +7,6 @@ type Club struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	DeletedAt   time.Time
-	Name        string `gorm:"not null"`
+	Name        string `gorm:"not null;unique"`
 	Description string
 }

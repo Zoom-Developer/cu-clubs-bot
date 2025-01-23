@@ -16,7 +16,7 @@ type User struct {
 	ID           int64 `gorm:"primaryKey"`
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
-	Localization string `gorm:"localization"`
+	Localization string `gorm:"default:ru"`
 	Role         Role   `gorm:"not null"`
 	Email        string `gorm:"unique"`
 	FIO          string `gorm:"not null"`

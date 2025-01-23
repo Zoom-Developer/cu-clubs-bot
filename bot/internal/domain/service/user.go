@@ -44,8 +44,6 @@ func NewUserService(userStorage UserStorage, studentDataStorage StudentDataStora
 }
 
 func (s *UserService) Create(ctx context.Context, user entity.User) (*entity.User, error) {
-	user.Localization = "ru"
-
 	return s.userStorage.Create(ctx, &user)
 }
 

@@ -26,6 +26,7 @@ go.work.sum
 /bot/config.yaml
 
 .idea
+.vscode
 
 logs/*
 !logs/.gitkeep
