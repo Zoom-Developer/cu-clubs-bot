@@ -1,9 +1,10 @@
 module github.com/Badsnus/cu-clubs-bot/bot
 
-go 1.22.3
+go 1.23.5
 
 require (
 	github.com/google/uuid v1.1.2
+	github.com/nlypage/intele v1.0.0-beta.1
 	github.com/redis/go-redis/v9 v9.6.1
 	github.com/spf13/viper v1.13.0
 	go.uber.org/zap v1.17.0

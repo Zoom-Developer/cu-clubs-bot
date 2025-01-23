@@ -1,10 +1,10 @@
 package bot
 
 import (
+	"github.com/nlypage/intele"
 	"sync"
 
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis"
-	"github.com/Badsnus/cu-clubs-bot/bot/pkg/intele"
 
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/service"
 	"github.com/spf13/viper"

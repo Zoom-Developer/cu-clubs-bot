@@ -2,9 +2,8 @@ package middlewares
 
 import (
 	"context"
+	"github.com/nlypage/intele"
 	"strings"
-
-	"github.com/Badsnus/cu-clubs-bot/bot/pkg/intele"
 
 	"github.com/Badsnus/cu-clubs-bot/bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/postgres"

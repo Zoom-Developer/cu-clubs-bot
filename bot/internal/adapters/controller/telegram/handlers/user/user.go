@@ -9,8 +9,8 @@ import (
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/emails"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/service"
-	"github.com/Badsnus/cu-clubs-bot/bot/pkg/intele"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/smtp"
+	"github.com/nlypage/intele"
 
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/layout"
