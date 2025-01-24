@@ -2,8 +2,12 @@ package middlewares
 
 import (
 	"context"
-	"github.com/nlypage/intele"
+	"errors"
 	"strings"
+
+	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger/types"
+	"github.com/nlypage/intele"
+	"gorm.io/gorm"
 
 	"github.com/Badsnus/cu-clubs-bot/bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/postgres"
@@ -21,6 +25,7 @@ type userService interface {
 type Handler struct {
 	bot         *tele.Bot
 	layout      *layout.Layout
+	logger      *types.Logger
 	userService userService
 	input       *intele.InputManager
 }
@@ -32,6 +37,7 @@ func New(b *bot.Bot) *Handler {
 	return &Handler{
 		bot:         b.Bot,
 		layout:      b.Layout,
+		logger:      b.Logger,
 		userService: userServiceLocal,
 		input:       b.Input,
 	}
@@ -41,6 +47,12 @@ func (h Handler) Authorized(next tele.HandlerFunc) tele.HandlerFunc {
 	return func(c tele.Context) error {
 		user, err := h.userService.Get(context.Background(), c.Sender().ID)
 		if err != nil {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				h.logger.Errorf("(user: %d) error while getting user from db: %v", c.Sender().ID, err)
+				return c.Send(
+					h.layout.Text(c, "technical_issues", err.Error()),
+				)
+			}
 			return c.Send(h.layout.Text(c, "auth_required"))
 		}
 

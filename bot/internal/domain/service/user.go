@@ -15,6 +15,7 @@ import (
 type UserStorage interface {
 	Create(ctx context.Context, user *entity.User) (*entity.User, error)
 	Get(ctx context.Context, id uint) (*entity.User, error)
+	GetByQRCodeID(ctx context.Context, qrCodeID string) (*entity.User, error)
 	GetMany(ctx context.Context, ids []int64) ([]entity.User, error)
 	GetAll(ctx context.Context) ([]entity.User, error)
 	Update(ctx context.Context, user *entity.User) (*entity.User, error)
@@ -50,6 +51,10 @@ func (s *UserService) Create(ctx context.Context, user entity.User) (*entity.Use
 
 func (s *UserService) Get(ctx context.Context, userID int64) (*entity.User, error) {
 	return s.userStorage.Get(ctx, uint(userID))
+}
+
+func (s *UserService) GetByQRCodeID(ctx context.Context, qrCodeID string) (*entity.User, error) {
+	return s.userStorage.GetByQRCodeID(ctx, qrCodeID)
 }
 
 func (s *UserService) GetAll(ctx context.Context) ([]entity.User, error) {

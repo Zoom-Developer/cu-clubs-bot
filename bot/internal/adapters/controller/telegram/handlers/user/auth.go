@@ -3,7 +3,7 @@ package user
 import (
 	"context"
 	"errors"
-	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/codes"
+
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/emails"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/validator"
@@ -11,75 +11,25 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
 	tele "gopkg.in/telebot.v3"
-	"strings"
 )
 
-func (h Handler) onStart(c tele.Context) error {
-	_ = c.Delete()
-	_, err := h.userService.Get(context.Background(), c.Sender().ID)
-	if err != nil {
-		authCode := c.Message().Payload
-		if authCode == "" {
-			return c.Send(
-				h.layout.Text(c, "personal_data_agreement_text"),
-				h.layout.Markup(c, "auth:personalData:agreementMenu"),
-			)
-		}
-
-		var code codes.Code
-		code, err = h.codesStorage.Get(c.Sender().ID)
-		if err != nil {
-			return c.Send(
-				h.layout.Text(c, "session_expire"),
-			)
-		}
-
-		if authCode != code.Code {
-			return c.Send(
-				h.layout.Text(c, "something_went_wrong"),
-			)
-		}
-
-		data := strings.Split(code.CodeContext, ";")
-		email, fio := data[0], data[1]
-
-		user := entity.User{
-			ID:    c.Sender().ID,
-			Role:  entity.Student,
-			Email: email,
-			FIO:   fio,
-		}
-
-		_, err = h.userService.Create(context.Background(), user)
-		if err != nil {
-			return c.Send(
-				h.layout.Text(c, "technical_issues", err.Error()),
-			)
-		}
-
-		h.codesStorage.Clear(c.Sender().ID)
-		h.emailsStorage.Clear(c.Sender().ID)
-
-		return h.menuHandler.SendMenu(c)
-	}
-
-	return h.menuHandler.SendMenu(c)
-}
-
-func (h Handler) onDeclinePersonalDataAgreement(c tele.Context) error {
+func (h Handler) declinePersonalDataAgreement(c tele.Context) error {
+	h.logger.Infof("(user: %d) decline personal data agreement", c.Sender().ID)
 	return c.Edit(
 		h.layout.Text(c, "decline_personal_data_agreement_text"),
 	)
 }
 
-func (h Handler) onAcceptPersonalDataAgreement(c tele.Context) error {
+func (h Handler) acceptPersonalDataAgreement(c tele.Context) error {
+	h.logger.Infof("(user: %d) accept personal data agreement", c.Sender().ID)
 	return c.Edit(
 		h.layout.Text(c, "auth_menu_text"),
 		h.layout.Markup(c, "auth:menu"),
 	)
 }
 
-func (h Handler) onExternalUserAuth(c tele.Context) error {
+func (h Handler) externalUserAuth(c tele.Context) error {
+	h.logger.Infof("(user: %d) external user auth", c.Sender().ID)
 	inputCollector := collector.New()
 	_ = c.Edit(
 		h.layout.Text(c, "fio_request"),
@@ -101,6 +51,7 @@ func (h Handler) onExternalUserAuth(c tele.Context) error {
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 			return nil
 		case err != nil:
+			h.logger.Errorf("(user: %d) error while input fio: %v", c.Sender().ID, err)
 			_ = inputCollector.Send(c,
 				h.layout.Text(c, "input_error", h.layout.Text(c, "fio_request")),
 				h.layout.Markup(c, "auth:backToMenu"),
@@ -127,19 +78,24 @@ func (h Handler) onExternalUserAuth(c tele.Context) error {
 	}
 	_, err := h.userService.Create(context.Background(), user)
 	if err != nil {
+		h.logger.Errorf("(user: %d) error while creating new user: %v", c.Sender().ID, err)
 		return c.Send(
 			h.layout.Text(c, "technical_issues", err.Error()),
 			h.layout.Markup(c, "auth:backToMenu"),
 		)
 	}
+	h.logger.Infof("(user: %d) new user created(role: %s)", c.Sender().ID, user.Role)
 
 	return h.menuHandler.SendMenu(c)
 }
 
-func (h Handler) onGrantUserAuth(c tele.Context) error {
+func (h Handler) grantUserAuth(c tele.Context) error {
+	h.logger.Infof("(user: %d) grant user auth", c.Sender().ID)
+
 	grantChatID := int64(viper.GetInt("bot.grant-chat-id"))
 	member, err := c.Bot().ChatMemberOf(&tele.Chat{ID: grantChatID}, &tele.User{ID: c.Sender().ID})
 	if err != nil {
+		h.logger.Errorf("(user: %d) error while verification user's membership in the grant chat: %v", c.Sender().ID, err)
 		return c.Send(
 			h.layout.Text(c, "technical_issues", err.Error()),
 		)
@@ -173,6 +129,7 @@ func (h Handler) onGrantUserAuth(c tele.Context) error {
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 			return nil
 		case errGet != nil:
+			h.logger.Errorf("(user: %d) error while input fio: %v", c.Sender().ID, errGet)
 			_ = inputCollector.Send(c,
 				h.layout.Text(c, "input_error", h.layout.Text(c, "fio_request")),
 				h.layout.Markup(c, "auth:backToMenu"),
@@ -199,16 +156,20 @@ func (h Handler) onGrantUserAuth(c tele.Context) error {
 	}
 	_, err = h.userService.Create(context.Background(), user)
 	if err != nil {
+		h.logger.Errorf("(user: %d) error while creating new user: %v", c.Sender().ID, err)
 		return c.Send(
 			h.layout.Text(c, "technical_issues", err.Error()),
 			h.layout.Markup(c, "auth:backToMenu"),
 		)
 	}
+	h.logger.Infof("(user: %d) new user created(role: %s)", c.Sender().ID, user.Role)
 
 	return h.menuHandler.SendMenu(c)
 }
 
-func (h Handler) onStudentAuth(c tele.Context) error {
+func (h Handler) studentAuth(c tele.Context) error {
+	h.logger.Infof("(user: %d) student auth", c.Sender().ID)
+
 	inputCollector := collector.New()
 	_ = c.Edit(
 		h.layout.Text(c, "email_request"),
@@ -229,6 +190,7 @@ func (h Handler) onStudentAuth(c tele.Context) error {
 		case canceled:
 			return nil
 		case errGet != nil:
+			h.logger.Errorf("(user: %d) error while input email: %v", c.Sender().ID, errGet)
 			_ = inputCollector.Send(c,
 				h.layout.Text(c, "input_error", h.layout.Text(c, "email_request")),
 				h.layout.Markup(c, "auth:backToMenu"),
@@ -249,6 +211,7 @@ func (h Handler) onStudentAuth(c tele.Context) error {
 
 	_, err := h.codesStorage.Get(c.Sender().ID)
 	if err != nil && !errors.Is(err, redis.Nil) {
+		h.logger.Errorf("(user: %d) error while getting auth code from redis: %v", c.Sender().ID, err)
 		return c.Send(
 			h.layout.Text(c, "technical_issues", err.Error()),
 		)
@@ -257,6 +220,7 @@ func (h Handler) onStudentAuth(c tele.Context) error {
 	if errors.Is(err, redis.Nil) {
 		data, code, err = h.userService.SendAuthCode(context.Background(), email)
 		if err != nil {
+			h.logger.Errorf("(user: %d) error while sending auth code: %v", c.Sender().ID, err)
 			return c.Send(
 				h.layout.Text(c, "technical_issues", err.Error()),
 				h.layout.Markup(c, "auth:backToMenu"),
@@ -265,6 +229,8 @@ func (h Handler) onStudentAuth(c tele.Context) error {
 
 		h.emailsStorage.Set(c.Sender().ID, email, "", viper.GetDuration("bot.session.email-ttl"))
 		h.codesStorage.Set(c.Sender().ID, code, data, viper.GetDuration("bot.session.auth-ttl"))
+
+		h.logger.Infof("(user: %d) auth code sent on %s", c.Sender().ID, email)
 
 		return c.Send(
 			h.layout.Text(c, "email_auth_link_sent"),
@@ -278,16 +244,19 @@ func (h Handler) onStudentAuth(c tele.Context) error {
 	)
 }
 
-func (h Handler) onBackToAuthMenu(c tele.Context) error {
+func (h Handler) backToAuthMenu(c tele.Context) error {
 	return c.Edit(
 		h.layout.Text(c, "auth_menu_text"),
 		h.layout.Markup(c, "auth:menu"),
 	)
 }
 
-func (h Handler) onResendEmailConfirmationCode(c tele.Context) error {
+func (h Handler) resendEmailConfirmationCode(c tele.Context) error {
+	h.logger.Infof("(user: %d) resend auth code", c.Sender().ID)
+
 	_, err := h.codesStorage.Get(c.Sender().ID)
 	if err != nil && !errors.Is(err, redis.Nil) {
+		h.logger.Errorf("(user: %d) error while getting auth code from redis: %v", c.Sender().ID, err)
 		return c.Send(
 			h.layout.Text(c, "technical_issues", err.Error()),
 		)
@@ -298,6 +267,7 @@ func (h Handler) onResendEmailConfirmationCode(c tele.Context) error {
 	if errors.Is(err, redis.Nil) {
 		email, err = h.emailsStorage.Get(c.Sender().ID)
 		if err != nil && !errors.Is(err, redis.Nil) {
+			h.logger.Errorf("(user: %d) error while getting user email from redis: %v", c.Sender().ID, err)
 			return c.Send(
 				h.layout.Text(c, "technical_issues", err.Error()),
 			)
@@ -311,6 +281,7 @@ func (h Handler) onResendEmailConfirmationCode(c tele.Context) error {
 
 		data, code, err = h.userService.SendAuthCode(context.Background(), email.Email)
 		if err != nil {
+			h.logger.Errorf("(user: %d) error while sending auth code: %v", c.Sender().ID, err)
 			return c.Send(
 				h.layout.Text(c, "technical_issues", err.Error()),
 			)
@@ -318,6 +289,8 @@ func (h Handler) onResendEmailConfirmationCode(c tele.Context) error {
 
 		h.emailsStorage.Set(c.Sender().ID, email.Email, "", viper.GetDuration("bot.session.email-ttl"))
 		h.codesStorage.Set(c.Sender().ID, code, data, viper.GetDuration("bot.session.auth-ttl"))
+
+		h.logger.Infof("(user: %d) auth code sent on %s", c.Sender().ID, email)
 
 		return c.Edit(
 			h.layout.Text(c, "email_confirmation_code_request"),
@@ -332,12 +305,11 @@ func (h Handler) onResendEmailConfirmationCode(c tele.Context) error {
 }
 
 func (h Handler) AuthSetup(group *tele.Group) {
-	group.Handle("/start", h.onStart)
-	group.Handle(h.layout.Callback("auth:personalData:accept"), h.onAcceptPersonalDataAgreement)
-	group.Handle(h.layout.Callback("auth:personalData:decline"), h.onDeclinePersonalDataAgreement)
-	group.Handle(h.layout.Callback("auth:external_user"), h.onExternalUserAuth)
-	group.Handle(h.layout.Callback("auth:grant_user"), h.onGrantUserAuth)
-	group.Handle(h.layout.Callback("auth:student"), h.onStudentAuth)
-	group.Handle(h.layout.Callback("auth:resend_email"), h.onResendEmailConfirmationCode)
-	group.Handle(h.layout.Callback("auth:back_to_menu"), h.onBackToAuthMenu)
+	group.Handle(h.layout.Callback("auth:personalData:accept"), h.acceptPersonalDataAgreement)
+	group.Handle(h.layout.Callback("auth:personalData:decline"), h.declinePersonalDataAgreement)
+	group.Handle(h.layout.Callback("auth:external_user"), h.externalUserAuth)
+	group.Handle(h.layout.Callback("auth:grant_user"), h.grantUserAuth)
+	group.Handle(h.layout.Callback("auth:student"), h.studentAuth)
+	group.Handle(h.layout.Callback("auth:resend_email"), h.resendEmailConfirmationCode)
+	group.Handle(h.layout.Callback("auth:back_to_menu"), h.backToAuthMenu)
 }
