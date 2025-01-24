@@ -20,7 +20,9 @@ type User struct {
 	Role         Role   `gorm:"not null"`
 	Email        string `gorm:"uniqueIndex:idx_users_email,where:email <> ''"`
 	FIO          string `gorm:"not null"`
-	IsBanned     bool   `gorm:"default:false"`
+	QRCodeID     string
+	QRFileID     string
+	IsBanned     bool `gorm:"default:false"`
 }
 
 type ClubOwner struct {

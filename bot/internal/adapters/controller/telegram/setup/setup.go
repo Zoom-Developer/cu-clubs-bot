@@ -37,7 +37,7 @@ func Setup(b *bot.Bot) {
 
 	//User:
 	b.Handle(b.Layout.Callback("mainMenu:back"), menuHandler.EditMenu)
-
+	b.Handle(b.Layout.Callback("mainMenu:qr"), userHandler.OnQR)
 	//Admin:
 	admins := viper.GetIntSlice("bot.admin-ids")
 	adminsInt64 := make([]int64, len(admins))
