@@ -24,6 +24,7 @@ func Setup(b *bot.Bot) {
 	if viper.GetBool("settings.logging.debug") {
 		b.Use(middleware.Logger())
 	}
+	b.Use(middle.LoadBanners)
 	b.Use(b.Layout.Middleware("ru"))
 	b.Use(middleware.AutoRespond())
 	b.Handle(tele.OnText, b.Input.Handler())
@@ -31,6 +32,7 @@ func Setup(b *bot.Bot) {
 	b.Use(middle.ResetInputOnBack)
 	b.Handle(b.Layout.Callback("core:hide"), userHandler.Hide)
 	b.Handle(b.Layout.Callback("core:back"), userHandler.Hide)
+	b.Use(middle.Authorized)
 
 	// Setup handlers
 	//Start

@@ -3,6 +3,7 @@ package middlewares
 import (
 	"context"
 	"errors"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/banner"
 	"strings"
 
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger/types"
@@ -40,6 +41,16 @@ func New(b *bot.Bot) *Handler {
 		logger:      b.Logger,
 		userService: userServiceLocal,
 		input:       b.Input,
+	}
+}
+
+func (h Handler) LoadBanners(next tele.HandlerFunc) tele.HandlerFunc {
+	return func(c tele.Context) error {
+		err := banner.Load(c.Bot())
+		if err != nil {
+			return nil
+		}
+		return next(c)
 	}
 }
 

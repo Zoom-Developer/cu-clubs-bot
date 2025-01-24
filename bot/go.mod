@@ -1,12 +1,12 @@
 module github.com/Badsnus/cu-clubs-bot/bot
 
-go 1.23.5
+go 1.21
 
 require (
 	github.com/fogleman/gg v1.3.0
 	github.com/google/uuid v1.1.2
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
-	github.com/nlypage/intele v1.0.0-beta.1
+	github.com/nlypage/intele v1.0.0
 	github.com/redis/go-redis/v9 v9.6.1
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/spf13/viper v1.13.0

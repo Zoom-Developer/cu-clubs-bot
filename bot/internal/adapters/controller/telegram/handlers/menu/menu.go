@@ -3,6 +3,7 @@ package menu
 import (
 	"github.com/Badsnus/cu-clubs-bot/bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/banner"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger/types"
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/layout"
@@ -30,7 +31,7 @@ func (h Handler) SendMenu(c tele.Context) error {
 
 	h.logger.Infof("(user: %d) send main menu (isAdmin=%t)", c.Sender().ID, isAdmin)
 	return c.Send(
-		h.layout.Text(c, "main_menu_text", c.Sender().Username),
+		banner.Menu.Caption(h.layout.Text(c, "main_menu_text", c.Sender().Username)),
 		menuMarkup,
 	)
 }
@@ -45,7 +46,7 @@ func (h Handler) EditMenu(c tele.Context) error {
 
 	h.logger.Infof("(user: %d) edit main menu (isAdmin=%t)", c.Sender().ID, isAdmin)
 	return c.Edit(
-		h.layout.Text(c, "main_menu_text", c.Sender().Username),
+		banner.Menu.Caption(h.layout.Text(c, "main_menu_text", c.Sender().Username)),
 		menuMarkup,
 	)
 }

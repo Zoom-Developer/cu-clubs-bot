@@ -9,6 +9,7 @@ import (
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/dto"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/service"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/banner"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/validator"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger/types"
 	"github.com/nlypage/intele"
@@ -82,7 +83,7 @@ func (h Handler) adminMenu(c tele.Context) error {
 	}
 
 	return c.Edit(
-		h.layout.Text(c, "admin_menu_text", c.Sender().Username),
+		banner.Menu.Caption(h.layout.Text(c, "admin_menu_text", c.Sender().Username)),
 		h.layout.Markup(c, "admin:menu"),
 	)
 }
