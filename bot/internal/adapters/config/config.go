@@ -51,7 +51,7 @@ func Get() *Config {
 	}
 
 	var gormConfig *gorm.Config
-	if viper.GetBool("settings.debug") {
+	if viper.GetBool("settings.logging.debug") {
 		newLogger := gormLogger.New(
 			log.New(os.Stdout, "\r\n", log.LstdFlags),
 			gormLogger.Config{
@@ -61,10 +61,13 @@ func Get() *Config {
 			},
 		)
 		gormConfig = &gorm.Config{
-			Logger: newLogger,
+			TranslateError: true,
+			Logger:         newLogger,
 		}
 	} else {
-		gormConfig = &gorm.Config{}
+		gormConfig = &gorm.Config{
+			TranslateError: true,
+		}
 	}
 
 	dsn := fmt.Sprintf("user=%s password=%s dbname=%s host=%s port=%d sslmode=disable TimeZone=GMT+3",

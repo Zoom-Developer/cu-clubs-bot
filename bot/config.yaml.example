@@ -20,6 +20,7 @@ service:
     email: email@domain.ru
 
 bot:
+  name: "your_bot_name"
   token: "BOT_TOKEN"
   grant-chat-id: -500000
   admin-ids:
@@ -28,14 +29,24 @@ bot:
     ttl: 45m
     auth-ttl: 10m
     email-ttl: 120m
+    banner:
+      auth: "file-id"
+      menu: "file-id"
+      club-owner: "file-id"
+      events: "file-id"
   auth:
     grant-chat-id: -40000000
     valid-email-domains:
         - edu.centraluniversity.ru
         - centraluniversity.ru
-        - yandex.ru
+  qr:
+    chat-id: -400000000
 
 settings:
+    qr:
+      output-dir: "./qrs"
+      logo-path: "./logo.png"
+
     logging:
       log-to-file: true # логирование в файл
       logs-dir: "./logs"

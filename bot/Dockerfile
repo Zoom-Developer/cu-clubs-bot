@@ -1,4 +1,4 @@
-FROM golang:1.22-alpine AS builder
+FROM golang:1.23.5-alpine AS builder
 
 RUN apk update && apk add ca-certificates git gcc g++ libc-dev binutils
 
@@ -22,5 +22,6 @@ COPY --from=builder /opt/bin/bot ./
 COPY telegram.yml /opt/telegram.yml
 COPY config.yaml /opt/config.yaml
 COPY locales /opt/locales
+COPY logo.png /opt/logo.png
 
 CMD ["./bot"]

@@ -16,11 +16,13 @@ type User struct {
 	ID           int64 `gorm:"primaryKey"`
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
-	Localization string `gorm:"localization"`
+	Localization string `gorm:"default:ru"`
 	Role         Role   `gorm:"not null"`
-	Email        string `gorm:"unique"`
+	Email        string `gorm:"uniqueIndex:idx_users_email,where:email <> ''"`
 	FIO          string `gorm:"not null"`
-	IsBanned     bool
+	QRCodeID     string
+	QRFileID     string
+	IsBanned     bool `gorm:"default:false"`
 }
 
 type ClubOwner struct {
