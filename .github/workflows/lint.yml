@@ -27,6 +27,7 @@ jobs:
         run: |
           go mod tidy
           go mod verify
+          go mod download
 
       - name: Install golangci-lint
         run: |
