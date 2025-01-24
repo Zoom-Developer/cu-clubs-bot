@@ -88,6 +88,41 @@ buttons:
     callback_data: mainMenu_back
     text: '{{ text `back` }}'
 
+  clubOwner:myClubs:
+    unique: clubOwner_myClubs
+    callback_data: clubOwner_myClubs
+    text: '{{ text `my_clubs` }}'
+
+  clubOwner:back_to_menu:
+    unique: clubOwner_backToMenu
+    callback_data: clubOwner_backToMenu
+    text: '{{ text `back` }}'
+
+  clubOwner:myClubs:club:
+    unique: clubOwner_myClubs_club
+    callback_data: '{{.ID}}'
+    text: '{{.Name}}'
+
+  clubOwner:club:settings:
+    unique: clubOwner_club_settings
+    callback_data: '{{.ID}}'
+    text: '{{ text `club_settings` }}'
+
+  clubOwner:club:create_event:
+    unique: clubOwner_club_createEvent
+    callback_data: '{{.ID}}'
+    text: '{{ text `create_event` }}'
+
+  clubOwner:club:events:
+    unique: clubOwner_club_events
+    callback_data: '{{.ID}}'
+    text: '{{ text `club_events` }}'
+
+  clubOwner:myClubs:back:
+    unique: clubOwner_myClubs_back
+    callback_data: clubOwner_myClubs_back
+    text: '{{ text `back` }}'
+
   admin:create_club:
     unique: admin_createClub
     callback_data: admin_createClub
@@ -168,6 +203,11 @@ markups:
     - [ mainMenu:qr ]
   mainMenu:back:
     - [ mainMenu:back ]
+
+  clubOwner:club:menu:
+    - [ clubOwner:club:events ]
+    - [ clubOwner:club:create_event ]
+    - [ clubOwner:club:settings ]
 
   admin:menu:
     - [ admin:clubs ]

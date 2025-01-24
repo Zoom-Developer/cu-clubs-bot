@@ -3,6 +3,7 @@ package setup
 import (
 	"github.com/Badsnus/cu-clubs-bot/bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/handlers/admin"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/handlers/clubOwner"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/handlers/menu"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/handlers/middlewares"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/handlers/start"
@@ -17,6 +18,7 @@ func Setup(b *bot.Bot) {
 	middle := middlewares.New(b)
 	startHandler := start.New(b)
 	userHandler := user.New(b)
+	clubOwnerHandler := clubowner.NewHandler(b)
 	menuHandler := menu.New(b)
 	adminHandler := admin.New(b)
 
@@ -44,6 +46,10 @@ func Setup(b *bot.Bot) {
 	//User:
 	b.Handle(b.Layout.Callback("mainMenu:back"), menuHandler.EditMenu)
 	b.Handle(b.Layout.Callback("mainMenu:qr"), userHandler.QrCode)
+
+	// ClubOwner:
+	clubOwnerHandler.ClubOwnerSetup(b.Group())
+
 	//Admin:
 	admins := viper.GetIntSlice("bot.admin-ids")
 	adminsInt64 := make([]int64, len(admins))

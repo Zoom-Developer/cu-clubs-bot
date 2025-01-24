@@ -79,6 +79,19 @@ admin_menu: 🔑 Админ-меню
 qr: 📷 QR-код
 qr_text: Ваш QR-код для посещения мероприятий
 
+#club owner menu
+club_owner_club_menu_text: |-
+  🏆 Клуб: <b>{{.Club.Name}}</b>
+  
+  <u>Организаторы:</u>
+  {{if .Owners}}{{range .Owners}}- <b>{{.FIO}}</b> (id: <code>{{.UserID}}</code>){{"\n"}}{{end}}{{else}}<i>- Отсутствуют</i>{{"\n"}}{{end}}
+  <blockquote>📝 Описание:
+  {{.Club.Description}}</blockquote>
+
+club_settings: ⚙️ Настройки
+create_event: ➕ Создать мероприятие
+club_events: 📅 Мероприятия
+
 #admin menu
 admin_menu_text: |-
   <b>Админ-меню:</b>

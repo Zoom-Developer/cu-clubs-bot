@@ -22,7 +22,8 @@ type User struct {
 	FIO          string `gorm:"not null"`
 	QRCodeID     string
 	QRFileID     string
-	IsBanned     bool `gorm:"default:false"`
+	IsBanned     bool   `gorm:"default:false"`
+	Clubs        []Club `gorm:"many2many:club_owners;foreignKey:ID;joinForeignKey:UserID;References:ID;JoinReferences:ClubID"`
 }
 
 type ClubOwner struct {

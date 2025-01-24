@@ -28,6 +28,12 @@ func (s *ClubStorage) Get(ctx context.Context, id string) (*entity.Club, error) 
 	return &club, err
 }
 
+func (s *ClubStorage) GetByOwnerID(ctx context.Context, id int64) ([]entity.Club, error) {
+	var user entity.User
+	err := s.db.WithContext(ctx).Preload("Clubs").First(&user, "id = ?", id).Error
+	return user.Clubs, err
+}
+
 func (s *ClubStorage) Update(ctx context.Context, club *entity.Club) (*entity.Club, error) {
 	err := s.db.WithContext(ctx).Save(&club).Error
 	return club, err
