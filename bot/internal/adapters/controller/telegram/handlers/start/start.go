@@ -3,6 +3,7 @@ package start
 import (
 	"context"
 	"errors"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/banner"
 	"strings"
 
 	"github.com/Badsnus/cu-clubs-bot/bot/cmd/bot"
@@ -73,7 +74,7 @@ func (h *Handler) Start(c tele.Context) error {
 	if len(payload) < 2 {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.Send(
-				h.layout.Text(c, "personal_data_agreement_text"),
+				banner.Auth.Caption(h.layout.Text(c, "personal_data_agreement_text")),
 				h.layout.Markup(c, "auth:personalData:agreementMenu"),
 			)
 		}

@@ -29,14 +29,18 @@ bot:
     ttl: 45m
     auth-ttl: 10m
     email-ttl: 120m
+    banner:
+      auth: "file-id"
+      menu: "file-id"
+      club-owner: "file-id"
+      events: "file-id"
   auth:
     grant-chat-id: -40000000
     valid-email-domains:
         - edu.centraluniversity.ru
         - centraluniversity.ru
-        - yandex.ru
   qr:
-    chat-id: -4720169863
+    chat-id: -400000000
 
 settings:
     qr:

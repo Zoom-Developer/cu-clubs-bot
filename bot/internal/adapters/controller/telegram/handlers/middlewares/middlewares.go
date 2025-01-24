@@ -61,15 +61,19 @@ func (h Handler) Authorized(next tele.HandlerFunc) tele.HandlerFunc {
 			if !errors.Is(err, gorm.ErrRecordNotFound) {
 				h.logger.Errorf("(user: %d) error while getting user from db: %v", c.Sender().ID, err)
 				return c.Send(
-					h.layout.Text(c, "technical_issues", err.Error()),
+					banner.Auth.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+					h.layout.Markup(c, "core:hide"),
 				)
 			}
-			return c.Send(h.layout.Text(c, "auth_required"))
+			return c.Send(
+				banner.Auth.Caption(h.layout.Text(c, "auth_required")),
+				h.layout.Markup(c, "core:hide"),
+			)
 		}
 
 		if user.IsBanned {
 			return c.Send(
-				h.layout.TextLocale(user.Localization, "banned"),
+				banner.Auth.Caption(h.layout.TextLocale(user.Localization, "banned")),
 				h.layout.MarkupLocale(user.Localization, "core:hide"),
 			)
 		}

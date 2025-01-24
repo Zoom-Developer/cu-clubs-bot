@@ -6,6 +6,7 @@ import (
 
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/emails"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/banner"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/validator"
 	"github.com/nlypage/intele/collector"
 	"github.com/redis/go-redis/v9"
@@ -16,14 +17,14 @@ import (
 func (h Handler) declinePersonalDataAgreement(c tele.Context) error {
 	h.logger.Infof("(user: %d) decline personal data agreement", c.Sender().ID)
 	return c.Edit(
-		h.layout.Text(c, "decline_personal_data_agreement_text"),
+		banner.Auth.Caption(h.layout.Text(c, "decline_personal_data_agreement_text")),
 	)
 }
 
 func (h Handler) acceptPersonalDataAgreement(c tele.Context) error {
 	h.logger.Infof("(user: %d) accept personal data agreement", c.Sender().ID)
 	return c.Edit(
-		h.layout.Text(c, "auth_menu_text"),
+		banner.Auth.Caption(h.layout.Text(c, "auth_menu_text")),
 		h.layout.Markup(c, "auth:menu"),
 	)
 }
@@ -32,7 +33,7 @@ func (h Handler) externalUserAuth(c tele.Context) error {
 	h.logger.Infof("(user: %d) external user auth", c.Sender().ID)
 	inputCollector := collector.New()
 	_ = c.Edit(
-		h.layout.Text(c, "fio_request"),
+		banner.Auth.Caption(h.layout.Text(c, "fio_request")),
 		h.layout.Markup(c, "auth:backToMenu"),
 	)
 	inputCollector.Collect(c.Message())
@@ -53,12 +54,12 @@ func (h Handler) externalUserAuth(c tele.Context) error {
 		case err != nil:
 			h.logger.Errorf("(user: %d) error while input fio: %v", c.Sender().ID, err)
 			_ = inputCollector.Send(c,
-				h.layout.Text(c, "input_error", h.layout.Text(c, "fio_request")),
+				banner.Auth.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "fio_request"))),
 				h.layout.Markup(c, "auth:backToMenu"),
 			)
 		case !validator.Fio(message.Text):
 			_ = inputCollector.Send(c,
-				h.layout.Text(c, "invalid_user_fio"),
+				banner.Auth.Caption(h.layout.Text(c, "invalid_user_fio")),
 				h.layout.Markup(c, "auth:backToMenu"),
 			)
 		case validator.Fio(message.Text):
@@ -80,7 +81,7 @@ func (h Handler) externalUserAuth(c tele.Context) error {
 	if err != nil {
 		h.logger.Errorf("(user: %d) error while creating new user: %v", c.Sender().ID, err)
 		return c.Send(
-			h.layout.Text(c, "technical_issues", err.Error()),
+			banner.Auth.Caption(h.layout.Text(c, "technical_issues", err.Error())),
 			h.layout.Markup(c, "auth:backToMenu"),
 		)
 	}
@@ -97,20 +98,20 @@ func (h Handler) grantUserAuth(c tele.Context) error {
 	if err != nil {
 		h.logger.Errorf("(user: %d) error while verification user's membership in the grant chat: %v", c.Sender().ID, err)
 		return c.Send(
-			h.layout.Text(c, "technical_issues", err.Error()),
+			banner.Auth.Caption(h.layout.Text(c, "technical_issues", err.Error())),
 		)
 	}
 
 	if member.Role != tele.Creator && member.Role != tele.Administrator && member.Role != tele.Member {
 		return c.Edit(
-			h.layout.Text(c, "grant_user_required"),
+			banner.Auth.Caption(h.layout.Text(c, "grant_user_required")),
 			h.layout.Markup(c, "auth:backToMenu"),
 		)
 	}
 
 	inputCollector := collector.New()
 	_ = c.Edit(
-		h.layout.Text(c, "fio_request"),
+		banner.Auth.Caption(h.layout.Text(c, "fio_request")),
 		h.layout.Markup(c, "auth:backToMenu"),
 	)
 	inputCollector.Collect(c.Message())
@@ -131,12 +132,12 @@ func (h Handler) grantUserAuth(c tele.Context) error {
 		case errGet != nil:
 			h.logger.Errorf("(user: %d) error while input fio: %v", c.Sender().ID, errGet)
 			_ = inputCollector.Send(c,
-				h.layout.Text(c, "input_error", h.layout.Text(c, "fio_request")),
+				banner.Auth.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "fio_request"))),
 				h.layout.Markup(c, "auth:backToMenu"),
 			)
 		case !validator.Fio(message.Text):
 			_ = inputCollector.Send(c,
-				h.layout.Text(c, "invalid_user_fio"),
+				banner.Auth.Caption(h.layout.Text(c, "invalid_user_fio")),
 				h.layout.Markup(c, "auth:backToMenu"),
 			)
 		case validator.Fio(message.Text):
@@ -158,7 +159,7 @@ func (h Handler) grantUserAuth(c tele.Context) error {
 	if err != nil {
 		h.logger.Errorf("(user: %d) error while creating new user: %v", c.Sender().ID, err)
 		return c.Send(
-			h.layout.Text(c, "technical_issues", err.Error()),
+			banner.Auth.Caption(h.layout.Text(c, "technical_issues", err.Error())),
 			h.layout.Markup(c, "auth:backToMenu"),
 		)
 	}
@@ -172,7 +173,7 @@ func (h Handler) studentAuth(c tele.Context) error {
 
 	inputCollector := collector.New()
 	_ = c.Edit(
-		h.layout.Text(c, "email_request"),
+		banner.Auth.Caption(h.layout.Text(c, "email_request")),
 		h.layout.Markup(c, "auth:backToMenu"),
 	)
 	inputCollector.Collect(c.Message())
@@ -192,12 +193,12 @@ func (h Handler) studentAuth(c tele.Context) error {
 		case errGet != nil:
 			h.logger.Errorf("(user: %d) error while input email: %v", c.Sender().ID, errGet)
 			_ = inputCollector.Send(c,
-				h.layout.Text(c, "input_error", h.layout.Text(c, "email_request")),
+				banner.Auth.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "email_request"))),
 				h.layout.Markup(c, "auth:backToMenu"),
 			)
 		case !validator.Email(message.Text):
 			_ = inputCollector.Send(c,
-				h.layout.Text(c, "invalid_email"),
+				banner.Auth.Caption(h.layout.Text(c, "invalid_email")),
 				h.layout.Markup(c, "auth:backToMenu"),
 			)
 		case validator.Email(message.Text):
@@ -213,7 +214,7 @@ func (h Handler) studentAuth(c tele.Context) error {
 	if err != nil && !errors.Is(err, redis.Nil) {
 		h.logger.Errorf("(user: %d) error while getting auth code from redis: %v", c.Sender().ID, err)
 		return c.Send(
-			h.layout.Text(c, "technical_issues", err.Error()),
+			banner.Auth.Caption(h.layout.Text(c, "technical_issues", err.Error())),
 		)
 	}
 	var data, code string
@@ -222,7 +223,7 @@ func (h Handler) studentAuth(c tele.Context) error {
 		if err != nil {
 			h.logger.Errorf("(user: %d) error while sending auth code: %v", c.Sender().ID, err)
 			return c.Send(
-				h.layout.Text(c, "technical_issues", err.Error()),
+				banner.Auth.Caption(h.layout.Text(c, "technical_issues", err.Error())),
 				h.layout.Markup(c, "auth:backToMenu"),
 			)
 		}
@@ -233,20 +234,20 @@ func (h Handler) studentAuth(c tele.Context) error {
 		h.logger.Infof("(user: %d) auth code sent on %s", c.Sender().ID, email)
 
 		return c.Send(
-			h.layout.Text(c, "email_auth_link_sent"),
+			banner.Auth.Caption(h.layout.Text(c, "email_auth_link_sent")),
 			h.layout.Markup(c, "auth:resendMenu"),
 		)
 	}
 
 	return c.Send(
-		h.layout.Text(c, "resend_timeout"),
+		banner.Auth.Caption(h.layout.Text(c, "resend_timeout")),
 		h.layout.Markup(c, "auth:resendMenu"),
 	)
 }
 
 func (h Handler) backToAuthMenu(c tele.Context) error {
 	return c.Edit(
-		h.layout.Text(c, "auth_menu_text"),
+		banner.Auth.Caption(h.layout.Text(c, "auth_menu_text")),
 		h.layout.Markup(c, "auth:menu"),
 	)
 }
@@ -258,7 +259,7 @@ func (h Handler) resendEmailConfirmationCode(c tele.Context) error {
 	if err != nil && !errors.Is(err, redis.Nil) {
 		h.logger.Errorf("(user: %d) error while getting auth code from redis: %v", c.Sender().ID, err)
 		return c.Send(
-			h.layout.Text(c, "technical_issues", err.Error()),
+			banner.Auth.Caption(h.layout.Text(c, "technical_issues", err.Error())),
 		)
 	}
 
@@ -269,13 +270,13 @@ func (h Handler) resendEmailConfirmationCode(c tele.Context) error {
 		if err != nil && !errors.Is(err, redis.Nil) {
 			h.logger.Errorf("(user: %d) error while getting user email from redis: %v", c.Sender().ID, err)
 			return c.Send(
-				h.layout.Text(c, "technical_issues", err.Error()),
+				banner.Auth.Caption(h.layout.Text(c, "technical_issues", err.Error())),
 			)
 		}
 
 		if errors.Is(err, redis.Nil) {
 			return c.Send(
-				h.layout.Text(c, "session_expire"),
+				banner.Auth.Caption(h.layout.Text(c, "session_expire")),
 			)
 		}
 
@@ -283,7 +284,7 @@ func (h Handler) resendEmailConfirmationCode(c tele.Context) error {
 		if err != nil {
 			h.logger.Errorf("(user: %d) error while sending auth code: %v", c.Sender().ID, err)
 			return c.Send(
-				h.layout.Text(c, "technical_issues", err.Error()),
+				banner.Auth.Caption(h.layout.Text(c, "technical_issues", err.Error())),
 			)
 		}
 
@@ -293,13 +294,13 @@ func (h Handler) resendEmailConfirmationCode(c tele.Context) error {
 		h.logger.Infof("(user: %d) auth code sent on %s", c.Sender().ID, email)
 
 		return c.Edit(
-			h.layout.Text(c, "email_confirmation_code_request"),
+			banner.Auth.Caption(h.layout.Text(c, "email_confirmation_code_request")),
 			h.layout.Markup(c, "auth:resendMenu"),
 		)
 	}
 
 	return c.Edit(
-		h.layout.Text(c, "resend_timeout"),
+		banner.Auth.Caption(h.layout.Text(c, "resend_timeout")),
 		h.layout.Markup(c, "auth:resendMenu"),
 	)
 }

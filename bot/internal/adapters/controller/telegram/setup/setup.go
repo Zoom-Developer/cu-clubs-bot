@@ -32,7 +32,6 @@ func Setup(b *bot.Bot) {
 	b.Use(middle.ResetInputOnBack)
 	b.Handle(b.Layout.Callback("core:hide"), userHandler.Hide)
 	b.Handle(b.Layout.Callback("core:back"), userHandler.Hide)
-	b.Use(middle.Authorized)
 
 	// Setup handlers
 	//Start
@@ -44,7 +43,7 @@ func Setup(b *bot.Bot) {
 
 	//User:
 	b.Handle(b.Layout.Callback("mainMenu:back"), menuHandler.EditMenu)
-	b.Handle(b.Layout.Callback("mainMenu:qr"), userHandler.OnQR)
+	b.Handle(b.Layout.Callback("mainMenu:qr"), userHandler.QrCode)
 	//Admin:
 	admins := viper.GetIntSlice("bot.admin-ids")
 	adminsInt64 := make([]int64, len(admins))

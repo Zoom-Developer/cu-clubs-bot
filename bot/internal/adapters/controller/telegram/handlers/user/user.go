@@ -9,6 +9,7 @@ import (
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/emails"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/service"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/banner"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/generator"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger/types"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/smtp"
@@ -49,7 +50,7 @@ func New(b *bot.Bot) *Handler {
 	userStorage := postgres.NewUserStorage(b.DB)
 	studentDataStorage := postgres.NewStudentDataStorage(b.DB)
 	smtpClient := smtp.NewClient(b.SMTPDialer)
-	botName := viper.GetString("bot.name")
+	botName := viper.GetString("bot.username")
 	qrCodeLogo := viper.GetString("settings.qr.logo-path")
 	qrCodeOutputDir := viper.GetString("settings.qr.output-dir")
 
@@ -69,14 +70,15 @@ func (h Handler) Hide(c tele.Context) error {
 	return c.Delete()
 }
 
-func (h Handler) OnQR(c tele.Context) error {
+func (h Handler) QrCode(c tele.Context) error {
 	h.logger.Infof("(user: %d) requested QR code", c.Sender().ID)
 
 	user, err := h.userService.Get(context.Background(), c.Sender().ID)
 	if err != nil {
 		h.logger.Errorf("(user: %d) error while getting user from db: %v", c.Sender().ID, err)
 		return c.Send(
-			h.layout.Text(c, "technical_issues", err.Error()),
+			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "mainMenu:back"),
 		)
 	}
 
@@ -86,24 +88,26 @@ func (h Handler) OnQR(c tele.Context) error {
 		file, err = c.Bot().FileByID(user.QRFileID)
 		if err != nil {
 			h.logger.Errorf("(user: %d) failed to retrieve existing QR file: %v", c.Sender().ID, err)
-			return c.Send(
-				h.layout.Text(c, "technical_issues", err.Error()),
+			return c.Edit(
+				banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+				h.layout.Markup(c, "mainMenu:back"),
 			)
 		}
 
-		return c.Send(
+		return c.Edit(
 			&tele.Photo{
 				File:    file,
 				Caption: h.layout.Text(c, "qr_text"),
 			},
+			h.layout.Markup(c, "mainMenu:back"),
 		)
 	}
-
+	loading, _ := c.Bot().Send(c.Chat(), h.layout.Text(c, "loading"))
 	h.logger.Infof("(user: %d) generating new QR code...", c.Sender().ID)
 	qrID, qrFilePath, err := h.qrCodesGenerator.Generate()
 	if err != nil {
 		h.logger.Errorf("(user: %d) failed to generate QR code: %v", c.Sender().ID, err)
-		return c.Send(
+		return c.Edit(
 			h.layout.Text(c, "technical_issues", err.Error()),
 		)
 	}
@@ -113,8 +117,9 @@ func (h Handler) OnQR(c tele.Context) error {
 	_, err = c.Bot().Send(&tele.Chat{ID: qrChatID}, qrImg)
 	if err != nil {
 		h.logger.Errorf("(user: %d) failed to send QR code to admin chat: %v", c.Sender().ID, err)
-		return c.Send(
-			h.layout.Text(c, "technical_issues", err.Error()),
+		return c.Edit(
+			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "mainMenu:back"),
 		)
 	}
 
@@ -123,15 +128,17 @@ func (h Handler) OnQR(c tele.Context) error {
 	user, err = h.userService.Update(context.Background(), user)
 	if err != nil {
 		h.logger.Errorf("(user: %d) failed to update user data: %v", c.Sender().ID, err)
-		return c.Send(
-			h.layout.Text(c, "technical_issues", err.Error()),
+		return c.Edit(
+			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "mainMenu:back"),
 		)
 	}
 
 	if err = h.qrCodesGenerator.Delete(qrFilePath); err != nil {
 		h.logger.Errorf("(user: %d) failed to delete temporary QR code file: %v", c.Sender().ID, err)
-		return c.Send(
-			h.layout.Text(c, "technical_issues", err.Error()),
+		return c.Edit(
+			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "mainMenu:back"),
 		)
 	}
 
@@ -140,15 +147,18 @@ func (h Handler) OnQR(c tele.Context) error {
 	file, err = c.Bot().FileByID(user.QRFileID)
 	if err != nil {
 		h.logger.Errorf("(user: %d) failed to retrieve final QR file: %v", c.Sender().ID, err)
-		return c.Send(
-			h.layout.Text(c, "technical_issues", err.Error()),
+		return c.Edit(
+			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "mainMenu:back"),
 		)
 	}
 
-	return c.Send(
+	_ = c.Bot().Delete(loading)
+	return c.Edit(
 		&tele.Photo{
 			File:    file,
 			Caption: h.layout.Text(c, "qr_text"),
 		},
+		h.layout.Markup(c, "mainMenu:back"),
 	)
 }

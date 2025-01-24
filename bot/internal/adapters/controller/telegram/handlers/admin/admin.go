@@ -92,7 +92,7 @@ func (h Handler) createClub(c tele.Context) error {
 	h.logger.Infof("(user: %d) create new club request", c.Sender().ID)
 	inputCollector := collector.New()
 	_ = c.Edit(
-		h.layout.Text(c, "input_club_name"),
+		banner.Menu.Caption(h.layout.Text(c, "input_club_name")),
 		h.layout.Markup(c, "admin:backToMenu"),
 	)
 	inputCollector.Collect(c.Message())
@@ -113,12 +113,12 @@ func (h Handler) createClub(c tele.Context) error {
 		case errGet != nil:
 			h.logger.Errorf("(user: %d) error while input club name: %v", c.Sender().ID, errGet)
 			_ = inputCollector.Send(c,
-				h.layout.Text(c, "input_error", h.layout.Text(c, "input_club_name")),
+				banner.Menu.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "input_club_name"))),
 				h.layout.Markup(c, "admin:backToMenu"),
 			)
 		case !validator.ClubName(message.Text):
 			_ = inputCollector.Send(c,
-				h.layout.Text(c, "invalid_club_name"),
+				banner.Menu.Caption(h.layout.Text(c, "invalid_club_name")),
 				h.layout.Markup(c, "admin:backToMenu"),
 			)
 		case validator.ClubName(message.Text):
@@ -137,21 +137,21 @@ func (h Handler) createClub(c tele.Context) error {
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			return c.Send(
-				h.layout.Text(c, "club_already_exists"),
+				banner.Menu.Caption(h.layout.Text(c, "club_already_exists")),
 				h.layout.Markup(c, "admin:backToMenu"),
 			)
 		}
 
 		h.logger.Errorf("(user: %d) error while create new club: %v", c.Sender().ID, err)
 		return c.Send(
-			h.layout.Text(c, "technical_issues", err.Error()),
+			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
 			h.layout.Markup(c, "admin:backToMenu"),
 		)
 	}
 
 	h.logger.Infof("(user: %d) new club created: %s", c.Sender().ID, club.Name)
 	return c.Send(
-		h.layout.Text(c, "club_created", club),
+		banner.Menu.Caption(h.layout.Text(c, "club_created", club)),
 		h.layout.Markup(c, "admin:backToMenu"),
 	)
 }
@@ -250,7 +250,7 @@ func (h Handler) clubsList(c tele.Context) error {
 	)
 
 	_ = c.Edit(
-		h.layout.Text(c, "clubs_list", clubsCount),
+		banner.Menu.Caption(h.layout.Text(c, "clubs_list", clubsCount)),
 		markup,
 	)
 	return nil
@@ -270,7 +270,7 @@ func (h Handler) clubMenu(c tele.Context) error {
 	if err != nil {
 		h.logger.Errorf("(user: %d) error while get club: %v", c.Sender().ID, err)
 		return c.Send(
-			h.layout.Text(c, "technical_issues", err.Error()),
+			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
 			h.layout.Markup(c, "admin:clubs:back", struct {
 				Page string
 			}{
@@ -283,7 +283,7 @@ func (h Handler) clubMenu(c tele.Context) error {
 	if err != nil {
 		h.logger.Errorf("(user: %d) error while get club owners: %v", c.Sender().ID, err)
 		return c.Send(
-			h.layout.Text(c, "technical_issues", err.Error()),
+			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
 			h.layout.Markup(c, "admin:clubs:back", struct {
 				Page string
 			}{
@@ -293,13 +293,13 @@ func (h Handler) clubMenu(c tele.Context) error {
 	}
 
 	return c.Edit(
-		h.layout.Text(c, "admin_club_menu_text", struct {
+		banner.Menu.Caption(h.layout.Text(c, "admin_club_menu_text", struct {
 			Club   entity.Club
 			Owners []dto.ClubOwner
 		}{
 			Club:   *club,
 			Owners: clubOwners,
-		}),
+		})),
 		h.layout.Markup(c, "admin:club:menu", struct {
 			ID   string
 			Page string
@@ -322,7 +322,7 @@ func (h Handler) addClubOwner(c tele.Context) error {
 	inputCollector := collector.New()
 	inputCollector.Collect(c.Message())
 	_ = c.Edit(
-		h.layout.Text(c, "input_user_id"),
+		banner.Menu.Caption(h.layout.Text(c, "input_user_id")),
 		h.layout.Markup(c, "admin:club:back", struct {
 			ID   string
 			Page string
@@ -347,7 +347,7 @@ func (h Handler) addClubOwner(c tele.Context) error {
 			return nil
 		case errGet != nil:
 			_ = inputCollector.Send(c,
-				h.layout.Text(c, "input_error", h.layout.Text(c, "input_user_id")),
+				banner.Menu.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "input_user_id"))),
 				h.layout.Markup(c, "admin:club:back", struct {
 					ID   string
 					Page string
@@ -360,7 +360,7 @@ func (h Handler) addClubOwner(c tele.Context) error {
 			userID, err := strconv.ParseInt(message.Text, 10, 64)
 			if err != nil {
 				_ = inputCollector.Send(c,
-					h.layout.Text(c, "input_user_id"),
+					banner.Menu.Caption(h.layout.Text(c, "input_user_id")),
 					h.layout.Markup(c, "admin:club:back", struct {
 						ID   string
 						Page string
@@ -375,13 +375,13 @@ func (h Handler) addClubOwner(c tele.Context) error {
 			user, err = h.adminUserService.Get(context.Background(), userID)
 			if err != nil {
 				_ = inputCollector.Send(c,
-					h.layout.Text(c, "user_not_found", struct {
+					banner.Menu.Caption(h.layout.Text(c, "user_not_found", struct {
 						ID   int64
 						Text string
 					}{
 						ID:   userID,
 						Text: h.layout.Text(c, "input_user_id"),
-					}),
+					})),
 					h.layout.Markup(c, "admin:club:back", struct {
 						ID   string
 						Page string
@@ -404,7 +404,7 @@ func (h Handler) addClubOwner(c tele.Context) error {
 		_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
 		h.logger.Errorf("(user: %d) error while get club: %v", c.Sender().ID, err)
 		return c.Send(
-			h.layout.Text(c, "technical_issues", err.Error()),
+			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
 			h.layout.Markup(c, "admin:club:back", struct {
 				ID   string
 				Page string
@@ -426,7 +426,7 @@ func (h Handler) addClubOwner(c tele.Context) error {
 			err,
 		)
 		return c.Send(
-			h.layout.Text(c, "technical_issues", err.Error()),
+			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
 			h.layout.Markup(c, "admin:club:back", struct {
 				ID   string
 				Page string
@@ -446,13 +446,13 @@ func (h Handler) addClubOwner(c tele.Context) error {
 
 	_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
 	return c.Send(
-		h.layout.Text(c, "club_owner_added", struct {
+		banner.Menu.Caption(h.layout.Text(c, "club_owner_added", struct {
 			Club entity.Club
 			User entity.User
 		}{
 			Club: *club,
 			User: *user,
-		}),
+		})),
 		h.layout.Markup(c, "admin:club:back", struct {
 			ID   string
 			Page string
@@ -475,7 +475,7 @@ func (h Handler) removeClubOwner(c tele.Context) error {
 	inputCollector := collector.New()
 	inputCollector.Collect(c.Message())
 	_ = c.Edit(
-		h.layout.Text(c, "input_user_id"),
+		banner.Menu.Caption(h.layout.Text(c, "input_user_id")),
 		h.layout.Markup(c, "admin:club:back", struct {
 			ID   string
 			Page string
@@ -500,7 +500,7 @@ func (h Handler) removeClubOwner(c tele.Context) error {
 			return nil
 		case errGet != nil:
 			_ = inputCollector.Send(c,
-				h.layout.Text(c, "input_error", h.layout.Text(c, "input_user_id")),
+				banner.Menu.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "input_user_id"))),
 				h.layout.Markup(c, "admin:club:back", struct {
 					ID   string
 					Page string
@@ -513,7 +513,7 @@ func (h Handler) removeClubOwner(c tele.Context) error {
 			userID, err := strconv.ParseInt(message.Text, 10, 64)
 			if err != nil {
 				_ = inputCollector.Send(c,
-					h.layout.Text(c, "input_user_id"),
+					banner.Menu.Caption(h.layout.Text(c, "input_user_id")),
 					h.layout.Markup(c, "admin:club:back", struct {
 						ID   string
 						Page string
@@ -528,13 +528,13 @@ func (h Handler) removeClubOwner(c tele.Context) error {
 			user, err = h.adminUserService.Get(context.Background(), userID)
 			if err != nil {
 				_ = inputCollector.Send(c,
-					h.layout.Text(c, "user_not_found", struct {
+					banner.Menu.Caption(h.layout.Text(c, "user_not_found", struct {
 						ID   int64
 						Text string
 					}{
 						ID:   userID,
 						Text: h.layout.Text(c, "input_user_id"),
-					}),
+					})),
 					h.layout.Markup(c, "admin:club:back", struct {
 						ID   string
 						Page string
@@ -557,7 +557,7 @@ func (h Handler) removeClubOwner(c tele.Context) error {
 		_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
 		h.logger.Errorf("(user: %d) error while get club: %v", c.Sender().ID, err)
 		return c.Send(
-			h.layout.Text(c, "technical_issues", err.Error()),
+			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
 			h.layout.Markup(c, "admin:club:back", struct {
 				ID   string
 				Page string
@@ -579,7 +579,7 @@ func (h Handler) removeClubOwner(c tele.Context) error {
 			err,
 		)
 		return c.Send(
-			h.layout.Text(c, "technical_issues", err.Error()),
+			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
 			h.layout.Markup(c, "admin:club:back", struct {
 				ID   string
 				Page string
@@ -599,13 +599,13 @@ func (h Handler) removeClubOwner(c tele.Context) error {
 
 	_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
 	return c.Send(
-		h.layout.Text(c, "club_owner_removed", struct {
+		banner.Menu.Caption(h.layout.Text(c, "club_owner_removed", struct {
 			Club entity.Club
 			User entity.User
 		}{
 			Club: *club,
 			User: *user,
-		}),
+		})),
 		h.layout.Markup(c, "admin:club:back", struct {
 			ID   string
 			Page string
@@ -630,7 +630,7 @@ func (h Handler) deleteClub(c tele.Context) error {
 	if err != nil {
 		h.logger.Errorf("(user: %d) error while get club: %v", c.Sender().ID, err)
 		return c.Edit(
-			h.layout.Text(c, "technical_issues", err.Error()),
+			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
 			h.layout.Markup(c, "admin:clubs:back", struct {
 				Page string
 			}{
@@ -642,7 +642,7 @@ func (h Handler) deleteClub(c tele.Context) error {
 	if err != nil {
 		h.logger.Errorf("(user: %d) error while delete club: %v", c.Sender().ID, err)
 		return c.Edit(
-			h.layout.Text(c, "technical_issues", err.Error()),
+			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
 			h.layout.Markup(c, "admin:clubs:back", struct {
 				Page string
 			}{
@@ -653,7 +653,7 @@ func (h Handler) deleteClub(c tele.Context) error {
 
 	h.logger.Infof("(user: %d) club deleted (club_id=%s)", c.Sender().ID, clubID)
 	return c.Edit(
-		h.layout.Text(c, "club_deleted", club),
+		banner.Menu.Caption(h.layout.Text(c, "club_deleted", club)),
 		h.layout.Markup(c, "admin:clubs:back", struct {
 			Page string
 		}{

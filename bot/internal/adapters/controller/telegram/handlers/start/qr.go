@@ -13,6 +13,7 @@ func (h *Handler) qr(c tele.Context, qrCodeID string) error {
 		h.logger.Errorf("(user: %d) error while getting user from db: %v", c.Sender().ID, err)
 		return c.Send(
 			h.layout.Text(c, "technical_issues", err.Error()),
+			h.layout.Markup(c, "mainMenu:back"),
 		)
 	}
 

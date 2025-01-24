@@ -22,5 +22,6 @@ COPY --from=builder /opt/bin/bot ./
 COPY telegram.yml /opt/telegram.yml
 COPY config.yaml /opt/config.yaml
 COPY locales /opt/locales
+COPY logo.png /opt/logo.png
 
 CMD ["./bot"]

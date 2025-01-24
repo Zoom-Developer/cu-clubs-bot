@@ -17,16 +17,19 @@ func (h *Handler) auth(c tele.Context, authCode string) error {
 			h.logger.Errorf("(user: %d) error while getting auth code from redis: %v", c.Sender().ID, err)
 			return c.Send(
 				h.layout.Text(c, "technical_issues", err.Error()),
+				h.layout.Markup(c, "core:hide"),
 			)
 		}
 		return c.Send(
 			h.layout.Text(c, "session_expire"),
+			h.layout.Markup(c, "core:hide"),
 		)
 	}
 
 	if authCode != code.Code {
 		return c.Send(
 			h.layout.Text(c, "something_went_wrong"),
+			h.layout.Markup(c, "core:hide"),
 		)
 	}
 
@@ -45,6 +48,7 @@ func (h *Handler) auth(c tele.Context, authCode string) error {
 		h.logger.Errorf("(user: %d) error while create new user: %v", c.Sender().ID, err)
 		return c.Send(
 			h.layout.Text(c, "technical_issues", err.Error()),
+			h.layout.Markup(c, "core:hide"),
 		)
 	}
 	h.logger.Infof("(user: %d) new user created(role: %s)", c.Sender().ID, newUser.Role)

@@ -166,6 +166,8 @@ markups:
     - [ mainMenu:events ]
     - [ mainMenu:my_events ]
     - [ mainMenu:qr ]
+  mainMenu:back:
+    - [ mainMenu:back ]
 
   admin:menu:
     - [ admin:clubs ]
