@@ -5,6 +5,7 @@ import (
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/handlers/admin"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/handlers/menu"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/handlers/middlewares"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/handlers/start"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/handlers/user"
 	"github.com/spf13/viper"
 	tele "gopkg.in/telebot.v3"
@@ -14,6 +15,7 @@ import (
 func Setup(b *bot.Bot) {
 	// Pre-setup and global middlewares
 	middle := middlewares.New(b)
+	startHandler := start.New(b)
 	userHandler := user.New(b)
 	menuHandler := menu.New(b)
 	adminHandler := admin.New(b)
@@ -31,6 +33,9 @@ func Setup(b *bot.Bot) {
 	b.Handle(b.Layout.Callback("core:back"), userHandler.Hide)
 
 	// Setup handlers
+	//Start
+	b.Handle("/start", startHandler.Start)
+
 	//Auth
 	userHandler.AuthSetup(b.Group())
 	b.Use(middle.Authorized)
