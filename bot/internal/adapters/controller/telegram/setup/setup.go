@@ -29,11 +29,13 @@ func Setup(b *bot.Bot) {
 	b.Use(middle.ResetInputOnBack)
 	b.Handle(b.Layout.Callback("core:hide"), userHandler.Hide)
 	b.Handle(b.Layout.Callback("core:back"), userHandler.Hide)
-	b.Use(middle.Authorized)
 
 	// Setup handlers
-	//User:
+	//Auth
 	userHandler.AuthSetup(b.Group())
+	b.Use(middle.Authorized)
+
+	//User:
 	b.Handle(b.Layout.Callback("mainMenu:back"), menuHandler.EditMenu)
 
 	//Admin:

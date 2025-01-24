@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+
 	"github.com/Badsnus/cu-clubs-bot/bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/handlers/menu"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/postgres"
@@ -9,6 +10,7 @@ import (
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/emails"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/service"
+	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger/types"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/smtp"
 	"github.com/nlypage/intele"
 
@@ -31,6 +33,7 @@ type Handler struct {
 	emailsStorage *emails.Storage
 	input         *intele.InputManager
 	layout        *layout.Layout
+	logger        *types.Logger
 }
 
 func New(b *bot.Bot) *Handler {
@@ -45,6 +48,7 @@ func New(b *bot.Bot) *Handler {
 		emailsStorage: b.Redis.Emails,
 		layout:        b.Layout,
 		input:         b.Input,
+		logger:        b.Logger,
 	}
 }
 
