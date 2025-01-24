@@ -36,4 +36,4 @@ jobs:
       - name: Run golangci-lint
         working-directory: ./bot
         run: |
-          golangci-lint run --out-format github-actions
+          golangci-lint run --out-format colored-line-number
