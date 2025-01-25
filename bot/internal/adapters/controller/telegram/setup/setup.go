@@ -45,7 +45,7 @@ func Setup(b *bot.Bot) {
 
 	//User:
 	b.Handle(b.Layout.Callback("mainMenu:back"), menuHandler.EditMenu)
-	b.Handle(b.Layout.Callback("mainMenu:qr"), userHandler.QrCode)
+	userHandler.UserSetup(b.Group())
 
 	// ClubOwner:
 	clubOwnerHandler.ClubOwnerSetup(b.Group())

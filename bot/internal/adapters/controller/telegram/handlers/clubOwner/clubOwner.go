@@ -1109,7 +1109,7 @@ func (h Handler) confirmEventCreation(c tele.Context) error {
 }
 
 func (h Handler) ClubOwnerSetup(group *tele.Group) {
-	group.Handle(h.layout.Callback("clubOwner:myClubs"), h.clubsList)
+	group.Handle(h.layout.Callback("clubOwner:my_clubs"), h.clubsList)
 	group.Handle(h.layout.Callback("clubOwner:myClubs:back"), h.clubsList)
 	group.Handle(h.layout.Callback("clubOwner:myClubs:club"), h.clubMenu)
 	group.Handle(h.layout.Callback("clubOwner:club:back"), h.clubMenu)

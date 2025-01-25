@@ -88,7 +88,22 @@ buttons:
     callback_data: mainMenu_back
     text: '{{ text `back` }}'
 
-  clubOwner:myClubs:
+  user:events:event:
+    unique: user_events_event
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{.Name}}'
+
+  user:events:next_page:
+    unique: user_events_nextPage
+    callback_data: '{{.Page}}'
+    text: '{{ text `next` }}'
+
+  user:events:prev_page:
+    unique: user_events_prevPage
+    callback_data: '{{.Page}}'
+    text: '{{ text `prev` }}'
+
+  clubOwner:my_clubs:
     unique: clubOwner_myClubs
     callback_data: clubOwner_myClubs
     text: '{{ text `my_clubs` }}'
@@ -193,16 +208,6 @@ buttons:
     callback_data: '{{.ID}} {{.Page}}'
     text: '{{.Name}}'
 
-  admin:club:roles:
-    unique: admin_club_roles
-    callback_data: '{{.ID}} {{.Page}}'
-    text: '{{ text `roles` }}'
-
-  admin:club:roles:role:
-    unique: admin_role
-    callback_data: '{{.ID}} {{.Page}} {{.Role}}'
-    text: '{{if .On}}✔️ {{.RoleText}}{{else}}❌ {{.RoleText}}{{end}}'
-
   admin:clubs:next_page:
     unique: admin_clubs_nextPage
     callback_data: '{{.Page}}'
@@ -212,6 +217,16 @@ buttons:
     unique: admin_clubs_prevPage
     callback_data: '{{.Page}}'
     text: '{{ text `prev` }}'
+
+  admin:club:roles:
+    unique: admin_club_roles
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `roles` }}'
+
+  admin:club:roles:role:
+    unique: admin_role
+    callback_data: '{{.ID}} {{.Page}} {{.Role}}'
+    text: '{{if .On}}✔️ {{.RoleText}}{{else}}❌ {{.RoleText}}{{end}}'
 
   admin:clubs:back:
     unique: admin_clubs_back

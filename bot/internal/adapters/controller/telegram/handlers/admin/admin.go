@@ -176,21 +176,36 @@ func (h Handler) clubsList(c tele.Context) error {
 		rows       []tele.Row
 		menuRow    tele.Row
 	)
-	if c.Callback().Data != "admin_clubs" {
+	if c.Callback().Unique != "admin_clubs" {
 		p, err = strconv.Atoi(c.Callback().Data)
 		if err != nil {
-			return err
+			return errorz.ErrInvalidCallbackData
 		}
 	}
 
 	clubsCount, err = h.clubService.Count(context.Background())
 	if err != nil {
-		return err
+		h.logger.Errorf("(user: %d) error while get clubs count: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "admin:backToMenu"),
+		)
 	}
 
 	clubs, err = h.clubService.GetWithPagination(context.Background(), p*clubsOnPage, clubsOnPage, "created_at DESC")
 	if err != nil {
-		return err
+		h.logger.Errorf(
+			"(user: %d) error while get clubs (offset=%d, limit=%d, order_by=%s): %v",
+			c.Sender().ID,
+			p*clubsOnPage,
+			clubsOnPage,
+			"created_at DESC",
+			err,
+		)
+		return c.Edit(
+			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "admin:backToMenu"),
+		)
 	}
 
 	markup := c.Bot().NewMarkup()

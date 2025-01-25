@@ -4,6 +4,9 @@ import (
 	"strconv"
 	"time"
 	"unicode/utf8"
+
+	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger"
+	"github.com/spf13/viper"
 )
 
 func EventName(name string, _ map[string]interface{}) bool {
@@ -28,8 +31,9 @@ func EventStartTime(start string, _ map[string]interface{}) bool {
 
 	currentTime := time.Now()
 
-	moscowLocation, err := time.LoadLocation("Europe/Moscow")
+	moscowLocation, err := time.LoadLocation(viper.GetString("settings.timezone"))
 	if err != nil {
+		logger.Log.Errorf("error while load time location: %v", err)
 		return false
 	}
 	moscowTime := currentTime.In(moscowLocation)

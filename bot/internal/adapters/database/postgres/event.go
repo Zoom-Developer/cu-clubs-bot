@@ -2,6 +2,8 @@ package postgres
 
 import (
 	"context"
+	"time"
+
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 	"gorm.io/gorm"
 )
@@ -55,9 +57,15 @@ func (s *EventStorage) Count(ctx context.Context) (int64, error) {
 	return count, err
 }
 
-// GetWithPagination is a function that gets a list of events from the database with pagination.
-func (s *EventStorage) GetWithPagination(ctx context.Context, offset, limit int, order string) ([]entity.Event, error) {
+// GetWithPagination is a function that gets a list of events from the database with pagination. (if role is empty, it will return all events)
+func (s *EventStorage) GetWithPagination(ctx context.Context, offset, limit int, order string, role string) ([]entity.Event, error) {
 	var events []entity.Event
-	err := s.db.WithContext(ctx).Order(order).Offset(offset).Limit(limit).Find(&events).Error
+	query := s.db.WithContext(ctx).Order(order).Offset(offset).Limit(limit).Where("registration_end > ?", time.Now())
+
+	if role != "" {
+		query = query.Where("? = ANY(allowed_roles)", role)
+	}
+
+	err := query.Find(&events).Error
 	return events, err
 }
