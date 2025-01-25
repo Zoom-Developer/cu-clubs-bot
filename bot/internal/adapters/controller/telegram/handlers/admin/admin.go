@@ -635,6 +635,8 @@ func (h Handler) manageRoles(c tele.Context) error {
 	clubID := callbackData[0]
 	page := callbackData[1]
 
+	h.logger.Infof("(user: %d) manage roles (club_id=%s)", c.Sender().ID, clubID)
+
 	club, err := h.clubService.Get(context.Background(), clubID)
 	if err != nil {
 		h.logger.Errorf("(user: %d) error while get club (club_id=%s): %v", c.Sender().ID, clubID, err)
@@ -651,6 +653,7 @@ func (h Handler) manageRoles(c tele.Context) error {
 	}
 
 	if c.Callback().Unique == "admin_role" {
+		h.logger.Infof("(user: %d) toggle role (club_id=%s, role=%s)", c.Sender().ID, clubID, callbackData[2])
 		if len(callbackData) != 3 {
 			return errorz.ErrInvalidCallbackData
 		}
@@ -661,7 +664,7 @@ func (h Handler) manageRoles(c tele.Context) error {
 			roleI    int
 		)
 		for i, r := range club.AllowedRoles {
-			if string(r) == role {
+			if r == role {
 				contains = true
 				roleI = i
 				break
