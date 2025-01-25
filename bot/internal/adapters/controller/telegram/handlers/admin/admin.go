@@ -261,8 +261,7 @@ func (h Handler) clubMenu(c tele.Context) error {
 	if len(callbackData) != 2 {
 		return errorz.ErrInvalidCallbackData
 	}
-	clubID := callbackData[0]
-	page := callbackData[1]
+	clubID, page := callbackData[0], callbackData[1]
 
 	h.logger.Infof("(user: %d) edit club menu (club_id=%s)", c.Sender().ID, clubID)
 
@@ -321,13 +320,30 @@ func (h Handler) addClubOwner(c tele.Context) error {
 	h.logger.Infof("(user: %d) add club owner (club_id=%s)", c.Sender().ID, clubID)
 	inputCollector := collector.New()
 	inputCollector.Collect(c.Message())
+
+	club, err := h.clubService.Get(context.Background(), clubID)
+	if err != nil {
+		_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
+		h.logger.Errorf("(user: %d) error while get club: %v", c.Sender().ID, err)
+		return c.Send(
+			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "admin:club:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   clubID,
+				Page: page,
+			}),
+		)
+	}
+
 	_ = c.Edit(
 		banner.Menu.Caption(h.layout.Text(c, "input_user_id")),
 		h.layout.Markup(c, "admin:club:back", struct {
 			ID   string
 			Page string
 		}{
-			ID:   clubID,
+			ID:   club.ID,
 			Page: page,
 		}),
 	)
@@ -352,7 +368,18 @@ func (h Handler) addClubOwner(c tele.Context) error {
 					ID   string
 					Page string
 				}{
-					ID:   clubID,
+					ID:   club.ID,
+					Page: page,
+				}),
+			)
+		case message == nil:
+			_ = inputCollector.Send(c,
+				banner.Menu.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "input_user_id"))),
+				h.layout.Markup(c, "admin:club:back", struct {
+					ID   string
+					Page string
+				}{
+					ID:   club.ID,
 					Page: page,
 				}),
 			)
@@ -365,7 +392,7 @@ func (h Handler) addClubOwner(c tele.Context) error {
 						ID   string
 						Page string
 					}{
-						ID:   clubID,
+						ID:   club.ID,
 						Page: page,
 					}),
 				)
@@ -379,14 +406,14 @@ func (h Handler) addClubOwner(c tele.Context) error {
 						ID   int64
 						Text string
 					}{
-						ID:   userID,
+						ID:   user.ID,
 						Text: h.layout.Text(c, "input_user_id"),
 					})),
 					h.layout.Markup(c, "admin:club:back", struct {
 						ID   string
 						Page string
 					}{
-						ID:   clubID,
+						ID:   club.ID,
 						Page: page,
 					}),
 				)
@@ -399,29 +426,13 @@ func (h Handler) addClubOwner(c tele.Context) error {
 		}
 	}
 
-	club, err := h.clubService.Get(context.Background(), clubID)
-	if err != nil {
-		_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
-		h.logger.Errorf("(user: %d) error while get club: %v", c.Sender().ID, err)
-		return c.Send(
-			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
-			h.layout.Markup(c, "admin:club:back", struct {
-				ID   string
-				Page string
-			}{
-				ID:   clubID,
-				Page: page,
-			}),
-		)
-	}
-
 	_, err = h.clubOwnerService.Add(context.Background(), user.ID, club.ID)
 	if err != nil {
 		_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
 		h.logger.Errorf(
 			"(user: %d) error while add club owner (club_id=%s, user_id=%d): %v",
 			c.Sender().ID,
-			clubID,
+			club.ID,
 			user.ID,
 			err,
 		)
@@ -431,7 +442,7 @@ func (h Handler) addClubOwner(c tele.Context) error {
 				ID   string
 				Page string
 			}{
-				ID:   clubID,
+				ID:   club.ID,
 				Page: page,
 			}),
 		)
@@ -440,7 +451,7 @@ func (h Handler) addClubOwner(c tele.Context) error {
 	h.logger.Infof(
 		"(user: %d) club owner added (club_id=%s, user_id=%d)",
 		c.Sender().ID,
-		clubID,
+		club.ID,
 		user.ID,
 	)
 
@@ -457,7 +468,7 @@ func (h Handler) addClubOwner(c tele.Context) error {
 			ID   string
 			Page string
 		}{
-			ID:   clubID,
+			ID:   club.ID,
 			Page: page,
 		}),
 	)
@@ -616,6 +627,113 @@ func (h Handler) removeClubOwner(c tele.Context) error {
 	)
 }
 
+func (h Handler) manageRoles(c tele.Context) error {
+	callbackData := strings.Split(c.Callback().Data, " ")
+	if len(callbackData) < 2 {
+		return errorz.ErrInvalidCallbackData
+	}
+	clubID := callbackData[0]
+	page := callbackData[1]
+
+	h.logger.Infof("(user: %d) manage roles (club_id=%s)", c.Sender().ID, clubID)
+
+	club, err := h.clubService.Get(context.Background(), clubID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get club (club_id=%s): %v", c.Sender().ID, clubID, err)
+		return c.Edit(
+			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "admin:club:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   clubID,
+				Page: page,
+			}),
+		)
+	}
+
+	if c.Callback().Unique == "admin_role" {
+		h.logger.Infof("(user: %d) toggle role (club_id=%s, role=%s)", c.Sender().ID, clubID, callbackData[2])
+		if len(callbackData) != 3 {
+			return errorz.ErrInvalidCallbackData
+		}
+		role := callbackData[2]
+
+		var (
+			contains bool
+			roleI    int
+		)
+		for i, r := range club.AllowedRoles {
+			if r == role {
+				contains = true
+				roleI = i
+				break
+			}
+		}
+		if contains {
+			club.AllowedRoles = append(club.AllowedRoles[:roleI], club.AllowedRoles[roleI+1:]...)
+		} else {
+			club.AllowedRoles = append(club.AllowedRoles, role)
+		}
+
+		club, err = h.clubService.Update(context.Background(), club)
+		if err != nil {
+			h.logger.Errorf("(user: %d) error while update club (club_id=%s): %v", c.Sender().ID, clubID, err)
+			return c.Edit(
+				banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+				h.layout.Markup(c, "admin:club:back", struct {
+					ID   string
+					Page string
+				}{
+					ID:   clubID,
+					Page: page,
+				}),
+			)
+		}
+	}
+
+	rolesMarkup := h.layout.Markup(c, "admin:club:roles", struct {
+		ID   string
+		Page string
+	}{
+		ID:   club.ID,
+		Page: page,
+	})
+
+	for _, role := range entity.AllRoles {
+		var (
+			on bool
+		)
+		for _, allowedRole := range club.AllowedRoles {
+			if allowedRole == role.String() {
+				on = true
+				break
+			}
+		}
+		rolesMarkup.InlineKeyboard = append(
+			[][]tele.InlineButton{{*h.layout.Button(c, "admin:club:roles:role", struct {
+				Role     string
+				Page     string
+				ID       string
+				RoleText string
+				On       bool
+			}{
+				Role:     string(role),
+				Page:     page,
+				ID:       club.ID,
+				RoleText: h.layout.Text(c, string(role)),
+				On:       on,
+			}).Inline()}},
+			rolesMarkup.InlineKeyboard...,
+		)
+	}
+
+	return c.Edit(
+		banner.Menu.Caption(h.layout.Text(c, "manage_roles")),
+		rolesMarkup,
+	)
+}
+
 func (h Handler) deleteClub(c tele.Context) error {
 	callbackData := strings.Split(c.Callback().Data, " ")
 	if len(callbackData) != 2 {
@@ -743,6 +861,8 @@ func (h Handler) AdminSetup(group *tele.Group) {
 	group.Handle(h.layout.Callback("admin:club:back"), h.clubMenu)
 	group.Handle(h.layout.Callback("admin:club:add_owner"), h.addClubOwner)
 	group.Handle(h.layout.Callback("admin:club:del_owner"), h.removeClubOwner)
+	group.Handle(h.layout.Callback("admin:club:roles"), h.manageRoles)
+	group.Handle(h.layout.Callback("admin:club:roles:role"), h.manageRoles)
 	group.Handle(h.layout.Callback("admin:club:delete"), h.deleteClub)
 	group.Handle("/ban", h.banUser)
 }

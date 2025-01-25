@@ -1,9 +1,10 @@
 package entity
 
 import (
+	"time"
+
 	"github.com/lib/pq"
 	"gorm.io/gorm"
-	"time"
 )
 
 type Club struct {

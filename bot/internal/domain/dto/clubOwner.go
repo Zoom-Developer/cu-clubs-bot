@@ -9,4 +9,5 @@ type ClubOwner struct {
 	Email    string
 	Role     entity.Role
 	IsBanned bool
+	Warnings bool
 }
