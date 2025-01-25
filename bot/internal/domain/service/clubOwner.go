@@ -11,6 +11,7 @@ type ClubOwnerStorage interface {
 	Create(ctx context.Context, clubOwner *entity.ClubOwner) (*entity.ClubOwner, error)
 	Delete(ctx context.Context, userID int64, clubID string) error
 	Get(ctx context.Context, clubID string, userID int64) (*entity.ClubOwner, error)
+	Update(ctx context.Context, clubOwner *entity.ClubOwner) (*entity.ClubOwner, error)
 	GetByClubID(ctx context.Context, clubID string) ([]entity.ClubOwner, error)
 	GetByUserID(ctx context.Context, userID int64) ([]entity.ClubOwner, error)
 }
@@ -39,6 +40,10 @@ func (s *ClubOwnerService) Get(ctx context.Context, clubID string, userID int64)
 	return s.storage.Get(ctx, clubID, userID)
 }
 
+func (s *ClubOwnerService) Update(ctx context.Context, clubOwner *entity.ClubOwner) (*entity.ClubOwner, error) {
+	return s.storage.Update(ctx, clubOwner)
+}
+
 func (s *ClubOwnerService) GetByClubID(ctx context.Context, clubID string) ([]dto.ClubOwner, error) {
 	clubOwners, err := s.storage.GetByClubID(ctx, clubID)
 	if err != nil {
@@ -64,6 +69,7 @@ func (s *ClubOwnerService) GetByClubID(ctx context.Context, clubID string) ([]dt
 					Email:    user.Email,
 					Role:     user.Role,
 					IsBanned: user.IsBanned,
+					Warnings: clubOwner.Warnings,
 				})
 			}
 		}

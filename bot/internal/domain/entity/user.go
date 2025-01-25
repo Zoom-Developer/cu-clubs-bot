@@ -29,6 +29,7 @@ type User struct {
 type ClubOwner struct {
 	UserID    int64  `gorm:"primaryKey"`
 	ClubID    string `gorm:"primaryKey;type:uuid"`
+	Warnings  bool   `gorm:"default:false"`
 	CreatedAt time.Time
 }
 

@@ -321,13 +321,30 @@ func (h Handler) addClubOwner(c tele.Context) error {
 	h.logger.Infof("(user: %d) add club owner (club_id=%s)", c.Sender().ID, clubID)
 	inputCollector := collector.New()
 	inputCollector.Collect(c.Message())
+
+	club, err := h.clubService.Get(context.Background(), clubID)
+	if err != nil {
+		_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
+		h.logger.Errorf("(user: %d) error while get club: %v", c.Sender().ID, err)
+		return c.Send(
+			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "admin:club:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   clubID,
+				Page: page,
+			}),
+		)
+	}
+
 	_ = c.Edit(
 		banner.Menu.Caption(h.layout.Text(c, "input_user_id")),
 		h.layout.Markup(c, "admin:club:back", struct {
 			ID   string
 			Page string
 		}{
-			ID:   clubID,
+			ID:   club.ID,
 			Page: page,
 		}),
 	)
@@ -352,7 +369,18 @@ func (h Handler) addClubOwner(c tele.Context) error {
 					ID   string
 					Page string
 				}{
-					ID:   clubID,
+					ID:   club.ID,
+					Page: page,
+				}),
+			)
+		case message == nil:
+			_ = inputCollector.Send(c,
+				banner.Menu.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "input_user_id"))),
+				h.layout.Markup(c, "admin:club:back", struct {
+					ID   string
+					Page string
+				}{
+					ID:   club.ID,
 					Page: page,
 				}),
 			)
@@ -365,7 +393,7 @@ func (h Handler) addClubOwner(c tele.Context) error {
 						ID   string
 						Page string
 					}{
-						ID:   clubID,
+						ID:   club.ID,
 						Page: page,
 					}),
 				)
@@ -379,14 +407,14 @@ func (h Handler) addClubOwner(c tele.Context) error {
 						ID   int64
 						Text string
 					}{
-						ID:   userID,
+						ID:   user.ID,
 						Text: h.layout.Text(c, "input_user_id"),
 					})),
 					h.layout.Markup(c, "admin:club:back", struct {
 						ID   string
 						Page string
 					}{
-						ID:   clubID,
+						ID:   club.ID,
 						Page: page,
 					}),
 				)
@@ -399,29 +427,13 @@ func (h Handler) addClubOwner(c tele.Context) error {
 		}
 	}
 
-	club, err := h.clubService.Get(context.Background(), clubID)
-	if err != nil {
-		_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
-		h.logger.Errorf("(user: %d) error while get club: %v", c.Sender().ID, err)
-		return c.Send(
-			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
-			h.layout.Markup(c, "admin:club:back", struct {
-				ID   string
-				Page string
-			}{
-				ID:   clubID,
-				Page: page,
-			}),
-		)
-	}
-
 	_, err = h.clubOwnerService.Add(context.Background(), user.ID, club.ID)
 	if err != nil {
 		_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
 		h.logger.Errorf(
 			"(user: %d) error while add club owner (club_id=%s, user_id=%d): %v",
 			c.Sender().ID,
-			clubID,
+			club.ID,
 			user.ID,
 			err,
 		)
@@ -431,7 +443,7 @@ func (h Handler) addClubOwner(c tele.Context) error {
 				ID   string
 				Page string
 			}{
-				ID:   clubID,
+				ID:   club.ID,
 				Page: page,
 			}),
 		)
@@ -440,7 +452,7 @@ func (h Handler) addClubOwner(c tele.Context) error {
 	h.logger.Infof(
 		"(user: %d) club owner added (club_id=%s, user_id=%d)",
 		c.Sender().ID,
-		clubID,
+		club.ID,
 		user.ID,
 	)
 
@@ -457,7 +469,7 @@ func (h Handler) addClubOwner(c tele.Context) error {
 			ID   string
 			Page string
 		}{
-			ID:   clubID,
+			ID:   club.ID,
 			Page: page,
 		}),
 	)

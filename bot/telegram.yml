@@ -103,10 +103,50 @@ buttons:
     callback_data: '{{.ID}}'
     text: '{{.Name}}'
 
+  clubOwner:myClubs:back:
+    unique: clubOwner_myClubs_back
+    callback_data: clubOwner_myClubs_back
+    text: '{{ text `back` }}'
+
+  clubOwner:club:back:
+    unique: clubOwner_club_back
+    callback_data: '{{.ID}}'
+    text: '{{ text `back` }}'
+
   clubOwner:club:settings:
     unique: clubOwner_club_settings
     callback_data: '{{.ID}}'
     text: '{{ text `club_settings` }}'
+
+  clubOwner:club:settings:back:
+    unique: cOwner_club_settings_back
+    callback_data: '{{.ID}}'
+    text: '{{ text `back` }}'
+
+  clubOwner:club:settings:edit_name:
+    unique: clubOwner_club_editName
+    callback_data: '{{.ID}}'
+    text: '{{ text `edit_name` }}'
+
+  clubOwner:club:settings:edit_description:
+    unique: clubOwner_club_editDesc
+    callback_data: '{{.ID}}'
+    text: '{{ text `edit_description` }}'
+
+  clubOwner:club:settings:add_owner:
+    unique: clubOwner_club_addOwner
+    callback_data: '{{.ID}} '
+    text: '{{ text `add_club_owner` }}'
+
+  clubOwner:club:settings:warnings:
+    unique: clubOwner_club_warnings
+    callback_data: '{{.ID}}'
+    text: '{{ text `warnings` }}'
+
+  clubOwner:club:settings:warnings:user:
+    unique: cOwner_warnings
+    callback_data: '{{.ClubID}} {{.UserID}}'
+    text: '{{if .Warnings}}✔️ {{.FIO}}{{else}}❌ {{.FIO}}{{end}}'
 
   clubOwner:club:create_event:
     unique: clubOwner_club_createEvent
@@ -117,11 +157,6 @@ buttons:
     unique: clubOwner_club_events
     callback_data: '{{.ID}}'
     text: '{{ text `club_events` }}'
-
-  clubOwner:myClubs:back:
-    unique: clubOwner_myClubs_back
-    callback_data: clubOwner_myClubs_back
-    text: '{{ text `back` }}'
 
   admin:create_club:
     unique: admin_createClub
@@ -208,6 +243,16 @@ markups:
     - [ clubOwner:club:events ]
     - [ clubOwner:club:create_event ]
     - [ clubOwner:club:settings ]
+  clubOwner:club:settings:
+    - [ clubOwner:club:settings:edit_name ]
+    - [ clubOwner:club:settings:edit_description ]
+    - [ clubOwner:club:settings:add_owner ]
+    - [ clubOwner:club:settings:warnings ]
+    - [ clubOwner:club:back ]
+  clubOwner:club:settings:back:
+    - [ clubOwner:club:settings:back ]
+  clubOwner:club:settings:warnings:
+    - [ clubOwner:club:settings:back ]
 
   admin:menu:
     - [ admin:clubs ]

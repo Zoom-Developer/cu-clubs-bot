@@ -33,6 +33,11 @@ func (s *ClubOwnerStorage) Get(ctx context.Context, clubID string, userID int64)
 	return &clubOwner, err
 }
 
+func (s *ClubOwnerStorage) Update(ctx context.Context, clubOwner *entity.ClubOwner) (*entity.ClubOwner, error) {
+	err := s.db.WithContext(ctx).Save(&clubOwner).Error
+	return clubOwner, err
+}
+
 func (s *ClubOwnerStorage) GetByClubID(ctx context.Context, clubID string) ([]entity.ClubOwner, error) {
 	var clubOwners []entity.ClubOwner
 	err := s.db.WithContext(ctx).Where("club_id = ?", clubID).Find(&clubOwners).Error
