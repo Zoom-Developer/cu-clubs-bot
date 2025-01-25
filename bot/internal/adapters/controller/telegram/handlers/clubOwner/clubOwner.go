@@ -829,6 +829,16 @@ func (h Handler) createEvent(c tele.Context) error {
 						ID: club.ID,
 					}),
 				)
+			case message == nil:
+				h.logger.Errorf("(user: %d) error while input step (%s): %v", c.Sender().ID, step.promptKey, errGet)
+				_ = inputCollector.Send(c,
+					banner.ClubOwner.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, step.promptKey))),
+					h.layout.Markup(c, "clubOwner:club:back", struct {
+						ID string
+					}{
+						ID: club.ID,
+					}),
+				)
 			case !step.validator(message.Text, params):
 				_ = inputCollector.Send(c,
 					banner.ClubOwner.Caption(h.layout.Text(c, step.errorKey)),

@@ -57,6 +57,12 @@ func (h Handler) externalUserAuth(c tele.Context) error {
 				banner.Auth.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "fio_request"))),
 				h.layout.Markup(c, "auth:backToMenu"),
 			)
+		case message == nil:
+			h.logger.Errorf("(user: %d) error while input fio: %v", c.Sender().ID, err)
+			_ = inputCollector.Send(c,
+				banner.Auth.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "fio_request"))),
+				h.layout.Markup(c, "auth:backToMenu"),
+			)
 		case !validator.Fio(message.Text, nil):
 			_ = inputCollector.Send(c,
 				banner.Auth.Caption(h.layout.Text(c, "invalid_user_fio")),
@@ -135,6 +141,12 @@ func (h Handler) grantUserAuth(c tele.Context) error {
 				banner.Auth.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "fio_request"))),
 				h.layout.Markup(c, "auth:backToMenu"),
 			)
+		case message == nil:
+			h.logger.Errorf("(user: %d) error while input fio: %v", c.Sender().ID, errGet)
+			_ = inputCollector.Send(c,
+				banner.Auth.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "fio_request"))),
+				h.layout.Markup(c, "auth:backToMenu"),
+			)
 		case !validator.Fio(message.Text, nil):
 			_ = inputCollector.Send(c,
 				banner.Auth.Caption(h.layout.Text(c, "invalid_user_fio")),
@@ -191,6 +203,12 @@ func (h Handler) studentAuth(c tele.Context) error {
 		case canceled:
 			return nil
 		case errGet != nil:
+			h.logger.Errorf("(user: %d) error while input email: %v", c.Sender().ID, errGet)
+			_ = inputCollector.Send(c,
+				banner.Auth.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "email_request"))),
+				h.layout.Markup(c, "auth:backToMenu"),
+			)
+		case message == nil:
 			h.logger.Errorf("(user: %d) error while input email: %v", c.Sender().ID, errGet)
 			_ = inputCollector.Send(c,
 				banner.Auth.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "email_request"))),
