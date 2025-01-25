@@ -6,11 +6,19 @@ import (
 
 type Role string
 
+func (r Role) String() string {
+	return string(r)
+}
+
+type Roles []Role
+
 const (
 	ExternalUser Role = "external_user"
 	GrantUser    Role = "grant_user"
 	Student      Role = "student"
 )
+
+var AllRoles = Roles{ExternalUser, GrantUser, Student}
 
 type User struct {
 	ID           int64 `gorm:"primaryKey"`
@@ -29,7 +37,7 @@ type User struct {
 type ClubOwner struct {
 	UserID    int64  `gorm:"primaryKey"`
 	ClubID    string `gorm:"primaryKey;type:uuid"`
-	Warnings  bool   `gorm:"default:false"`
+	Warnings  bool
 	CreatedAt time.Time
 }
 

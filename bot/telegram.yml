@@ -178,6 +178,31 @@ buttons:
     callback_data: '{{.ID}} {{.Page}}'
     text: '{{.Name}}'
 
+  admin:club:add_owner:
+    unique: admin_club_addOwner
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `add_club_owner` }}'
+
+  admin:club:del_owner:
+    unique: admin_club_delOwner
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `remove_club_owner` }}'
+
+  admin:club:back:
+    unique: admin_club_back
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `back` }}'
+
+  admin:club:roles:
+    unique: admin_club_roles
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `roles` }}'
+
+  admin:club:roles:role:
+    unique: admin_role
+    callback_data: '{{.ID}} {{.Page}} {{.Role}}'
+    text: '{{if .On}}✔️ {{.RoleText}}{{else}}❌ {{.RoleText}}{{end}}'
+
   admin:clubs:next_page:
     unique: admin_clubs_nextPage
     callback_data: '{{.Page}}'
@@ -197,21 +222,6 @@ buttons:
     unique: admin_club_delete
     callback_data: '{{.ID}} {{.Page}}'
     text: '{{ text `delete` }}'
-
-  admin:club:add_owner:
-    unique: admin_club_addOwner
-    callback_data: '{{.ID}} {{.Page}}'
-    text: '{{ text `add_club_owner` }}'
-
-  admin:club:del_owner:
-    unique: admin_club_delOwner
-    callback_data: '{{.ID}} {{.Page}}'
-    text: '{{ text `remove_club_owner` }}'
-
-  admin:club:back:
-    unique: admin_club_back
-    callback_data: '{{.ID}} {{.Page}}'
-    text: '{{ text `back` }}'
 
 
 markups:
@@ -265,7 +275,10 @@ markups:
   admin:club:menu:
     - [ admin:club:add_owner ]
     - [ admin:club:del_owner ]
+    - [ admin:club:roles ]
     - [ admin:club:delete ]
     - [ admin:clubs:back ]
+  admin:club:roles:
+    - [ admin:club:back ]
   admin:club:back:
     - [ admin:club:back ]

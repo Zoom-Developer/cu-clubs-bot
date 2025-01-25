@@ -594,7 +594,13 @@ func (h Handler) warnings(c tele.Context) error {
 		clubOwner.Warnings = !clubOwner.Warnings
 		_, err = h.clubOwnerService.Update(context.Background(), clubOwner)
 		if err != nil {
-			h.logger.Errorf("(user: %d) error while update club owner: %v", c.Sender().ID, err)
+			h.logger.Errorf(
+				"(user: %d) error while update club owner (club_id=%s, user_id=%d): %v",
+				c.Sender().ID,
+				clubOwner.ClubID,
+				clubOwner.UserID,
+				err,
+			)
 			return c.Edit(
 				banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
 				h.layout.Markup(c, "clubOwner:club:settings:back", struct {
@@ -608,7 +614,7 @@ func (h Handler) warnings(c tele.Context) error {
 
 	owners, err := h.clubOwnerService.GetByClubID(context.Background(), clubID)
 	if err != nil {
-		h.logger.Errorf("(user: %d) error while get club owners: %v", c.Sender().ID, err)
+		h.logger.Errorf("(user: %d) error while get club owners (club_id=%s): %v", c.Sender().ID, clubID, err)
 		return c.Edit(
 			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
 			h.layout.Markup(c, "clubOwner:club:settings:back", struct {
