@@ -1,10 +1,27 @@
 package entity
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"time"
 )
 
 type Role string
+
+type Roles []Role
+
+func (r *Roles) Value() (driver.Value, error) {
+	return json.Marshal(r)
+}
+
+func (r *Roles) Scan(value interface{}) error {
+	bytes, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("failed to unmarshal roles: %v", value)
+	}
+	return json.Unmarshal(bytes, r)
+}
 
 const (
 	ExternalUser Role = "external_user"
