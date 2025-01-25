@@ -850,49 +850,47 @@ func (h Handler) createEvent(c tele.Context) error {
 	const timeLayout = "02.01.2006 15:04"
 
 	var (
-		eventName                    string
 		eventDescription             string
-		eventLocation                string
 		eventStartTime               time.Time
 		eventStartTimeStr            string
 		eventEndTime                 time.Time
 		eventEndTimeStr              string
 		eventRegistrationEndTime     time.Time
 		eventRegistrationEndTimeStr  string
-		eventAfterRegistrationText   string
 		eventMaxParticipants         int
 		eventMaxExpectedParticipants int
 	)
 
-	eventName = *steps[0].result
 	eventDescription = *steps[1].result
 	if *steps[1].result == "skip" {
 		eventDescription = ""
 	}
-	eventLocation = *steps[2].result
+
 	eventStartTime, _ = time.Parse(timeLayout, *steps[3].result)
 	eventStartTimeStr = *steps[3].result
+
 	eventEndTime, _ = time.Parse(timeLayout, *steps[4].result)
 	eventEndTimeStr = *steps[4].result
 	if *steps[4].result == "skip" {
 		eventEndTime = time.Time{}
 		eventEndTimeStr = ""
 	}
+
 	eventRegistrationEndTime, _ = time.Parse(timeLayout, *steps[5].result)
 	eventRegistrationEndTimeStr = *steps[5].result
-	eventAfterRegistrationText = *steps[6].result
+
 	eventMaxParticipants, _ = strconv.Atoi(*steps[7].result)
 	eventMaxExpectedParticipants, _ = strconv.Atoi(*steps[8].result)
 
 	event := entity.Event{
 		ClubID:                club.ID,
-		Name:                  eventName,
+		Name:                  *steps[0].result,
 		Description:           eventDescription,
-		AfterRegistrationText: eventAfterRegistrationText,
-		Location:              eventLocation,
+		Location:              *steps[2].result,
 		StartTime:             eventStartTime,
 		EndTime:               eventEndTime,
 		RegistrationEnd:       eventRegistrationEndTime,
+		AfterRegistrationText: *steps[6].result,
 		MaxParticipants:       eventMaxParticipants,
 		ExpectedParticipants:  eventMaxExpectedParticipants,
 	}
@@ -921,28 +919,30 @@ func (h Handler) createEvent(c tele.Context) error {
 		)
 	}
 
+	confirmationPayload := struct {
+		Name                  string
+		Description           string
+		Location              string
+		StartTime             string
+		EndTime               string
+		RegistrationEnd       string
+		AfterRegistrationText string
+		MaxParticipants       int
+		ExpectedParticipants  int
+	}{
+		Name:                  event.Name,
+		Description:           event.Description,
+		Location:              event.Location,
+		StartTime:             eventStartTimeStr,
+		EndTime:               eventEndTimeStr,
+		RegistrationEnd:       eventRegistrationEndTimeStr,
+		AfterRegistrationText: event.AfterRegistrationText,
+		MaxParticipants:       event.MaxParticipants,
+		ExpectedParticipants:  event.ExpectedParticipants,
+	}
+
 	return c.Send(
-		banner.ClubOwner.Caption(h.layout.Text(c, "event_confirmation", struct {
-			Name                  string
-			Description           string
-			Location              string
-			StartTime             string
-			EndTime               string
-			RegistrationEnd       string
-			AfterRegistrationText string
-			MaxParticipants       int
-			ExpectedParticipants  int
-		}{
-			Name:                  event.Name,
-			Description:           event.Description,
-			Location:              event.Location,
-			StartTime:             eventStartTimeStr,
-			EndTime:               eventEndTimeStr,
-			RegistrationEnd:       eventRegistrationEndTimeStr,
-			AfterRegistrationText: event.AfterRegistrationText,
-			MaxParticipants:       event.MaxParticipants,
-			ExpectedParticipants:  event.ExpectedParticipants,
-		})),
+		banner.ClubOwner.Caption(h.layout.Text(c, "event_confirmation", confirmationPayload)),
 		markup,
 	)
 }
@@ -1027,28 +1027,30 @@ func (h Handler) eventAllowedRoles(c tele.Context) error {
 		eventTimeStr = ""
 	}
 
+	confirmationPayload := struct {
+		Name                  string
+		Description           string
+		Location              string
+		StartTime             string
+		EndTime               string
+		RegistrationEnd       string
+		AfterRegistrationText string
+		MaxParticipants       int
+		ExpectedParticipants  int
+	}{
+		Name:                  event.Name,
+		Description:           event.Description,
+		Location:              event.Location,
+		StartTime:             event.StartTime.Format(timeLayout),
+		EndTime:               eventTimeStr,
+		RegistrationEnd:       event.RegistrationEnd.Format(timeLayout),
+		AfterRegistrationText: event.AfterRegistrationText,
+		MaxParticipants:       event.MaxParticipants,
+		ExpectedParticipants:  event.ExpectedParticipants,
+	}
+
 	return c.Edit(
-		banner.ClubOwner.Caption(h.layout.Text(c, "event_confirmation", struct {
-			Name                  string
-			Description           string
-			Location              string
-			StartTime             string
-			EndTime               string
-			RegistrationEnd       string
-			AfterRegistrationText string
-			MaxParticipants       int
-			ExpectedParticipants  int
-		}{
-			Name:                  event.Name,
-			Description:           event.Description,
-			Location:              event.Location,
-			StartTime:             event.StartTime.Format(timeLayout),
-			EndTime:               eventTimeStr,
-			RegistrationEnd:       event.RegistrationEnd.Format(timeLayout),
-			AfterRegistrationText: event.AfterRegistrationText,
-			MaxParticipants:       event.MaxParticipants,
-			ExpectedParticipants:  event.ExpectedParticipants,
-		})),
+		banner.ClubOwner.Caption(h.layout.Text(c, "event_confirmation", confirmationPayload)),
 		markup,
 	)
 }
