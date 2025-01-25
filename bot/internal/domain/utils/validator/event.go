@@ -36,11 +36,7 @@ func EventStartTime(start string, _ map[string]interface{}) bool {
 
 	tomorrow := moscowTime.Add(time.Hour * time.Duration(24))
 
-	if startTime.Before(tomorrow) {
-		return false
-	}
-
-	return true
+	return !startTime.Before(tomorrow)
 }
 
 func EventEndTime(end string, params map[string]interface{}) bool {
@@ -81,11 +77,7 @@ func EventRegisteredEndTime(registeredEnd string, params map[string]interface{})
 		return false
 	}
 
-	if !registeredEndTime.Add(22 * time.Hour).Before(startTime) {
-		return false
-	}
-
-	return true
+	return registeredEndTime.Add(22 * time.Hour).Before(startTime)
 }
 
 func EventAfterRegistrationText(afterRegistrationText string, _ map[string]interface{}) bool {
@@ -94,18 +86,10 @@ func EventAfterRegistrationText(afterRegistrationText string, _ map[string]inter
 
 func MaxParticipants(maxParticipants string, _ map[string]interface{}) bool {
 	_, err := strconv.Atoi(maxParticipants)
-	if err != nil {
-		return false
-	}
-
-	return true
+	return err == nil
 }
 
 func ExpectedParticipants(expectedParticipants string, _ map[string]interface{}) bool {
 	_, err := strconv.Atoi(expectedParticipants)
-	if err != nil {
-		return false
-	}
-
-	return true
+	return err == nil
 }

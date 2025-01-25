@@ -3,6 +3,11 @@ package clubowner
 import (
 	"context"
 	"errors"
+	"slices"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/Badsnus/cu-clubs-bot/bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/postgres"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/events"
@@ -18,10 +23,6 @@ import (
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/layout"
 	"gorm.io/gorm"
-	"slices"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type clubService interface {
@@ -877,7 +878,7 @@ func (h Handler) createEvent(c tele.Context) error {
 		eventEndTime = time.Time{}
 		eventEndTimeStr = ""
 	}
-	eventRegistrationEndTime, err = time.Parse(timeLayout, *steps[5].result)
+	eventRegistrationEndTime, _ = time.Parse(timeLayout, *steps[5].result)
 	eventRegistrationEndTimeStr = *steps[5].result
 	eventAfterRegistrationText = *steps[6].result
 	eventMaxParticipants, _ = strconv.Atoi(*steps[7].result)
