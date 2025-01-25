@@ -1,33 +1,24 @@
 package entity
 
 import (
-	"database/sql/driver"
-	"encoding/json"
-	"fmt"
 	"time"
 )
 
 type Role string
 
+func (r Role) String() string {
+	return string(r)
+}
+
 type Roles []Role
-
-func (r *Roles) Value() (driver.Value, error) {
-	return json.Marshal(r)
-}
-
-func (r *Roles) Scan(value interface{}) error {
-	bytes, ok := value.([]byte)
-	if !ok {
-		return fmt.Errorf("failed to unmarshal roles: %v", value)
-	}
-	return json.Unmarshal(bytes, r)
-}
 
 const (
 	ExternalUser Role = "external_user"
 	GrantUser    Role = "grant_user"
 	Student      Role = "student"
 )
+
+var AllRoles = Roles{ExternalUser, GrantUser, Student}
 
 type User struct {
 	ID           int64 `gorm:"primaryKey"`
@@ -46,6 +37,7 @@ type User struct {
 type ClubOwner struct {
 	UserID    int64  `gorm:"primaryKey"`
 	ClubID    string `gorm:"primaryKey;type:uuid"`
+	Warnings  bool
 	CreatedAt time.Time
 }
 

@@ -113,6 +113,21 @@ buttons:
     callback_data: '{{.ID}}'
     text: '{{ text `create_event` }}'
 
+  clubOwner:create_event:confirm:
+    unique: clubOwner_event_confirm
+    callback_data: '{{.ID}}'
+    text: '{{ text `create` }}'
+
+  clubOwner:create_event:refill:
+    unique: clubOwner_event_refill
+    callback_data: '{{.ID}}'
+    text: '{{ text `refill` }}'
+
+  clubOwner:create_event:role:
+    unique: event_role
+    callback_data: '{{.ID}} {{.Role}}'
+    text: '{{if .Allowed}}✔️ {{.RoleName}}{{else}}❌ {{.RoleName}}{{end}}'
+
   clubOwner:club:events:
     unique: clubOwner_club_events
     callback_data: '{{.ID}}'
@@ -121,6 +136,11 @@ buttons:
   clubOwner:myClubs:back:
     unique: clubOwner_myClubs_back
     callback_data: clubOwner_myClubs_back
+    text: '{{ text `back` }}'
+
+  clubOwner:club:back:
+    unique: clubOwner_club_back
+    callback_data: '{{.ID}}'
     text: '{{ text `back` }}'
 
   admin:create_club:
@@ -208,6 +228,12 @@ markups:
     - [ clubOwner:club:events ]
     - [ clubOwner:club:create_event ]
     - [ clubOwner:club:settings ]
+  clubOwner:club:back:
+    - [ clubOwner:club:back ]
+  clubOwner:createClub:confirm:
+    - [ clubOwner:create_event:confirm ]
+    - [ clubOwner:create_event:refill ]
+    - [ clubOwner:club:back ]
 
   admin:menu:
     - [ admin:clubs ]

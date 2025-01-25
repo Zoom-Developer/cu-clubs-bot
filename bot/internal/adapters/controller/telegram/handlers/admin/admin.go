@@ -116,12 +116,12 @@ func (h Handler) createClub(c tele.Context) error {
 				banner.Menu.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "input_club_name"))),
 				h.layout.Markup(c, "admin:backToMenu"),
 			)
-		case !validator.ClubName(message.Text):
+		case !validator.ClubName(message.Text, nil):
 			_ = inputCollector.Send(c,
 				banner.Menu.Caption(h.layout.Text(c, "invalid_club_name")),
 				h.layout.Markup(c, "admin:backToMenu"),
 			)
-		case validator.ClubName(message.Text):
+		case validator.ClubName(message.Text, nil):
 			clubName = message.Text
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
 			done = true

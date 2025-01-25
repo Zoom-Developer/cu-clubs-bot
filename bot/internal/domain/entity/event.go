@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 	"time"
 )
@@ -21,4 +22,5 @@ type Event struct {
 	RegistrationEnd       time.Time `gorm:"not null"`
 	MaxParticipants       int
 	ExpectedParticipants  int
+	AllowedRoles          pq.StringArray `gorm:"type:text[]"`
 }

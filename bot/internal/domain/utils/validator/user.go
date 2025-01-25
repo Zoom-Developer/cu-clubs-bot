@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func Fio(fio string) bool {
+func Fio(fio string, _ map[string]interface{}) bool {
 	if splitFio := strings.Split(fio, " "); len(splitFio) != 3 {
 		return false
 	}
@@ -15,7 +15,7 @@ func Fio(fio string) bool {
 	return re.MatchString(strings.TrimSpace(fio))
 }
 
-func Email(email string) bool {
+func Email(email string, _ map[string]interface{}) bool {
 	return emailFormat(email) && emailDomain(email)
 }
 

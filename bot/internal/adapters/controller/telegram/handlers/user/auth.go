@@ -57,12 +57,12 @@ func (h Handler) externalUserAuth(c tele.Context) error {
 				banner.Auth.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "fio_request"))),
 				h.layout.Markup(c, "auth:backToMenu"),
 			)
-		case !validator.Fio(message.Text):
+		case !validator.Fio(message.Text, nil):
 			_ = inputCollector.Send(c,
 				banner.Auth.Caption(h.layout.Text(c, "invalid_user_fio")),
 				h.layout.Markup(c, "auth:backToMenu"),
 			)
-		case validator.Fio(message.Text):
+		case validator.Fio(message.Text, nil):
 			fio = message.Text
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
 			done = true
@@ -135,12 +135,12 @@ func (h Handler) grantUserAuth(c tele.Context) error {
 				banner.Auth.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "fio_request"))),
 				h.layout.Markup(c, "auth:backToMenu"),
 			)
-		case !validator.Fio(message.Text):
+		case !validator.Fio(message.Text, nil):
 			_ = inputCollector.Send(c,
 				banner.Auth.Caption(h.layout.Text(c, "invalid_user_fio")),
 				h.layout.Markup(c, "auth:backToMenu"),
 			)
-		case validator.Fio(message.Text):
+		case validator.Fio(message.Text, nil):
 			fio = message.Text
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
 			done = true
@@ -196,12 +196,12 @@ func (h Handler) studentAuth(c tele.Context) error {
 				banner.Auth.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "email_request"))),
 				h.layout.Markup(c, "auth:backToMenu"),
 			)
-		case !validator.Email(message.Text):
+		case !validator.Email(message.Text, nil):
 			_ = inputCollector.Send(c,
 				banner.Auth.Caption(h.layout.Text(c, "invalid_email")),
 				h.layout.Markup(c, "auth:backToMenu"),
 			)
-		case validator.Email(message.Text):
+		case validator.Email(message.Text, nil):
 			email = message.Text
 			done = true
 		}
