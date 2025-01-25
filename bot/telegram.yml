@@ -135,7 +135,7 @@ buttons:
 
   clubOwner:club:settings:add_owner:
     unique: clubOwner_club_addOwner
-    callback_data: '{{.ID}} '
+    callback_data: '{{.ID}}'
     text: '{{ text `add_club_owner` }}'
 
   clubOwner:club:settings:warnings:
