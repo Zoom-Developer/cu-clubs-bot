@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/dto"
+
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 )
 
@@ -12,7 +14,7 @@ type EventStorage interface {
 	GetAll(ctx context.Context) ([]entity.Event, error)
 	Update(ctx context.Context, event *entity.Event) (*entity.Event, error)
 	Count(ctx context.Context, role string) (int64, error)
-	GetWithPagination(ctx context.Context, limit, offset int, order string, role string) ([]entity.Event, error)
+	GetWithPagination(ctx context.Context, limit, offset int, order string, role string, userID int64) ([]dto.Event, error)
 }
 
 type EventService struct {
@@ -48,6 +50,6 @@ func (s *EventService) Count(ctx context.Context, role entity.Role) (int64, erro
 	return s.eventStorage.Count(ctx, string(role))
 }
 
-func (s *EventService) GetWithPagination(ctx context.Context, limit, offset int, order string, role entity.Role) ([]entity.Event, error) {
-	return s.eventStorage.GetWithPagination(ctx, limit, offset, order, string(role))
+func (s *EventService) GetWithPagination(ctx context.Context, limit, offset int, order string, role entity.Role, userID int64) ([]dto.Event, error) {
+	return s.eventStorage.GetWithPagination(ctx, limit, offset, order, string(role), userID)
 }

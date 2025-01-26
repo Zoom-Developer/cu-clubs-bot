@@ -9,6 +9,7 @@ import (
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/codes"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis/emails"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/common/errorz"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/dto"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/service"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/banner"
@@ -43,7 +44,7 @@ type qrCodesGenerator interface {
 
 type eventService interface {
 	Get(ctx context.Context, id string) (*entity.Event, error)
-	GetWithPagination(ctx context.Context, limit, offset int, order string, role entity.Role) ([]entity.Event, error)
+	GetWithPagination(ctx context.Context, limit, offset int, order string, role entity.Role, userID int64) ([]dto.Event, error)
 	Count(ctx context.Context, role entity.Role) (int64, error)
 }
 
@@ -202,7 +203,7 @@ func (h Handler) eventsList(c tele.Context) error {
 		nextPage    int
 		err         error
 		eventsCount int64
-		events      []entity.Event
+		events      []dto.Event
 		rows        []tele.Row
 		menuRow     tele.Row
 	)
@@ -231,7 +232,14 @@ func (h Handler) eventsList(c tele.Context) error {
 		)
 	}
 
-	events, err = h.eventService.GetWithPagination(context.Background(), eventsOnPage, p*eventsOnPage, "created_at DESC", user.Role)
+	events, err = h.eventService.GetWithPagination(
+		context.Background(),
+		eventsOnPage,
+		p*eventsOnPage,
+		"created_at DESC",
+		user.Role,
+		user.ID,
+	)
 	if err != nil {
 		h.logger.Errorf(
 			"(user: %d) error while get events (offset=%d, limit=%d, order=%s, role=%s): %v",
@@ -251,13 +259,15 @@ func (h Handler) eventsList(c tele.Context) error {
 	markup := c.Bot().NewMarkup()
 	for _, event := range events {
 		rows = append(rows, markup.Row(*h.layout.Button(c, "user:events:event", struct {
-			ID   string
-			Name string
-			Page int
+			ID           string
+			Name         string
+			Page         int
+			IsRegistered bool
 		}{
-			ID:   event.ID,
-			Name: event.Name,
-			Page: p,
+			ID:           event.ID,
+			Name:         event.Name,
+			Page:         p,
+			IsRegistered: event.IsRegistered,
 		})))
 	}
 	pagesCount := int(eventsCount) / (eventsOnPage + 1)

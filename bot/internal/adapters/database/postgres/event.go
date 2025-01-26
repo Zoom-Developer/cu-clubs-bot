@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/dto"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 	"gorm.io/gorm"
 )
@@ -62,14 +63,34 @@ func (s *EventStorage) Count(ctx context.Context, role string) (int64, error) {
 }
 
 // GetWithPagination is a function that gets a list of events from the database with pagination. (if role is empty, it will return all events)
-func (s *EventStorage) GetWithPagination(ctx context.Context, limit, offset int, order string, role string) ([]entity.Event, error) {
-	var events []entity.Event
-	query := s.db.WithContext(ctx).Order(order).Limit(limit).Offset(offset).Where("registration_end > ?", time.Now())
+func (s *EventStorage) GetWithPagination(ctx context.Context, limit, offset int, order string, role string, userID int64) ([]dto.Event, error) {
+	var events []struct {
+		entity.Event
+		IsRegistered bool
+	}
+
+	query := s.db.WithContext(ctx).
+		Table("events").
+		Select("events.*, CASE WHEN ep.user_id IS NOT NULL THEN true ELSE false END as is_registered").
+		Joins("LEFT JOIN event_participants ep ON events.id = ep.event_id AND ep.user_id = ?", userID).
+		Where("registration_end > ?", time.Now())
 
 	if role != "" {
 		query = query.Where("? = ANY(allowed_roles)", role)
 	}
 
-	err := query.Find(&events).Error
-	return events, err
+	err := query.Order(order).
+		Limit(limit).
+		Offset(offset).
+		Find(&events).Error
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]dto.Event, len(events))
+	for i, event := range events {
+		result[i] = dto.NewEventFromEntity(event.Event, event.IsRegistered)
+	}
+
+	return result, nil
 }
