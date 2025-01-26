@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 	"gorm.io/gorm"
@@ -18,7 +19,29 @@ func NewEventParticipantStorage(db *gorm.DB) *EventParticipantStorage {
 }
 
 func (s *EventParticipantStorage) Create(ctx context.Context, eventParticipant *entity.EventParticipant) (*entity.EventParticipant, error) {
-	err := s.db.WithContext(ctx).Create(&eventParticipant).Error
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Check if event exists
+		var eventExists int64
+		if err := tx.Model(&entity.Event{}).Where("id = ?", eventParticipant.EventID).Count(&eventExists).Error; err != nil {
+			return err
+		}
+		if eventExists == 0 {
+			return fmt.Errorf("event with id %s not found", eventParticipant.EventID)
+		}
+
+		// Check if user exists
+		var userExists int64
+		if err := tx.Model(&entity.User{}).Where("id = ?", eventParticipant.UserID).Count(&userExists).Error; err != nil {
+			return err
+		}
+		if userExists == 0 {
+			return fmt.Errorf("user with id %d not found", eventParticipant.UserID)
+		}
+
+		// Create participant
+		return tx.Create(&eventParticipant).Error
+	})
+
 	return eventParticipant, err
 }
 

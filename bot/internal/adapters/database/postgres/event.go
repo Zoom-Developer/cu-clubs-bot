@@ -25,13 +25,13 @@ func (s *EventStorage) Create(ctx context.Context, event *entity.Event) (*entity
 }
 
 // Get is a function that gets an event from the database by id.
-func (s *EventStorage) Get(ctx context.Context, id uint) (*entity.Event, error) {
+func (s *EventStorage) Get(ctx context.Context, id string) (*entity.Event, error) {
 	var event entity.Event
 	err := s.db.WithContext(ctx).Where("id = ?", id).First(&event).Error
 	return &event, err
 }
 
-func (s *EventStorage) GetMany(ctx context.Context, ids []int64) ([]entity.Event, error) {
+func (s *EventStorage) GetMany(ctx context.Context, ids []string) ([]entity.Event, error) {
 	var events []entity.Event
 	err := s.db.WithContext(ctx).Where("id IN ?", ids).Find(&events).Error
 	return events, err

@@ -8,11 +8,14 @@ import (
 )
 
 type Club struct {
-	ID           string `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	DeletedAt    gorm.DeletedAt
-	Name         string `gorm:"not null;unique"`
-	Description  string
+	ID          string `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	DeletedAt   gorm.DeletedAt
+	Name        string `gorm:"not null;unique"`
+	Description string
+	// AllowedRoles - list of roles for which this group can create events
 	AllowedRoles pq.StringArray `gorm:"type:text[]"`
+	// QrAllowed - true if group can create qr code that can be scanned by users for event registration
+	QrAllowed bool
 }

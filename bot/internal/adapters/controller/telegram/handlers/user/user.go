@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"errors"
 	"github.com/Badsnus/cu-clubs-bot/bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/handlers/menu"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/postgres"
@@ -16,10 +17,11 @@ import (
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/smtp"
 	"github.com/nlypage/intele"
 	"github.com/spf13/viper"
-	"strconv"
-
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/layout"
+	"gorm.io/gorm"
+	"strconv"
+	"strings"
 )
 
 type userService interface {
@@ -36,13 +38,20 @@ type qrCodesGenerator interface {
 }
 
 type eventService interface {
+	Get(ctx context.Context, id string) (*entity.Event, error)
 	GetWithPagination(ctx context.Context, offset, limit int, order string, role entity.Role) ([]entity.Event, error)
 	Count(ctx context.Context) (int64, error)
 }
 
+type eventParticipantService interface {
+	Register(ctx context.Context, userID int64, eventID string) (*entity.EventParticipant, error)
+	Get(ctx context.Context, eventID string, userID int64) (*entity.EventParticipant, error)
+}
+
 type Handler struct {
-	userService  userService
-	eventService eventService
+	userService             userService
+	eventService            eventService
+	eventParticipantService eventParticipantService
 
 	menuHandler *menu.Handler
 
@@ -58,6 +67,7 @@ func New(b *bot.Bot) *Handler {
 	userStorage := postgres.NewUserStorage(b.DB)
 	studentDataStorage := postgres.NewStudentDataStorage(b.DB)
 	eventStorage := postgres.NewEventStorage(b.DB)
+	eventParticipantStorage := postgres.NewEventParticipantStorage(b.DB)
 
 	smtpClient := smtp.NewClient(b.SMTPDialer)
 	botName := viper.GetString("bot.username")
@@ -65,15 +75,16 @@ func New(b *bot.Bot) *Handler {
 	qrCodeOutputDir := viper.GetString("settings.qr.output-dir")
 
 	return &Handler{
-		userService:      service.NewUserService(userStorage, studentDataStorage, smtpClient),
-		eventService:     service.NewEventService(eventStorage),
-		qrCodesGenerator: generator.NewQrCode(generator.CU, qrCodeOutputDir, qrCodeLogo, botName),
-		menuHandler:      menu.New(b),
-		codesStorage:     b.Redis.Codes,
-		emailsStorage:    b.Redis.Emails,
-		layout:           b.Layout,
-		input:            b.Input,
-		logger:           b.Logger,
+		userService:             service.NewUserService(userStorage, studentDataStorage, smtpClient),
+		eventService:            service.NewEventService(eventStorage),
+		eventParticipantService: service.NewEventParticipantService(eventParticipantStorage),
+		qrCodesGenerator:        generator.NewQrCode(generator.CU, qrCodeOutputDir, qrCodeLogo, botName),
+		menuHandler:             menu.New(b),
+		codesStorage:            b.Redis.Codes,
+		emailsStorage:           b.Redis.Emails,
+		layout:                  b.Layout,
+		input:                   b.Input,
+		logger:                  b.Logger,
 	}
 }
 
@@ -299,9 +310,102 @@ func (h Handler) eventsList(c tele.Context) error {
 	return nil
 }
 
+func (h Handler) event(c tele.Context) error {
+	callbackData := strings.Split(c.Callback().Data, " ")
+	if len(callbackData) != 2 {
+		return errorz.ErrInvalidCallbackData
+	}
+	eventID := callbackData[0]
+	page := callbackData[1]
+	h.logger.Infof("(user: %d) edit event (event_id=%s)", c.Sender().ID, eventID)
+
+	event, err := h.eventService.Get(context.Background(), eventID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get event: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.Events.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "user:events:back", struct {
+				Page string
+			}{
+				Page: page,
+			}),
+		)
+	}
+	var registered bool
+	_, errGetParticipant := h.eventParticipantService.Get(context.Background(), eventID, c.Sender().ID)
+	if errGetParticipant != nil {
+		if !errors.Is(errGetParticipant, gorm.ErrRecordNotFound) {
+			return c.Edit(
+				banner.Events.Caption(h.layout.Text(c, "technical_issues", errGetParticipant.Error())),
+				h.layout.Markup(c, "user:events:back", struct {
+					Page string
+				}{
+					Page: page,
+				}),
+			)
+		}
+	} else {
+		registered = true
+	}
+
+	if c.Callback().Unique == "event_register" {
+		if !registered {
+			_, err = h.eventParticipantService.Register(context.Background(), c.Sender().ID, eventID)
+			if err != nil {
+				h.logger.Errorf("(user: %d) error while register to event: %v", c.Sender().ID, err)
+				return c.Edit(
+					banner.Events.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+					h.layout.Markup(c, "user:events:back", struct {
+						Page string
+					}{
+						Page: page,
+					}),
+				)
+			}
+			registered = true
+		}
+	}
+
+	_ = c.Edit(
+		banner.Events.Caption(h.layout.Text(c, "event_text", struct {
+			Name                  string
+			Description           string
+			Location              string
+			StartTime             string
+			EndTime               string
+			RegistrationEnd       string
+			MaxParticipants       int
+			AfterRegistrationText string
+			IsRegistered          bool
+		}{
+			Name:                  event.Name,
+			Description:           event.Description,
+			Location:              event.Location,
+			StartTime:             event.StartTime.Format("02.01.2006 15:04"),
+			EndTime:               event.EndTime.Format("02.01.2006 15:04"),
+			RegistrationEnd:       event.RegistrationEnd.Format("02.01.2006 15:04"),
+			MaxParticipants:       event.MaxParticipants,
+			AfterRegistrationText: event.AfterRegistrationText,
+			IsRegistered:          registered,
+		})),
+		h.layout.Markup(c, "user:events:event", struct {
+			ID           string
+			Page         string
+			IsRegistered bool
+		}{
+			ID:           eventID,
+			Page:         page,
+			IsRegistered: registered,
+		}))
+	return nil
+}
+
 func (h Handler) UserSetup(group *tele.Group) {
 	group.Handle(h.layout.Callback("mainMenu:qr"), h.qrCode)
 	group.Handle(h.layout.Callback("mainMenu:events"), h.eventsList)
 	group.Handle(h.layout.Callback("user:events:prev_page"), h.eventsList)
 	group.Handle(h.layout.Callback("user:events:next_page"), h.eventsList)
+	group.Handle(h.layout.Callback("user:events:back"), h.eventsList)
+	group.Handle(h.layout.Callback("user:events:event"), h.event)
+	group.Handle(h.layout.Callback("user:events:event:register"), h.event)
 }

@@ -103,6 +103,16 @@ buttons:
     callback_data: '{{.Page}}'
     text: '{{ text `prev` }}'
 
+  user:events:back:
+    unique: user_events_back
+    callback_data: '{{.Page}}'
+    text: '{{ text `back` }}'
+
+  user:events:event:register:
+    unique: event_register
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{if .IsRegistered}}{{text `registered` }}{{else}}{{ text `register` }}{{end}}'
+
   clubOwner:my_clubs:
     unique: clubOwner_myClubs
     callback_data: clubOwner_myClubs
@@ -278,6 +288,12 @@ markups:
     - [ mainMenu:qr ]
   mainMenu:back:
     - [ mainMenu:back ]
+
+  user:events:back:
+    - [ user:events:back ]
+  user:events:event:
+    - [ user:events:event:register ]
+    - [ user:events:back ]
 
   clubOwner:club:menu:
     - [ clubOwner:club:events ]

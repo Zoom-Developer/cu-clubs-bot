@@ -85,6 +85,22 @@ qr_text: Ваш QR-код для посещения мероприятий
 # user
 events_list: |-
   <b>📅 Список мероприятий</b>
+event_text: |-
+  📅 Мероприятие <b>{{.Name}}</b>
+  <blockquote><b>📝 Описание:</b>
+  {{if .Description}}{{.Description}}{{else}}<i>Не указано</i>{{end}}</blockquote>
+  <b>📍 Локация:</b> {{.Location}}
+  
+  <b>⏱ Начало:</b> {{.StartTime}}
+  <b>⏱ Окончание:</b> {{if .EndTime}}{{.EndTime}}{{else}}<i>Не указано</i>{{end}}
+  <b>📌 Завершение регистрации:</b> {{.RegistrationEnd}}
+  <b>👥 Максимальное количество участников:</b> {{if .MaxParticipants}}{{.MaxParticipants}}{{else}}<i>Не ограничено</i>{{end}}
+  
+  {{if .IsRegistered}}<blockquote><b>📄 Текст после регистрации:</b> 
+  {{.AfterRegistrationText}}</blockquote>{{end}}
+
+register: Зарегистрироваться
+registered: ✔️ Вы зарегистрированы
 
 #club owner menu
 club_owner_club_menu_text: |-
@@ -92,8 +108,8 @@ club_owner_club_menu_text: |-
   
   <u>Организаторы:</u>
   {{if .Owners}}{{range .Owners}}- <b>{{.FIO}}</b> (id: <code>{{.UserID}}</code>){{"\n"}}{{end}}{{else}}<i>- Отсутствуют</i>{{"\n"}}{{end}}
-  <blockquote>📝 Описание:
-  {{.Club.Description}}</blockquote>
+  <blockquote><b>📝 Описание:</b>
+  {{if .Description}}{{.Description}}{{else}}<i>Не указано</i>{{end}}</blockquote>
 
 club_settings: ⚙️ Настройки
 club_settings_text: |-
@@ -101,8 +117,8 @@ club_settings_text: |-
 
   <u>Организаторы:</u>
   {{if .Owners}}{{range .Owners}}- <b>{{.FIO}}</b> (id: <code>{{.UserID}}</code>){{"\n"}}{{end}}{{else}}<i>- Отсутствуют</i>{{"\n"}}{{end}}
-  <blockquote>📝 Описание:
-  {{.Club.Description}}</blockquote>
+  <blockquote><b>📝 Описание:</b>
+  {{if .Description}}{{.Description}}{{else}}<i>Не указано</i>{{end}}</blockquote>
 edit_name: ✍️ Изменить название
 name_changed: <b>✔️ Название клуба успешно изменено</b>
 edit_description: ✍️ Изменить описание
@@ -228,8 +244,8 @@ admin_club_menu_text: |-
   
   <u>Организаторы:</u>
   {{if .Owners}}{{range .Owners}}- <b>{{.FIO}}</b> (id: <code>{{.UserID}}</code>){{"\n"}}{{end}}{{else}}<i>- Отсутствуют</i>{{"\n"}}{{end}}
-  <blockquote>📝 Описание:
-  {{.Club.Description}}</blockquote>
+  <blockquote><b>📝 Описание:</b>
+  {{if .Description}}{{.Description}}{{else}}<i>Не указано</i>{{end}}</blockquote>
 club_deleted: |-
   ✔️ Клуб <b>{{.Name}}</b> успешно удален!
 add_club_owner: |-

@@ -7,8 +7,8 @@ import (
 
 type EventStorage interface {
 	Create(ctx context.Context, event *entity.Event) (*entity.Event, error)
-	Get(ctx context.Context, id uint) (*entity.Event, error)
-	GetMany(ctx context.Context, ids []int64) ([]entity.Event, error)
+	Get(ctx context.Context, id string) (*entity.Event, error)
+	GetMany(ctx context.Context, ids []string) ([]entity.Event, error)
 	GetAll(ctx context.Context) ([]entity.Event, error)
 	Update(ctx context.Context, event *entity.Event) (*entity.Event, error)
 	Count(ctx context.Context) (int64, error)
@@ -29,11 +29,11 @@ func (s *EventService) Create(ctx context.Context, event *entity.Event) (*entity
 	return s.eventStorage.Create(ctx, event)
 }
 
-func (s *EventService) Get(ctx context.Context, id uint) (*entity.Event, error) {
+func (s *EventService) Get(ctx context.Context, id string) (*entity.Event, error) {
 	return s.eventStorage.Get(ctx, id)
 }
 
-func (s *EventService) GetMany(ctx context.Context, ids []int64) ([]entity.Event, error) {
+func (s *EventService) GetMany(ctx context.Context, ids []string) ([]entity.Event, error) {
 	return s.eventStorage.GetMany(ctx, ids)
 }
 func (s *EventService) GetAll(ctx context.Context) ([]entity.Event, error) {
