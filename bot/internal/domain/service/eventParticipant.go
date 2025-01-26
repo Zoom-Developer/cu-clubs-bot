@@ -46,6 +46,7 @@ func (s *EventParticipantService) GetByEventID(ctx context.Context, eventID stri
 	return s.storage.GetByEventID(ctx, eventID)
 }
 
-func (s *EventParticipantService) CountByEventID(ctx context.Context, eventID string) (int64, error) {
-	return s.storage.CountByEventID(ctx, eventID)
+func (s *EventParticipantService) CountByEventID(ctx context.Context, eventID string) (int, error) {
+	count, err := s.storage.CountByEventID(ctx, eventID)
+	return int(count), err
 }

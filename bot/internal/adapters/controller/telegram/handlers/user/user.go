@@ -22,6 +22,7 @@ import (
 	"gorm.io/gorm"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type userService interface {
@@ -46,6 +47,7 @@ type eventService interface {
 type eventParticipantService interface {
 	Register(ctx context.Context, userID int64, eventID string) (*entity.EventParticipant, error)
 	Get(ctx context.Context, eventID string, userID int64) (*entity.EventParticipant, error)
+	CountByEventID(ctx context.Context, eventID string) (int, error)
 }
 
 type Handler struct {
@@ -335,6 +337,7 @@ func (h Handler) event(c tele.Context) error {
 	_, errGetParticipant := h.eventParticipantService.Get(context.Background(), eventID, c.Sender().ID)
 	if errGetParticipant != nil {
 		if !errors.Is(errGetParticipant, gorm.ErrRecordNotFound) {
+			h.logger.Errorf("(user: %d) error while get participant: %v", c.Sender().ID, errGetParticipant)
 			return c.Edit(
 				banner.Events.Caption(h.layout.Text(c, "technical_issues", errGetParticipant.Error())),
 				h.layout.Markup(c, "user:events:back", struct {
@@ -348,13 +351,26 @@ func (h Handler) event(c tele.Context) error {
 		registered = true
 	}
 
+	participantsCount, err := h.eventParticipantService.CountByEventID(context.Background(), eventID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get participants count: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.Events.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "user:events:back", struct {
+				Page string
+			}{
+				Page: page,
+			}),
+		)
+	}
+
 	if c.Callback().Unique == "event_register" {
 		if !registered {
-			_, err = h.eventParticipantService.Register(context.Background(), c.Sender().ID, eventID)
-			if err != nil {
-				h.logger.Errorf("(user: %d) error while register to event: %v", c.Sender().ID, err)
+			timeLocation, errLoadLocation := time.LoadLocation(viper.GetString("settings.timezone"))
+			if errLoadLocation != nil {
+				h.logger.Errorf("(user: %d) error while load timezone: %v", c.Sender().ID, errLoadLocation)
 				return c.Edit(
-					banner.Events.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+					banner.Events.Caption(h.layout.Text(c, "technical_issues", errLoadLocation.Error())),
 					h.layout.Markup(c, "user:events:back", struct {
 						Page string
 					}{
@@ -362,7 +378,35 @@ func (h Handler) event(c tele.Context) error {
 					}),
 				)
 			}
-			registered = true
+
+			if event.MaxParticipants == 0 || participantsCount < event.MaxParticipants && event.RegistrationEnd.After(time.Now().In(timeLocation)) {
+				_, err = h.eventParticipantService.Register(context.Background(), c.Sender().ID, eventID)
+				if err != nil {
+					h.logger.Errorf("(user: %d) error while register to event: %v", c.Sender().ID, err)
+					return c.Edit(
+						banner.Events.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+						h.layout.Markup(c, "user:events:back", struct {
+							Page string
+						}{
+							Page: page,
+						}),
+					)
+				}
+				registered = true
+			} else {
+				switch {
+				case event.RegistrationEnd.Before(time.Now().In(timeLocation)):
+					return c.Respond(&tele.CallbackResponse{
+						Text:      h.layout.Text(c, "registration_closed"),
+						ShowAlert: true,
+					})
+				case event.MaxParticipants > 0 && participantsCount >= event.MaxParticipants:
+					return c.Respond(&tele.CallbackResponse{
+						Text:      h.layout.Text(c, "registration_closed"),
+						ShowAlert: true,
+					})
+				}
+			}
 		}
 	}
 
@@ -397,6 +441,10 @@ func (h Handler) event(c tele.Context) error {
 			Page:         page,
 			IsRegistered: registered,
 		}))
+	return nil
+}
+
+func (h Handler) myEvents(c tele.Context) error {
 	return nil
 }
 
