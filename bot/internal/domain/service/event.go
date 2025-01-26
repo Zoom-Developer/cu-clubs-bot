@@ -11,7 +11,7 @@ type EventStorage interface {
 	GetMany(ctx context.Context, ids []string) ([]entity.Event, error)
 	GetAll(ctx context.Context) ([]entity.Event, error)
 	Update(ctx context.Context, event *entity.Event) (*entity.Event, error)
-	Count(ctx context.Context) (int64, error)
+	Count(ctx context.Context, role string) (int64, error)
 	GetWithPagination(ctx context.Context, limit, offset int, order string, role string) ([]entity.Event, error)
 }
 
@@ -44,8 +44,8 @@ func (s *EventService) Update(ctx context.Context, event *entity.Event) (*entity
 	return s.eventStorage.Update(ctx, event)
 }
 
-func (s *EventService) Count(ctx context.Context) (int64, error) {
-	return s.eventStorage.Count(ctx)
+func (s *EventService) Count(ctx context.Context, role entity.Role) (int64, error) {
+	return s.eventStorage.Count(ctx, string(role))
 }
 
 func (s *EventService) GetWithPagination(ctx context.Context, limit, offset int, order string, role entity.Role) ([]entity.Event, error) {

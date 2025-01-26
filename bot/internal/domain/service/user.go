@@ -33,6 +33,7 @@ type smtpClient interface {
 
 type eventParticipantService interface {
 	GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]entity.Event, error)
+	CountUserEvents(ctx context.Context, userID int64) (int64, error)
 }
 
 type UserService struct {
@@ -101,6 +102,10 @@ func (s *UserService) Ban(ctx context.Context, userID int64) (*entity.User, erro
 
 func (s *UserService) GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]entity.Event, error) {
 	return s.eventParticipantService.GetUserEvents(ctx, userID, limit, offset)
+}
+
+func (s *UserService) CountUserEvents(ctx context.Context, userID int64) (int64, error) {
+	return s.eventParticipantService.CountUserEvents(ctx, userID)
 }
 
 func (s *UserService) SendAuthCode(_ context.Context, email string) (string, string, error) {

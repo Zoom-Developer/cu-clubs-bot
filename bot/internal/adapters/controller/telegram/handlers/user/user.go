@@ -33,6 +33,7 @@ type userService interface {
 	SendAuthCode(ctx context.Context, email string) (string, string, error)
 	Update(ctx context.Context, user *entity.User) (*entity.User, error)
 	GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]entity.Event, error)
+	CountUserEvents(ctx context.Context, userID int64) (int64, error)
 }
 
 type qrCodesGenerator interface {
@@ -43,7 +44,7 @@ type qrCodesGenerator interface {
 type eventService interface {
 	Get(ctx context.Context, id string) (*entity.Event, error)
 	GetWithPagination(ctx context.Context, limit, offset int, order string, role entity.Role) ([]entity.Event, error)
-	Count(ctx context.Context) (int64, error)
+	Count(ctx context.Context, role entity.Role) (int64, error)
 }
 
 type eventParticipantService interface {
@@ -221,7 +222,7 @@ func (h Handler) eventsList(c tele.Context) error {
 		)
 	}
 
-	eventsCount, err = h.eventService.Count(context.Background())
+	eventsCount, err = h.eventService.Count(context.Background(), user.Role)
 	if err != nil {
 		h.logger.Errorf("(user: %d) error while get events count: %v", c.Sender().ID, err)
 		return c.Edit(
@@ -467,7 +468,7 @@ func (h Handler) myEvents(c tele.Context) error {
 		)
 	}
 
-	eventsCount, err = h.eventService.Count(context.Background())
+	eventsCount, err = h.userService.CountUserEvents(context.Background(), user.ID)
 	if err != nil {
 		h.logger.Errorf("(user: %d) error while get events count: %v", c.Sender().ID, err)
 		return c.Edit(
@@ -565,6 +566,60 @@ func (h Handler) myEvents(c tele.Context) error {
 
 }
 
+func (h Handler) myEvent(c tele.Context) error {
+	callbackData := strings.Split(c.Callback().Data, " ")
+	if len(callbackData) != 2 {
+		return errorz.ErrInvalidCallbackData
+	}
+	eventID := callbackData[0]
+	page := callbackData[1]
+	h.logger.Infof("(user: %d) edit my event (event_id=%s)", c.Sender().ID, eventID)
+
+	event, err := h.eventService.Get(context.Background(), eventID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get my event: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.Events.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "user:myEvents:back", struct {
+				Page string
+			}{
+				Page: page,
+			}),
+		)
+	}
+
+	_ = c.Edit(
+		banner.Events.Caption(h.layout.Text(c, "my_event_text", struct {
+			Name                  string
+			Description           string
+			Location              string
+			StartTime             string
+			EndTime               string
+			RegistrationEnd       string
+			MaxParticipants       int
+			AfterRegistrationText string
+			IsOver                bool
+		}{
+			Name:                  event.Name,
+			Description:           event.Description,
+			Location:              event.Location,
+			StartTime:             event.StartTime.Format("02.01.2006 15:04"),
+			EndTime:               event.EndTime.Format("02.01.2006 15:04"),
+			RegistrationEnd:       event.RegistrationEnd.Format("02.01.2006 15:04"),
+			MaxParticipants:       event.MaxParticipants,
+			AfterRegistrationText: event.AfterRegistrationText,
+			IsOver:                event.IsOver(),
+		})),
+		h.layout.Markup(c, "user:myEvents:event", struct {
+			ID   string
+			Page string
+		}{
+			ID:   eventID,
+			Page: page,
+		}))
+	return nil
+}
+
 func (h Handler) UserSetup(group *tele.Group) {
 	group.Handle(h.layout.Callback("mainMenu:qr"), h.qrCode)
 
@@ -578,5 +633,6 @@ func (h Handler) UserSetup(group *tele.Group) {
 	group.Handle(h.layout.Callback("mainMenu:my_events"), h.myEvents)
 	group.Handle(h.layout.Callback("user:myEvents:prev_page"), h.myEvents)
 	group.Handle(h.layout.Callback("user:myEvents:next_page"), h.myEvents)
+	group.Handle(h.layout.Callback("user:myEvents:event"), h.myEvent)
 	group.Handle(h.layout.Callback("user:myEvents:back"), h.myEvents)
 }

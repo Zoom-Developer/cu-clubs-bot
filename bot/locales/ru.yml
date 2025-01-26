@@ -107,6 +107,20 @@ max_participants_reached: |-
 registered: ✔️ Вы зарегистрированы
 my_events_list: |-
   <b>📅 Список мероприятий на которые вы регистрировались</b>
+my_event_text: |-
+  📅 Мероприятие <b>{{.Name}}</b>
+  <blockquote><b>📝 Описание:</b>
+  {{if .Description}}{{.Description}}{{else}}<i>Не указано</i>{{end}}</blockquote>
+  <b>📍 Локация:</b> {{.Location}}
+  
+  <b>⏱ Начало:</b> {{.StartTime}}
+  <b>⏱ Окончание:</b> {{if .EndTime}}{{.EndTime}}{{else}}<i>Не указано</i>{{end}}
+  <b>📌 Завершение регистрации:</b> {{.RegistrationEnd}}
+  <b>👥 Максимальное количество участников:</b> {{if .MaxParticipants}}{{.MaxParticipants}}{{else}}<i>Не ограничено</i>{{end}}
+  
+  {{if .AfterRegistrationText}}<blockquote><b>📄 Текст после регистрации:</b> 
+  {{.AfterRegistrationText}}</blockquote>{{end}}
+  {{if .IsOver}}<i>⌛️ Мероприятие прошло</i>{{else}}<b>✔️ Вы зарегистрированы</b>{{end}}
 
 #club owner menu
 club_owner_club_menu_text: |-

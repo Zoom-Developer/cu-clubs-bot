@@ -51,9 +51,13 @@ func (s *EventStorage) Update(ctx context.Context, event *entity.Event) (*entity
 }
 
 // Count is a function that gets the count of events from the database.
-func (s *EventStorage) Count(ctx context.Context) (int64, error) {
+func (s *EventStorage) Count(ctx context.Context, role string) (int64, error) {
 	var count int64
-	err := s.db.WithContext(ctx).Model(&entity.Event{}).Count(&count).Error
+	query := s.db.WithContext(ctx).Model(&entity.Event{}).
+		Where("registration_end > ?", time.Now()).
+		Where("? = ANY(allowed_roles)", role)
+
+	err := query.Count(&count).Error
 	return count, err
 }
 

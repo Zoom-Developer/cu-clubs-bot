@@ -314,6 +314,10 @@ markups:
   user:events:event:
     - [ user:events:event:register ]
     - [ user:events:back ]
+  user:myEvents:back:
+    - [ user:myEvents:back ]
+  user:myEvents:event:
+    - [ user:myEvents:back ]
 
   clubOwner:club:menu:
     - [ clubOwner:club:events ]

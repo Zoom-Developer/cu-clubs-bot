@@ -78,27 +78,40 @@ func (s *EventParticipantStorage) GetUserEvents(ctx context.Context, userID int6
 	var events []entity.Event
 	currentTime := time.Now()
 
-	// Get upcoming events first, sorted by start time ascending
+	// Count total upcoming events for this user
+	var upcomingCount int64
 	if err := s.db.WithContext(ctx).
+		Model(&entity.Event{}).
 		Joins("JOIN event_participants ON events.id = event_participants.event_id").
 		Where("event_participants.user_id = ? AND events.start_time > ?", userID, currentTime).
-		Order("events.start_time ASC").
-		Limit(limit).
-		Offset(offset).
-		Find(&events).Error; err != nil {
+		Count(&upcomingCount).Error; err != nil {
 		return nil, err
 	}
 
-	// If we haven't filled the limit with upcoming events, get past events
-	if len(events) < limit {
-		remainingLimit := limit - len(events)
+	// If offset is within upcoming events, get upcoming events
+	if offset < int(upcomingCount) {
+		if err := s.db.WithContext(ctx).
+			Joins("JOIN event_participants ON events.id = event_participants.event_id").
+			Where("event_participants.user_id = ? AND events.start_time > ?", userID, currentTime).
+			Order("events.start_time ASC").
+			Limit(limit).
+			Offset(offset).
+			Find(&events).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	// If we haven't filled the limit, and there might be past events to show
+	remainingLimit := limit - len(events)
+	if remainingLimit > 0 {
+		pastOffset := max(0, offset-int(upcomingCount)) // Adjust offset for past events
 		var pastEvents []entity.Event
 		if err := s.db.WithContext(ctx).
 			Joins("JOIN event_participants ON events.id = event_participants.event_id").
 			Where("event_participants.user_id = ? AND events.start_time <= ?", userID, currentTime).
 			Order("events.start_time DESC").
 			Limit(remainingLimit).
-			Offset(offset).
+			Offset(pastOffset).
 			Find(&pastEvents).Error; err != nil {
 			return nil, err
 		}
@@ -106,4 +119,19 @@ func (s *EventParticipantStorage) GetUserEvents(ctx context.Context, userID int6
 	}
 
 	return events, nil
+}
+
+func (s *EventParticipantStorage) CountUserEvents(ctx context.Context, userID int64) (int64, error) {
+	var count int64
+	err := s.db.WithContext(ctx).Model(&entity.EventParticipant{}).
+		Where("user_id = ?", userID).
+		Count(&count).Error
+	return count, err
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }

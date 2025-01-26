@@ -14,6 +14,7 @@ type EventParticipantStorage interface {
 	GetByEventID(ctx context.Context, eventID string) ([]entity.EventParticipant, error)
 	CountByEventID(ctx context.Context, eventID string) (int64, error)
 	GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]entity.Event, error)
+	CountUserEvents(ctx context.Context, userID int64) (int64, error)
 }
 
 type EventParticipantService struct {
@@ -54,4 +55,8 @@ func (s *EventParticipantService) CountByEventID(ctx context.Context, eventID st
 
 func (s *EventParticipantService) GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]entity.Event, error) {
 	return s.storage.GetUserEvents(ctx, userID, limit, offset)
+}
+
+func (s *EventParticipantService) CountUserEvents(ctx context.Context, userID int64) (int64, error) {
+	return s.storage.CountUserEvents(ctx, userID)
 }
