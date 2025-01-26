@@ -99,7 +99,7 @@ func (h Handler) EditMenu(c tele.Context) error {
 		}).Inline()})
 	}
 	if len(userClubs) > 1 {
-		menuMarkup.InlineKeyboard = append(menuMarkup.InlineKeyboard, []tele.InlineButton{*h.layout.Button(c, "clubOwner:myClubs").Inline()})
+		menuMarkup.InlineKeyboard = append(menuMarkup.InlineKeyboard, []tele.InlineButton{*h.layout.Button(c, "clubOwner:my_clubs").Inline()})
 	}
 
 	h.logger.Infof("(user: %d) edit main menu (isAdmin=%t)", c.Sender().ID, isAdmin)
