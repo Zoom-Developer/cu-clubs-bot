@@ -236,7 +236,7 @@ func (h Handler) eventsList(c tele.Context) error {
 		context.Background(),
 		eventsOnPage,
 		p*eventsOnPage,
-		"start_time DESC",
+		"start_time ASC",
 		user.Role,
 		user.ID,
 	)
