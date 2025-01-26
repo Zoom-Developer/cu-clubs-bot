@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/dto"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 	"gorm.io/gorm"
 )
@@ -38,14 +39,24 @@ func (s *ClubOwnerStorage) Update(ctx context.Context, clubOwner *entity.ClubOwn
 	return clubOwner, err
 }
 
-func (s *ClubOwnerStorage) GetByClubID(ctx context.Context, clubID string) ([]entity.ClubOwner, error) {
-	var clubOwners []entity.ClubOwner
-	err := s.db.WithContext(ctx).Where("club_id = ?", clubID).Find(&clubOwners).Error
-	return clubOwners, err
+func (s *ClubOwnerStorage) GetByClubID(ctx context.Context, clubID string) ([]dto.ClubOwner, error) {
+	var result []dto.ClubOwner
+	err := s.db.WithContext(ctx).
+		Table("club_owners").
+		Select("club_owners.club_id, club_owners.user_id, club_owners.warnings, users.fio, users.email, users.role, users.is_banned").
+		Joins("LEFT JOIN users ON users.id = club_owners.user_id").
+		Where("club_owners.club_id = ?", clubID).
+		Scan(&result).Error
+	return result, err
 }
 
-func (s *ClubOwnerStorage) GetByUserID(ctx context.Context, userID int64) ([]entity.ClubOwner, error) {
-	var clubOwners []entity.ClubOwner
-	err := s.db.WithContext(ctx).Where("user_id = ?", userID).Find(&clubOwners).Error
-	return clubOwners, err
+func (s *ClubOwnerStorage) GetByUserID(ctx context.Context, userID int64) ([]dto.ClubOwner, error) {
+	var result []dto.ClubOwner
+	err := s.db.WithContext(ctx).
+		Table("club_owners").
+		Select("club_owners.club_id, club_owners.user_id, club_owners.warnings, users.fio, users.email, users.role, users.is_banned").
+		Joins("LEFT JOIN users ON users.id = club_owners.user_id").
+		Where("club_owners.user_id = ?", userID).
+		Scan(&result).Error
+	return result, err
 }
