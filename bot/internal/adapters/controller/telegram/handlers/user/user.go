@@ -247,7 +247,7 @@ func (h Handler) eventsList(c tele.Context) error {
 			p*eventsOnPage,
 			eventsOnPage,
 			user.Role.String(),
-			"start_time DESC",
+			"start_time ASC",
 			err,
 		)
 		return c.Edit(
