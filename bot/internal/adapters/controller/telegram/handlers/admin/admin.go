@@ -427,7 +427,7 @@ func (h Handler) addClubOwner(c tele.Context) error {
 						ID   int64
 						Text string
 					}{
-						ID:   user.ID,
+						ID:   userID,
 						Text: h.layout.Text(c, "input_user_id"),
 					})),
 					h.layout.Markup(c, "admin:club:back", struct {
