@@ -105,6 +105,7 @@ func (h Handler) grantUserAuth(c tele.Context) error {
 		h.logger.Errorf("(user: %d) error while verification user's membership in the grant chat: %v", c.Sender().ID, err)
 		return c.Send(
 			banner.Auth.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "core:hide"),
 		)
 	}
 
@@ -201,6 +202,7 @@ func (h Handler) studentAuth(c tele.Context) error {
 		}
 		switch {
 		case canceled:
+			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 			return nil
 		case errGet != nil:
 			h.logger.Errorf("(user: %d) error while input email: %v", c.Sender().ID, errGet)
