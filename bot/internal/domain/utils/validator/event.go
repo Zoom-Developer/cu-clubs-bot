@@ -1,12 +1,10 @@
 package validator
 
 import (
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/location"
 	"strconv"
 	"time"
 	"unicode/utf8"
-
-	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger"
-	"github.com/spf13/viper"
 )
 
 func EventName(name string, _ map[string]interface{}) bool {
@@ -31,12 +29,7 @@ func EventStartTime(start string, _ map[string]interface{}) bool {
 
 	currentTime := time.Now()
 
-	moscowLocation, err := time.LoadLocation(viper.GetString("settings.timezone"))
-	if err != nil {
-		logger.Log.Errorf("error while load time location: %v", err)
-		return false
-	}
-	moscowTime := currentTime.In(moscowLocation)
+	moscowTime := currentTime.In(location.Location)
 
 	tomorrow := moscowTime.Add(time.Hour * time.Duration(24))
 
@@ -61,7 +54,7 @@ func EventEndTime(end string, params map[string]interface{}) bool {
 		return false
 	}
 
-	if !endTime.After(startTime) {
+	if !endTime.In(location.Location).After(startTime) {
 		return false
 	}
 
@@ -81,7 +74,7 @@ func EventRegisteredEndTime(registeredEnd string, params map[string]interface{})
 		return false
 	}
 
-	return registeredEndTime.Add(22 * time.Hour).Before(startTime)
+	return registeredEndTime.In(location.Location).Add(22 * time.Hour).Before(startTime)
 }
 
 func EventAfterRegistrationText(afterRegistrationText string, _ map[string]interface{}) bool {

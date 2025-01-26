@@ -31,17 +31,23 @@ type smtpClient interface {
 	SendConfirmationEmail(to string, code string)
 }
 
-type UserService struct {
-	userStorage        UserStorage
-	studentDataStorage StudentDataStorage
-	smtpClient         smtpClient
+type eventParticipantService interface {
+	GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]entity.Event, error)
 }
 
-func NewUserService(userStorage UserStorage, studentDataStorage StudentDataStorage, smtpClient smtpClient) *UserService {
+type UserService struct {
+	userStorage             UserStorage
+	studentDataStorage      StudentDataStorage
+	eventParticipantService eventParticipantService
+	smtpClient              smtpClient
+}
+
+func NewUserService(userStorage UserStorage, studentDataStorage StudentDataStorage, eventParticipantService eventParticipantService, smtpClient smtpClient) *UserService {
 	return &UserService{
-		userStorage:        userStorage,
-		studentDataStorage: studentDataStorage,
-		smtpClient:         smtpClient,
+		userStorage:             userStorage,
+		studentDataStorage:      studentDataStorage,
+		eventParticipantService: eventParticipantService,
+		smtpClient:              smtpClient,
 	}
 }
 
@@ -84,12 +90,17 @@ func (s *UserService) GetWithPagination(ctx context.Context, limit int, offset i
 }
 
 func (s *UserService) Ban(ctx context.Context, userID int64) (*entity.User, error) {
-	user, err := s.userStorage.Get(ctx, uint(userID))
+	user, err := s.Get(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	user.IsBanned = !user.IsBanned
-	return s.userStorage.Update(ctx, user)
+
+	user.IsBanned = true
+	return s.Update(ctx, user)
+}
+
+func (s *UserService) GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]entity.Event, error) {
+	return s.eventParticipantService.GetUserEvents(ctx, userID, limit, offset)
 }
 
 func (s *UserService) SendAuthCode(_ context.Context, email string) (string, string, error) {

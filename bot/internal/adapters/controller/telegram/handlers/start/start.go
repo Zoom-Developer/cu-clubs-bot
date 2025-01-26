@@ -45,7 +45,7 @@ func New(b *bot.Bot) *Handler {
 	smtpClient := smtp.NewClient(b.SMTPDialer)
 
 	return &Handler{
-		userService:   service.NewUserService(userStorage, studentDataStorage, smtpClient),
+		userService:   service.NewUserService(userStorage, studentDataStorage, nil, smtpClient),
 		menuHandler:   menu.New(b),
 		codesStorage:  b.Redis.Codes,
 		emailsStorage: b.Redis.Emails,

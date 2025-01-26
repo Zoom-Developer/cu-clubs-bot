@@ -13,6 +13,7 @@ type EventParticipantStorage interface {
 	Delete(ctx context.Context, eventID string, userID int64) error
 	GetByEventID(ctx context.Context, eventID string) ([]entity.EventParticipant, error)
 	CountByEventID(ctx context.Context, eventID string) (int64, error)
+	GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]entity.Event, error)
 }
 
 type EventParticipantService struct {
@@ -49,4 +50,8 @@ func (s *EventParticipantService) GetByEventID(ctx context.Context, eventID stri
 func (s *EventParticipantService) CountByEventID(ctx context.Context, eventID string) (int, error) {
 	count, err := s.storage.CountByEventID(ctx, eventID)
 	return int(count), err
+}
+
+func (s *EventParticipantService) GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]entity.Event, error) {
+	return s.storage.GetUserEvents(ctx, userID, limit, offset)
 }

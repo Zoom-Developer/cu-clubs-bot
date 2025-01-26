@@ -8,7 +8,7 @@ import (
 
 type ClubStorage interface {
 	Create(ctx context.Context, club *entity.Club) (*entity.Club, error)
-	GetWithPagination(ctx context.Context, offset, limit int, order string) ([]entity.Club, error)
+	GetWithPagination(ctx context.Context, limit, offset int, order string) ([]entity.Club, error)
 	Get(ctx context.Context, id string) (*entity.Club, error)
 	GetByOwnerID(ctx context.Context, id int64) ([]entity.Club, error)
 	Update(ctx context.Context, club *entity.Club) (*entity.Club, error)
@@ -30,8 +30,8 @@ func (s *ClubService) Create(ctx context.Context, club *entity.Club) (*entity.Cl
 	return s.storage.Create(ctx, club)
 }
 
-func (s *ClubService) GetWithPagination(ctx context.Context, offset, limit int, order string) ([]entity.Club, error) {
-	return s.storage.GetWithPagination(ctx, offset, limit, order)
+func (s *ClubService) GetWithPagination(ctx context.Context, limit, offset int, order string) ([]entity.Club, error) {
+	return s.storage.GetWithPagination(ctx, limit, offset, order)
 }
 
 func (s *ClubService) Get(ctx context.Context, id string) (*entity.Club, error) {

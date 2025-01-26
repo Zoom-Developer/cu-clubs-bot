@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 	"gorm.io/gorm"
@@ -71,4 +72,38 @@ func (s *EventParticipantStorage) CountByEventID(ctx context.Context, eventID st
 	var count int64
 	err := s.db.WithContext(ctx).Model(&entity.EventParticipant{}).Where("event_id = ?", eventID).Count(&count).Error
 	return count, err
+}
+
+func (s *EventParticipantStorage) GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]entity.Event, error) {
+	var events []entity.Event
+	currentTime := time.Now()
+
+	// Get upcoming events first, sorted by start time ascending
+	if err := s.db.WithContext(ctx).
+		Joins("JOIN event_participants ON events.id = event_participants.event_id").
+		Where("event_participants.user_id = ? AND events.start_time > ?", userID, currentTime).
+		Order("events.start_time ASC").
+		Limit(limit).
+		Offset(offset).
+		Find(&events).Error; err != nil {
+		return nil, err
+	}
+
+	// If we haven't filled the limit with upcoming events, get past events
+	if len(events) < limit {
+		remainingLimit := limit - len(events)
+		var pastEvents []entity.Event
+		if err := s.db.WithContext(ctx).
+			Joins("JOIN event_participants ON events.id = event_participants.event_id").
+			Where("event_participants.user_id = ? AND events.start_time <= ?", userID, currentTime).
+			Order("events.start_time DESC").
+			Limit(remainingLimit).
+			Offset(offset).
+			Find(&pastEvents).Error; err != nil {
+			return nil, err
+		}
+		events = append(events, pastEvents...)
+	}
+
+	return events, nil
 }

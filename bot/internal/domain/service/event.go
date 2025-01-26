@@ -12,7 +12,7 @@ type EventStorage interface {
 	GetAll(ctx context.Context) ([]entity.Event, error)
 	Update(ctx context.Context, event *entity.Event) (*entity.Event, error)
 	Count(ctx context.Context) (int64, error)
-	GetWithPagination(ctx context.Context, offset, limit int, order string, role string) ([]entity.Event, error)
+	GetWithPagination(ctx context.Context, limit, offset int, order string, role string) ([]entity.Event, error)
 }
 
 type EventService struct {
@@ -48,6 +48,6 @@ func (s *EventService) Count(ctx context.Context) (int64, error) {
 	return s.eventStorage.Count(ctx)
 }
 
-func (s *EventService) GetWithPagination(ctx context.Context, offset, limit int, order string, role entity.Role) ([]entity.Event, error) {
-	return s.eventStorage.GetWithPagination(ctx, offset, limit, order, string(role))
+func (s *EventService) GetWithPagination(ctx context.Context, limit, offset int, order string, role entity.Role) ([]entity.Event, error) {
+	return s.eventStorage.GetWithPagination(ctx, limit, offset, order, string(role))
 }

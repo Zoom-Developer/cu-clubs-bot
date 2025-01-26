@@ -55,8 +55,8 @@ func (s *ClubStorage) Count(ctx context.Context) (int64, error) {
 	return count, err
 }
 
-func (s *ClubStorage) GetWithPagination(ctx context.Context, offset, limit int, order string) ([]entity.Club, error) {
+func (s *ClubStorage) GetWithPagination(ctx context.Context, limit, offset int, order string) ([]entity.Club, error) {
 	var clubs []entity.Club
-	err := s.db.WithContext(ctx).Order(order).Offset(offset).Limit(limit).Find(&clubs).Error
+	err := s.db.WithContext(ctx).Order(order).Limit(limit).Offset(offset).Find(&clubs).Error
 	return clubs, err
 }

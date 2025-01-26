@@ -113,6 +113,26 @@ buttons:
     callback_data: '{{.ID}} {{.Page}}'
     text: '{{if .IsRegistered}}{{text `registered` }}{{else}}{{ text `register` }}{{end}}'
 
+  user:myEvents:event:
+    unique: user_myEvents_event
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{if .IsOver}}{{text `over` }} {{end}}{{.Name}}'
+
+  user:myEvents:next_page:
+    unique: user_myEvents_nextPage
+    callback_data: '{{.Page}}'
+    text: '{{ text `next` }}'
+
+  user:myEvents:prev_page:
+    unique: user_myEvents_prevPage
+    callback_data: '{{.Page}}'
+    text: '{{ text `prev` }}'
+
+  user:myEvents:back:
+    unique: user_myEvents_back
+    callback_data: '{{.Page}}'
+    text: '{{ text `back` }}'
+
   clubOwner:my_clubs:
     unique: clubOwner_myClubs
     callback_data: clubOwner_myClubs

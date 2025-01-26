@@ -12,6 +12,7 @@ import (
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/service"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/banner"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/location"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/generator"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger/types"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/smtp"
@@ -31,6 +32,7 @@ type userService interface {
 	GetByQRCodeID(ctx context.Context, qrCodeID string) (*entity.User, error)
 	SendAuthCode(ctx context.Context, email string) (string, string, error)
 	Update(ctx context.Context, user *entity.User) (*entity.User, error)
+	GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]entity.Event, error)
 }
 
 type qrCodesGenerator interface {
@@ -40,7 +42,7 @@ type qrCodesGenerator interface {
 
 type eventService interface {
 	Get(ctx context.Context, id string) (*entity.Event, error)
-	GetWithPagination(ctx context.Context, offset, limit int, order string, role entity.Role) ([]entity.Event, error)
+	GetWithPagination(ctx context.Context, limit, offset int, order string, role entity.Role) ([]entity.Event, error)
 	Count(ctx context.Context) (int64, error)
 }
 
@@ -71,15 +73,17 @@ func New(b *bot.Bot) *Handler {
 	eventStorage := postgres.NewEventStorage(b.DB)
 	eventParticipantStorage := postgres.NewEventParticipantStorage(b.DB)
 
+	eventPartService := service.NewEventParticipantService(eventParticipantStorage)
+
 	smtpClient := smtp.NewClient(b.SMTPDialer)
 	botName := viper.GetString("bot.username")
 	qrCodeLogo := viper.GetString("settings.qr.logo-path")
 	qrCodeOutputDir := viper.GetString("settings.qr.output-dir")
 
 	return &Handler{
-		userService:             service.NewUserService(userStorage, studentDataStorage, smtpClient),
+		userService:             service.NewUserService(userStorage, studentDataStorage, eventPartService, smtpClient),
 		eventService:            service.NewEventService(eventStorage),
-		eventParticipantService: service.NewEventParticipantService(eventParticipantStorage),
+		eventParticipantService: eventPartService,
 		qrCodesGenerator:        generator.NewQrCode(generator.CU, qrCodeOutputDir, qrCodeLogo, botName),
 		menuHandler:             menu.New(b),
 		codesStorage:            b.Redis.Codes,
@@ -201,7 +205,7 @@ func (h Handler) eventsList(c tele.Context) error {
 		rows        []tele.Row
 		menuRow     tele.Row
 	)
-	if c.Callback().Data != "mainMenu_events" {
+	if c.Callback().Unique != "mainMenu_events" {
 		p, err = strconv.Atoi(c.Callback().Data)
 		if err != nil {
 			return errorz.ErrInvalidCallbackData
@@ -226,7 +230,7 @@ func (h Handler) eventsList(c tele.Context) error {
 		)
 	}
 
-	events, err = h.eventService.GetWithPagination(context.Background(), p*eventsOnPage, eventsOnPage, "created_at DESC", user.Role)
+	events, err = h.eventService.GetWithPagination(context.Background(), eventsOnPage, p*eventsOnPage, "created_at DESC", user.Role)
 	if err != nil {
 		h.logger.Errorf(
 			"(user: %d) error while get events (offset=%d, limit=%d, order=%s, role=%s): %v",
@@ -296,7 +300,8 @@ func (h Handler) eventsList(c tele.Context) error {
 
 	markup.Inline(rows...)
 
-	h.logger.Debugf("(user: %d) user events list (pages_count=%d, page=%d, clubs_count=%d, next_page=%d, prev_page=%d)",
+	h.logger.Debugf(
+		"(user: %d) user events list (pages_count=%d, page=%d, events_count=%d, next_page=%d, prev_page=%d)",
 		c.Sender().ID,
 		pagesCount,
 		p,
@@ -366,20 +371,7 @@ func (h Handler) event(c tele.Context) error {
 
 	if c.Callback().Unique == "event_register" {
 		if !registered {
-			timeLocation, errLoadLocation := time.LoadLocation(viper.GetString("settings.timezone"))
-			if errLoadLocation != nil {
-				h.logger.Errorf("(user: %d) error while load timezone: %v", c.Sender().ID, errLoadLocation)
-				return c.Edit(
-					banner.Events.Caption(h.layout.Text(c, "technical_issues", errLoadLocation.Error())),
-					h.layout.Markup(c, "user:events:back", struct {
-						Page string
-					}{
-						Page: page,
-					}),
-				)
-			}
-
-			if (event.MaxParticipants == 0 || participantsCount < event.MaxParticipants) && event.RegistrationEnd.After(time.Now().In(timeLocation)) {
+			if (event.MaxParticipants == 0 || participantsCount < event.MaxParticipants) && event.RegistrationEnd.After(time.Now().In(location.Location)) {
 				_, err = h.eventParticipantService.Register(context.Background(), c.Sender().ID, eventID)
 				if err != nil {
 					h.logger.Errorf("(user: %d) error while register to event: %v", c.Sender().ID, err)
@@ -396,7 +388,7 @@ func (h Handler) event(c tele.Context) error {
 
 			} else {
 				switch {
-				case event.RegistrationEnd.Before(time.Now().In(timeLocation)):
+				case event.RegistrationEnd.Before(time.Now().In(location.Location)):
 					return c.Respond(&tele.CallbackResponse{
 						Text:      h.layout.Text(c, "registration_ended"),
 						ShowAlert: true,
@@ -446,15 +438,145 @@ func (h Handler) event(c tele.Context) error {
 }
 
 func (h Handler) myEvents(c tele.Context) error {
+	const eventsOnPage = 10
+	h.logger.Infof("(user: %d) edit my events list", c.Sender().ID)
+
+	var (
+		p           int
+		prevPage    int
+		nextPage    int
+		err         error
+		eventsCount int64
+		events      []entity.Event
+		rows        []tele.Row
+		menuRow     tele.Row
+	)
+	if c.Callback().Unique != "mainMenu_myEvents" {
+		p, err = strconv.Atoi(c.Callback().Data)
+		if err != nil {
+			return errorz.ErrInvalidCallbackData
+		}
+	}
+
+	user, err := h.userService.Get(context.Background(), c.Sender().ID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while getting user from db: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.Events.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "mainMenu:back"),
+		)
+	}
+
+	eventsCount, err = h.eventService.Count(context.Background())
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get events count: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.Events.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "mainMenu:back"),
+		)
+	}
+
+	events, err = h.userService.GetUserEvents(context.Background(), user.ID, eventsOnPage, p*eventsOnPage)
+	if err != nil {
+		h.logger.Errorf(
+			"(user: %d) error while get my events (offset=%d, limit=%d): %v",
+			c.Sender().ID,
+			p*eventsOnPage,
+			eventsOnPage,
+			err,
+		)
+		return c.Edit(
+			banner.Events.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "mainMenu:back"),
+		)
+	}
+
+	markup := c.Bot().NewMarkup()
+	for _, event := range events {
+		rows = append(rows, markup.Row(*h.layout.Button(c, "user:myEvents:event", struct {
+			ID     string
+			Name   string
+			Page   int
+			IsOver bool
+		}{
+			ID:     event.ID,
+			Name:   event.Name,
+			Page:   p,
+			IsOver: event.IsOver(),
+		})))
+	}
+
+	pagesCount := int(eventsCount) / (eventsOnPage + 1)
+	if p == 0 {
+		prevPage = pagesCount
+	} else {
+		prevPage = p - 1
+	}
+
+	if p >= pagesCount {
+		nextPage = 0
+	} else {
+		nextPage = p + 1
+	}
+
+	menuRow = append(menuRow,
+		*h.layout.Button(c, "user:myEvents:prev_page", struct {
+			Page int
+		}{
+			Page: prevPage,
+		}),
+		*h.layout.Button(c, "core:page_counter", struct {
+			Page       int
+			PagesCount int
+		}{
+			Page:       p + 1,
+			PagesCount: pagesCount + 1,
+		}),
+		*h.layout.Button(c, "user:myEvents:next_page", struct {
+			Page int
+		}{
+			Page: nextPage,
+		}),
+	)
+
+	rows = append(
+		rows,
+		menuRow,
+		markup.Row(*h.layout.Button(c, "mainMenu:back")),
+	)
+
+	markup.Inline(rows...)
+
+	h.logger.Debugf(
+		"(user: %d) user my events list (pages_count=%d, page=%d, events_count=%d, next_page=%d, prev_page=%d)",
+		c.Sender().ID,
+		pagesCount,
+		p,
+		eventsCount,
+		nextPage,
+		prevPage,
+	)
+
+	_ = c.Edit(
+		banner.Events.Caption(h.layout.Text(c, "my_events_list")),
+		markup,
+	)
 	return nil
+
 }
 
 func (h Handler) UserSetup(group *tele.Group) {
 	group.Handle(h.layout.Callback("mainMenu:qr"), h.qrCode)
+
 	group.Handle(h.layout.Callback("mainMenu:events"), h.eventsList)
 	group.Handle(h.layout.Callback("user:events:prev_page"), h.eventsList)
 	group.Handle(h.layout.Callback("user:events:next_page"), h.eventsList)
 	group.Handle(h.layout.Callback("user:events:back"), h.eventsList)
 	group.Handle(h.layout.Callback("user:events:event"), h.event)
 	group.Handle(h.layout.Callback("user:events:event:register"), h.event)
+
+	group.Handle(h.layout.Callback("mainMenu:my_events"), h.myEvents)
+	group.Handle(h.layout.Callback("user:myEvents:prev_page"), h.myEvents)
+	group.Handle(h.layout.Callback("user:myEvents:next_page"), h.myEvents)
+	group.Handle(h.layout.Callback("user:myEvents:back"), h.myEvents)
 }

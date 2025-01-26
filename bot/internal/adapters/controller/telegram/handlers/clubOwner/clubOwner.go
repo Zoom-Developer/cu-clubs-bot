@@ -75,7 +75,7 @@ func NewHandler(b *bot.Bot) *Handler {
 
 		clubService:      service.NewClubService(clubStorage),
 		clubOwnerService: service.NewClubOwnerService(clubOwnerStorage, userStorage),
-		userService:      service.NewUserService(userStorage, nil, nil),
+		userService:      service.NewUserService(userStorage, nil, nil, nil),
 		eventService:     service.NewEventService(eventStorage),
 	}
 }

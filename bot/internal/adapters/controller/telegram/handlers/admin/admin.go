@@ -23,7 +23,7 @@ import (
 
 type adminUserService interface {
 	Count(ctx context.Context) (int64, error)
-	GetWithPagination(ctx context.Context, offset, limit int, order string) ([]entity.User, error)
+	GetWithPagination(ctx context.Context, limit, offset int, order string) ([]entity.User, error)
 	Get(ctx context.Context, userID int64) (*entity.User, error)
 	Ban(ctx context.Context, userID int64) (*entity.User, error)
 	GetAll(ctx context.Context) ([]entity.User, error)
@@ -31,7 +31,7 @@ type adminUserService interface {
 
 type clubService interface {
 	Create(ctx context.Context, club *entity.Club) (*entity.Club, error)
-	GetWithPagination(ctx context.Context, offset, limit int, order string) ([]entity.Club, error)
+	GetWithPagination(ctx context.Context, limit, offset int, order string) ([]entity.Club, error)
 	Get(ctx context.Context, id string) (*entity.Club, error)
 	Update(ctx context.Context, club *entity.Club) (*entity.Club, error)
 	Delete(ctx context.Context, id string) error
@@ -67,7 +67,7 @@ func New(b *bot.Bot) *Handler {
 		logger:           b.Logger,
 		bot:              b,
 		input:            b.Input,
-		adminUserService: service.NewUserService(userStorage, nil, nil),
+		adminUserService: service.NewUserService(userStorage, nil, nil, nil),
 		clubService:      service.NewClubService(clubStorage),
 		clubOwnerService: service.NewClubOwnerService(clubOwnerStorage, userStorage),
 	}
@@ -192,7 +192,7 @@ func (h Handler) clubsList(c tele.Context) error {
 		)
 	}
 
-	clubs, err = h.clubService.GetWithPagination(context.Background(), p*clubsOnPage, clubsOnPage, "created_at DESC")
+	clubs, err = h.clubService.GetWithPagination(context.Background(), clubsOnPage, p*clubsOnPage, "created_at DESC")
 	if err != nil {
 		h.logger.Errorf(
 			"(user: %d) error while get clubs (offset=%d, limit=%d, order_by=%s): %v",

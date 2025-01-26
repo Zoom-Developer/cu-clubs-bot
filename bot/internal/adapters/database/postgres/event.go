@@ -58,9 +58,9 @@ func (s *EventStorage) Count(ctx context.Context) (int64, error) {
 }
 
 // GetWithPagination is a function that gets a list of events from the database with pagination. (if role is empty, it will return all events)
-func (s *EventStorage) GetWithPagination(ctx context.Context, offset, limit int, order string, role string) ([]entity.Event, error) {
+func (s *EventStorage) GetWithPagination(ctx context.Context, limit, offset int, order string, role string) ([]entity.Event, error) {
 	var events []entity.Event
-	query := s.db.WithContext(ctx).Order(order).Offset(offset).Limit(limit).Where("registration_end > ?", time.Now())
+	query := s.db.WithContext(ctx).Order(order).Limit(limit).Offset(offset).Where("registration_end > ?", time.Now())
 
 	if role != "" {
 		query = query.Where("? = ANY(allowed_roles)", role)
