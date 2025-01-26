@@ -379,7 +379,7 @@ func (h Handler) event(c tele.Context) error {
 				)
 			}
 
-			if event.MaxParticipants == 0 || participantsCount < event.MaxParticipants && event.RegistrationEnd.After(time.Now().In(timeLocation)) {
+			if (event.MaxParticipants == 0 || participantsCount < event.MaxParticipants) && event.RegistrationEnd.After(time.Now().In(timeLocation)) {
 				_, err = h.eventParticipantService.Register(context.Background(), c.Sender().ID, eventID)
 				if err != nil {
 					h.logger.Errorf("(user: %d) error while register to event: %v", c.Sender().ID, err)
@@ -393,16 +393,17 @@ func (h Handler) event(c tele.Context) error {
 					)
 				}
 				registered = true
+
 			} else {
 				switch {
 				case event.RegistrationEnd.Before(time.Now().In(timeLocation)):
 					return c.Respond(&tele.CallbackResponse{
-						Text:      h.layout.Text(c, "registration_closed"),
+						Text:      h.layout.Text(c, "registration_ended"),
 						ShowAlert: true,
 					})
 				case event.MaxParticipants > 0 && participantsCount >= event.MaxParticipants:
 					return c.Respond(&tele.CallbackResponse{
-						Text:      h.layout.Text(c, "registration_closed"),
+						Text:      h.layout.Text(c, "max_participants_reached"),
 						ShowAlert: true,
 					})
 				}

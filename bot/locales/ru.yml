@@ -112,7 +112,7 @@ club_owner_club_menu_text: |-
   <u>Организаторы:</u>
   {{if .Owners}}{{range .Owners}}- <b>{{.FIO}}</b> (id: <code>{{.UserID}}</code>){{"\n"}}{{end}}{{else}}<i>- Отсутствуют</i>{{"\n"}}{{end}}
   <blockquote><b>📝 Описание:</b>
-  {{if .Description}}{{.Description}}{{else}}<i>Не указано</i>{{end}}</blockquote>
+  {{if .Club.Description}}{{.Club.Description}}{{else}}<i>Не указано</i>{{end}}</blockquote>
 
 club_settings: ⚙️ Настройки
 club_settings_text: |-
@@ -121,7 +121,7 @@ club_settings_text: |-
   <u>Организаторы:</u>
   {{if .Owners}}{{range .Owners}}- <b>{{.FIO}}</b> (id: <code>{{.UserID}}</code>){{"\n"}}{{end}}{{else}}<i>- Отсутствуют</i>{{"\n"}}{{end}}
   <blockquote><b>📝 Описание:</b>
-  {{if .Description}}{{.Description}}{{else}}<i>Не указано</i>{{end}}</blockquote>
+  {{if .Club.Description}}{{.Club.Description}}{{else}}<i>Не указано</i>{{end}}</blockquote>
 edit_name: ✍️ Изменить название
 name_changed: <b>✔️ Название клуба успешно изменено</b>
 edit_description: ✍️ Изменить описание
@@ -248,7 +248,7 @@ admin_club_menu_text: |-
   <u>Организаторы:</u>
   {{if .Owners}}{{range .Owners}}- <b>{{.FIO}}</b> (id: <code>{{.UserID}}</code>){{"\n"}}{{end}}{{else}}<i>- Отсутствуют</i>{{"\n"}}{{end}}
   <blockquote><b>📝 Описание:</b>
-  {{if .Description}}{{.Description}}{{else}}<i>Не указано</i>{{end}}</blockquote>
+  {{if .Club.Description}}{{.Club.Description}}{{else}}<i>Не указано</i>{{end}}</blockquote>
 club_deleted: |-
   ✔️ Клуб <b>{{.Name}}</b> успешно удален!
 add_club_owner: |-
