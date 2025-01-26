@@ -27,8 +27,6 @@ services:
         condition: service_healthy
     volumes:
       - ./logs:/opt/logs
-    #    volumes:
-    #      - ./vpn-letsencrypt:/etc/letsencrypt
     restart: always
 
   redis:
@@ -41,20 +39,7 @@ services:
       - redis-data:/data
     restart: always
 
-#  nginx-proxy-manager:
-#    container_name: nginx-proxy-manager
-#    image: 'jc21/nginx-proxy-manager:latest'
-#    restart: unless-stopped
-#    ports:
-#      - '80:80'
-#      - '81:81'
-#      - '443:443'
-#    volumes:
-#      - ./data:/data
-#      - ./letsencrypt:/etc/letsencrypt
-
-
 volumes:
   database:
-  #  letsencrypt:
+  backups_database:
   redis-data:

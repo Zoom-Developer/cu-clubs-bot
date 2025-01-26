@@ -220,7 +220,7 @@ func (h Handler) clubsList(c tele.Context) error {
 			Page: p,
 		})))
 	}
-	pagesCount := int(clubsCount) / (clubsOnPage + 1)
+	pagesCount := (int(clubsCount) - 1) / clubsOnPage
 	if p == 0 {
 		prevPage = pagesCount
 	} else {

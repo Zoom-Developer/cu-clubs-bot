@@ -270,7 +270,7 @@ func (h Handler) eventsList(c tele.Context) error {
 			IsRegistered: event.IsRegistered,
 		})))
 	}
-	pagesCount := int(eventsCount) / (eventsOnPage + 1)
+	pagesCount := (int(eventsCount) - 1) / eventsOnPage
 	if p == 0 {
 		prevPage = pagesCount
 	} else {
@@ -517,7 +517,7 @@ func (h Handler) myEvents(c tele.Context) error {
 		})))
 	}
 
-	pagesCount := int(eventsCount) / (eventsOnPage + 1)
+	pagesCount := (int(eventsCount) - 1) / eventsOnPage
 	if p == 0 {
 		prevPage = pagesCount
 	} else {
