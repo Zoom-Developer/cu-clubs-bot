@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/dto"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
@@ -19,7 +20,29 @@ func NewClubOwnerStorage(db *gorm.DB) *ClubOwnerStorage {
 }
 
 func (s *ClubOwnerStorage) Create(ctx context.Context, clubOwner *entity.ClubOwner) (*entity.ClubOwner, error) {
-	err := s.db.WithContext(ctx).Create(&clubOwner).Error
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Check if club exists
+		var clubExists int64
+		if err := tx.Model(&entity.Club{}).Where("id = ?", clubOwner.ClubID).Count(&clubExists).Error; err != nil {
+			return err
+		}
+		if clubExists == 0 {
+			return fmt.Errorf("club with id %s not found", clubOwner.ClubID)
+		}
+
+		// Check if user exists
+		var userExists int64
+		if err := tx.Model(&entity.User{}).Where("id = ?", clubOwner.UserID).Count(&userExists).Error; err != nil {
+			return err
+		}
+		if userExists == 0 {
+			return fmt.Errorf("user with id %d not found", clubOwner.UserID)
+		}
+
+		// Create club owner
+		return tx.Create(&clubOwner).Error
+	})
+
 	return clubOwner, err
 }
 
