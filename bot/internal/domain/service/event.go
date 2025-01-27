@@ -15,8 +15,9 @@ type EventStorage interface {
 	Update(ctx context.Context, event *entity.Event) (*entity.Event, error)
 	Count(ctx context.Context, role string) (int64, error)
 	GetWithPagination(ctx context.Context, limit, offset int, order string, role string, userID int64) ([]dto.Event, error)
-	GetByClubIDWithPagination(ctx context.Context, limit, offset int, clubID string) ([]entity.Event, error)
+	GetByClubIDWithPagination(ctx context.Context, limit, offset int, order string, clubID string) ([]entity.Event, error)
 	CountByClubID(ctx context.Context, clubID string) (int64, error)
+	Delete(ctx context.Context, id string) error
 }
 
 type EventService struct {
@@ -45,12 +46,16 @@ func (s *EventService) GetAll(ctx context.Context) ([]entity.Event, error) {
 	return s.eventStorage.GetAll(ctx)
 }
 
-func (s *EventService) GetByClubIDWithPagination(ctx context.Context, limit, offset int, clubID string) ([]entity.Event, error) {
-	return s.eventStorage.GetByClubIDWithPagination(ctx, limit, offset, clubID)
+func (s *EventService) GetByClubIDWithPagination(ctx context.Context, limit, offset int, order string, clubID string) ([]entity.Event, error) {
+	return s.eventStorage.GetByClubIDWithPagination(ctx, limit, offset, order, clubID)
 }
 
 func (s *EventService) Update(ctx context.Context, event *entity.Event) (*entity.Event, error) {
 	return s.eventStorage.Update(ctx, event)
+}
+
+func (s *EventService) Delete(ctx context.Context, id string) error {
+	return s.eventStorage.Delete(ctx, id)
 }
 
 func (s *EventService) Count(ctx context.Context, role entity.Role) (int64, error) {
