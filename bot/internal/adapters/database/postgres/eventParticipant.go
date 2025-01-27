@@ -128,10 +128,3 @@ func (s *EventParticipantStorage) CountUserEvents(ctx context.Context, userID in
 		Count(&count).Error
 	return count, err
 }
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
