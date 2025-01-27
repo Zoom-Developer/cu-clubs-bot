@@ -218,11 +218,6 @@ buttons:
     callback_data: '{{.ID}}'
     text: '{{ text `club_events` }}'
 
-  clubOwner:events:event:
-    unique: cOwner_events_event
-    callback_data: '{{.ID}} {{.Page}}'
-    text: '{{.Name}}'
-
   clubOwner:events:next_page:
     unique: cOwner_events_nextPage
     callback_data: '{{.ID}} {{.Page}}'
@@ -232,6 +227,36 @@ buttons:
     unique: cOwner_events_prevPage
     callback_data: '{{.ID}} {{.Page}}'
     text: '{{ text `prev` }}'
+
+  clubOwner:events:event:
+    unique: cOwner_events_event
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{.Name}}'
+
+  clubOwner:event:qr:
+    unique: clubOwner_event_qr
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `qr` }}'
+
+  clubOwner:event:settings:
+    unique: clubOwner_event_settings
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `event_settings` }}'
+
+  clubOwner:event:users:
+    unique: clubOwner_event_users
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `event_users` }}'
+
+  clubOwner:event:delete:
+    unique: clubOwner_event_delete
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `delete` }}'
+
+  clubOwner:events:back:
+    unique: clubOwner_events_back
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `back` }}'
 
   admin:create_club:
     unique: admin_createClub
@@ -354,6 +379,12 @@ markups:
     - [ clubOwner:create_event:confirm ]
     - [ clubOwner:create_event:refill ]
     - [ clubOwner:club:back ]
+  clubOwner:event:menu:
+    - [ clubOwner:event:qr ]
+    - [ clubOwner:event:settings ]
+    - [ clubOwner:event:users ]
+    - [ clubOwner:event:delete ]
+    - [ clubOwner:events:back ]
 
   admin:menu:
     - [ admin:clubs ]

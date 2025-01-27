@@ -45,8 +45,13 @@ type userService interface {
 type eventService interface {
 	Create(ctx context.Context, event *entity.Event) (*entity.Event, error)
 	Update(ctx context.Context, event *entity.Event) (*entity.Event, error)
+	Get(ctx context.Context, id string) (*entity.Event, error)
 	GetByClubIDWithPagination(ctx context.Context, limit, offset int, clubID string) ([]entity.Event, error)
 	CountByClubID(ctx context.Context, clubID string) (int64, error)
+}
+
+type eventParticipantService interface {
+	CountByEventID(ctx context.Context, eventID string) (int, error)
 }
 
 type Handler struct {
@@ -56,10 +61,11 @@ type Handler struct {
 
 	eventsStorage *events.Storage
 
-	clubService      clubService
-	clubOwnerService clubOwnerService
-	userService      userService
-	eventService     eventService
+	clubService             clubService
+	clubOwnerService        clubOwnerService
+	userService             userService
+	eventService            eventService
+	eventParticipantService eventParticipantService
 }
 
 func NewHandler(b *bot.Bot) *Handler {
@@ -67,6 +73,7 @@ func NewHandler(b *bot.Bot) *Handler {
 	clubOwnerStorage := postgres.NewClubOwnerStorage(b.DB)
 	userStorage := postgres.NewUserStorage(b.DB)
 	eventStorage := postgres.NewEventStorage(b.DB)
+	eventParticipantStorage := postgres.NewEventParticipantStorage(b.DB)
 
 	return &Handler{
 		layout: b.Layout,
@@ -75,10 +82,11 @@ func NewHandler(b *bot.Bot) *Handler {
 
 		eventsStorage: b.Redis.Events,
 
-		clubService:      service.NewClubService(clubStorage),
-		clubOwnerService: service.NewClubOwnerService(clubOwnerStorage, userStorage),
-		userService:      service.NewUserService(userStorage, nil, nil, nil),
-		eventService:     service.NewEventService(eventStorage),
+		clubService:             service.NewClubService(clubStorage),
+		clubOwnerService:        service.NewClubOwnerService(clubOwnerStorage, userStorage),
+		userService:             service.NewUserService(userStorage, nil, nil, nil),
+		eventService:            service.NewEventService(eventStorage),
+		eventParticipantService: service.NewEventParticipantService(eventParticipantStorage),
 	}
 }
 
@@ -1234,6 +1242,67 @@ func (h Handler) eventsList(c tele.Context) error {
 	return nil
 }
 
+func (h Handler) event(c tele.Context) error {
+	data := strings.Split(c.Callback().Data, " ")
+	if len(data) != 2 {
+		return errorz.ErrInvalidCallbackData
+	}
+
+	eventID := data[0]
+	page := data[1]
+	h.logger.Infof("(user: %d) edit event (event_id=%s)", c.Sender().ID, eventID)
+
+	event, err := h.eventService.Get(context.Background(), eventID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get event: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:events:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   event.ClubID,
+				Page: page,
+			}),
+		)
+	}
+
+	endTime := event.EndTime.Format("02.01.2006 15:04")
+	if event.EndTime.IsZero() {
+		endTime = ""
+	}
+
+	_ = c.Edit(
+		banner.Events.Caption(h.layout.Text(c, "club_owner_event_text", struct {
+			Name                  string
+			Description           string
+			Location              string
+			StartTime             string
+			EndTime               string
+			RegistrationEnd       string
+			MaxParticipants       int
+			AfterRegistrationText string
+			IsRegistered          bool
+		}{
+			Name:                  event.Name,
+			Description:           event.Description,
+			Location:              event.Location,
+			StartTime:             event.StartTime.Format("02.01.2006 15:04"),
+			EndTime:               endTime,
+			RegistrationEnd:       event.RegistrationEnd.Format("02.01.2006 15:04"),
+			MaxParticipants:       event.MaxParticipants,
+			AfterRegistrationText: event.AfterRegistrationText,
+		})),
+		h.layout.Markup(c, "clubOwner:event:menu", struct {
+			ID   string
+			Page string
+		}{
+			ID:   eventID,
+			Page: page,
+		}))
+	return nil
+}
+
 func parseEventsListCallback(callbackData string) (string, int, error) {
 	var (
 		p      int
@@ -1273,6 +1342,7 @@ func (h Handler) ClubOwnerSetup(group *tele.Group) {
 	group.Handle(h.layout.Callback("clubOwner:club:events"), h.eventsList)
 	group.Handle(h.layout.Callback("clubOwner:events:prev_page"), h.eventsList)
 	group.Handle(h.layout.Callback("clubOwner:events:next_page"), h.eventsList)
+	group.Handle(h.layout.Callback("clubOwner:events:event"), h.event)
 
 	group.Handle(h.layout.Callback("clubOwner:club:settings"), h.clubSettings)
 	group.Handle(h.layout.Callback("clubOwner:club:settings:back"), h.clubSettings)
