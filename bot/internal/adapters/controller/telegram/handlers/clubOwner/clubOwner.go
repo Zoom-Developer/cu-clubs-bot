@@ -117,7 +117,7 @@ func (h Handler) clubsList(c tele.Context) error {
 	h.logger.Debugf("(user: %d) club owner clubs list", c.Sender().ID)
 
 	return c.Edit(
-		banner.ClubOwner.Caption(h.layout.Text(c, "clubs_list", clubsCount)),
+		banner.ClubOwner.Caption(h.layout.Text(c, "my_clubs_list", clubsCount)),
 		markup,
 	)
 }
