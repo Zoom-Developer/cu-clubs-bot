@@ -414,6 +414,11 @@ func (h Handler) event(c tele.Context) error {
 		}
 	}
 
+	endTime := event.EndTime.Format("02.01.2006 15:04")
+	if event.EndTime.IsZero() {
+		endTime = ""
+	}
+
 	_ = c.Edit(
 		banner.Events.Caption(h.layout.Text(c, "event_text", struct {
 			Name                  string
@@ -430,7 +435,7 @@ func (h Handler) event(c tele.Context) error {
 			Description:           event.Description,
 			Location:              event.Location,
 			StartTime:             event.StartTime.Format("02.01.2006 15:04"),
-			EndTime:               event.EndTime.Format("02.01.2006 15:04"),
+			EndTime:               endTime,
 			RegistrationEnd:       event.RegistrationEnd.Format("02.01.2006 15:04"),
 			MaxParticipants:       event.MaxParticipants,
 			AfterRegistrationText: event.AfterRegistrationText,
