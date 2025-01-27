@@ -49,6 +49,19 @@ func (s *UserStorage) GetAll(ctx context.Context) ([]entity.User, error) {
 	return users, err
 }
 
+func (s *UserStorage) GetUsersByEventID(ctx context.Context, eventID string) ([]entity.User, error) {
+	var users []entity.User
+
+	err := s.db.
+		WithContext(ctx).
+		Table("event_participants").
+		Select("users.*").
+		Joins("inner join users on event_participants.user_id = users.id").
+		Where("event_participants.event_id = ?", eventID).
+		Find(&users).Error
+	return users, err
+}
+
 // Update is a function that updates a user in the database.
 func (s *UserStorage) Update(ctx context.Context, user *entity.User) (*entity.User, error) {
 	err := s.db.WithContext(ctx).Save(user).Error

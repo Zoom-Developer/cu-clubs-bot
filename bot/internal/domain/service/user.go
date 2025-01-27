@@ -21,6 +21,7 @@ type UserStorage interface {
 	Update(ctx context.Context, user *entity.User) (*entity.User, error)
 	Count(ctx context.Context) (int64, error)
 	GetWithPagination(ctx context.Context, limit int, offset int, order string) ([]entity.User, error)
+	GetUsersByEventID(ctx context.Context, eventID string) ([]entity.User, error)
 }
 
 type StudentDataStorage interface {
@@ -31,7 +32,7 @@ type smtpClient interface {
 	SendConfirmationEmail(to string, code string)
 }
 
-type eventParticipantService interface {
+type eventParticipantStorage interface {
 	GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]entity.Event, error)
 	CountUserEvents(ctx context.Context, userID int64) (int64, error)
 }
@@ -39,15 +40,15 @@ type eventParticipantService interface {
 type UserService struct {
 	userStorage             UserStorage
 	studentDataStorage      StudentDataStorage
-	eventParticipantService eventParticipantService
+	eventParticipantStorage eventParticipantStorage
 	smtpClient              smtpClient
 }
 
-func NewUserService(userStorage UserStorage, studentDataStorage StudentDataStorage, eventParticipantService eventParticipantService, smtpClient smtpClient) *UserService {
+func NewUserService(userStorage UserStorage, studentDataStorage StudentDataStorage, eventParticipantStorage eventParticipantStorage, smtpClient smtpClient) *UserService {
 	return &UserService{
 		userStorage:             userStorage,
 		studentDataStorage:      studentDataStorage,
-		eventParticipantService: eventParticipantService,
+		eventParticipantStorage: eventParticipantStorage,
 		smtpClient:              smtpClient,
 	}
 }
@@ -100,12 +101,16 @@ func (s *UserService) Ban(ctx context.Context, userID int64) (*entity.User, erro
 	return s.Update(ctx, user)
 }
 
+func (s *UserService) GetUsersByEventID(ctx context.Context, eventID string) ([]entity.User, error) {
+	return s.userStorage.GetUsersByEventID(ctx, eventID)
+}
+
 func (s *UserService) GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]entity.Event, error) {
-	return s.eventParticipantService.GetUserEvents(ctx, userID, limit, offset)
+	return s.eventParticipantStorage.GetUserEvents(ctx, userID, limit, offset)
 }
 
 func (s *UserService) CountUserEvents(ctx context.Context, userID int64) (int64, error) {
-	return s.eventParticipantService.CountUserEvents(ctx, userID)
+	return s.eventParticipantStorage.CountUserEvents(ctx, userID)
 }
 
 func (s *UserService) SendAuthCode(_ context.Context, email string) (string, string, error) {

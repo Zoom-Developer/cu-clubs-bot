@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/dto"
@@ -48,6 +49,7 @@ func (s *EventStorage) GetAll(ctx context.Context) ([]entity.Event, error) {
 // GetByClubIDWithPagination is a function that gets events by club_id with pagination from the database.
 func (s *EventStorage) GetByClubIDWithPagination(ctx context.Context, limit, offset int, order string, clubID string) ([]entity.Event, error) {
 	var events []entity.Event
+	fmt.Println(order)
 	err := s.db.WithContext(ctx).Where("club_id = ?", clubID).Order(order).Limit(limit).Offset(offset).Find(&events).Error
 	return events, err
 }

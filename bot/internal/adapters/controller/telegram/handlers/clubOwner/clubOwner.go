@@ -3,6 +3,12 @@ package clubowner
 import (
 	"context"
 	"errors"
+	"fmt"
+	"github.com/google/uuid"
+	"github.com/spf13/viper"
+	"github.com/xuri/excelize/v2"
+	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -40,6 +46,7 @@ type clubOwnerService interface {
 
 type userService interface {
 	Get(ctx context.Context, userID int64) (*entity.User, error)
+	GetUsersByEventID(ctx context.Context, eventID string) ([]entity.User, error)
 }
 
 type eventService interface {
@@ -1901,6 +1908,94 @@ func (h Handler) declineEventDelete(c tele.Context) error {
 	)
 }
 
+func (h Handler) registeredUsers(c tele.Context) error {
+	data := strings.Split(c.Callback().Data, " ")
+	if len(data) != 2 {
+		return errorz.ErrInvalidCallbackData
+	}
+
+	eventID := data[0]
+	page := data[1]
+	h.logger.Infof("(user: %d) get registered users (eventID=%s)", c.Sender().ID, eventID)
+
+	event, err := h.eventService.Get(context.Background(), eventID)
+	if err != nil {
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "core:hide"),
+		)
+	}
+
+	users, err := h.userService.GetUsersByEventID(context.Background(), eventID)
+	if err != nil {
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "core:hide"),
+		)
+	}
+
+	filePath, err := usersToXLSX(users)
+	if err != nil {
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "core:hide"),
+		)
+	}
+
+	file := &tele.Document{
+		File:     tele.FromDisk(filePath),
+		Caption:  h.layout.Text(c, "registered_users_text"),
+		FileName: "users.xlsx",
+	}
+
+	_ = c.Send(file)
+
+	if err = os.Remove(filePath); err != nil {
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "core:hide"),
+		)
+	}
+
+	_ = c.Delete()
+
+	endTime := event.EndTime.Format("02.01.2006 15:04")
+	if event.EndTime.IsZero() {
+		endTime = ""
+	}
+
+	return c.Send(
+		banner.Events.Caption(h.layout.Text(c, "club_owner_event_text", struct {
+			Name                  string
+			Description           string
+			Location              string
+			StartTime             string
+			EndTime               string
+			RegistrationEnd       string
+			MaxParticipants       int
+			AfterRegistrationText string
+			IsRegistered          bool
+		}{
+			Name:                  event.Name,
+			Description:           event.Description,
+			Location:              event.Location,
+			StartTime:             event.StartTime.Format("02.01.2006 15:04"),
+			EndTime:               endTime,
+			RegistrationEnd:       event.RegistrationEnd.Format("02.01.2006 15:04"),
+			MaxParticipants:       event.MaxParticipants,
+			AfterRegistrationText: event.AfterRegistrationText,
+		})),
+		h.layout.Markup(c, "clubOwner:event:menu", struct {
+			ID     string
+			ClubID string
+			Page   string
+		}{
+			ID:     eventID,
+			ClubID: event.ClubID,
+			Page:   page,
+		}))
+}
+
 func (h Handler) ClubOwnerSetup(group *tele.Group) {
 	group.Handle(h.layout.Callback("clubOwner:my_clubs"), h.clubsList)
 	group.Handle(h.layout.Callback("clubOwner:myClubs:back"), h.clubsList)
@@ -1927,6 +2022,7 @@ func (h Handler) ClubOwnerSetup(group *tele.Group) {
 	group.Handle(h.layout.Callback("clubOwner:event:delete"), h.deleteEvent)
 	group.Handle(h.layout.Callback("clubOwner:event:delete:accept"), h.acceptEventDelete)
 	group.Handle(h.layout.Callback("clubOwner:event:delete:decline"), h.declineEventDelete)
+	group.Handle(h.layout.Callback("clubOwner:event:users"), h.registeredUsers)
 
 	group.Handle(h.layout.Callback("clubOwner:club:settings"), h.clubSettings)
 	group.Handle(h.layout.Callback("clubOwner:club:settings:back"), h.clubSettings)
@@ -1959,4 +2055,42 @@ func parseEventCallback(callbackData string) (string, int, error) {
 	}
 
 	return clubID, p, nil
+}
+
+func usersToXLSX(users []entity.User) (string, error) {
+	wd, _ := os.Getwd()
+
+	fileDir := filepath.Join(wd, viper.GetString("settings.xlsx.output-dir"))
+	if _, err := os.Stat(fileDir); os.IsNotExist(err) {
+		err = os.MkdirAll(fileDir, os.ModePerm)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	filePath := filepath.Join(fileDir, fmt.Sprintf("users_%s.xlsx", uuid.New().String()))
+
+	f := excelize.NewFile()
+
+	sheet := "Sheet1"
+	_ = f.SetCellValue(sheet, "A1", "Фамилия")
+	_ = f.SetCellValue(sheet, "B1", "Имя")
+	_ = f.SetCellValue(sheet, "C1", "Отчество")
+	_ = f.SetCellValue(sheet, "D1", "Username")
+
+	for i, user := range users {
+		fio := strings.Split(user.FIO, " ")
+
+		row := i + 2
+		_ = f.SetCellValue(sheet, "A"+strconv.Itoa(row), fio[0])
+		_ = f.SetCellValue(sheet, "B"+strconv.Itoa(row), fio[1])
+		_ = f.SetCellValue(sheet, "C"+strconv.Itoa(row), fio[2])
+		_ = f.SetCellValue(sheet, "D"+strconv.Itoa(row), user.Username)
+	}
+
+	if err := f.SaveAs(filePath); err != nil {
+		return "", err
+	}
+
+	return filePath, nil
 }
