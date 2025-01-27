@@ -45,6 +45,8 @@ type userService interface {
 type eventService interface {
 	Create(ctx context.Context, event *entity.Event) (*entity.Event, error)
 	Update(ctx context.Context, event *entity.Event) (*entity.Event, error)
+	GetByClubIDWithPagination(ctx context.Context, limit, offset int, clubID string) ([]entity.Event, error)
+	CountByClubID(ctx context.Context, clubID string) (int64, error)
 }
 
 type Handler struct {
@@ -1108,16 +1110,170 @@ func (h Handler) confirmEventCreation(c tele.Context) error {
 		}))
 }
 
+func (h Handler) eventsList(c tele.Context) error {
+	const eventsOnPage = 10
+	h.logger.Infof("(user: %d) edit events list", c.Sender().ID)
+
+	var (
+		p           int
+		prevPage    int
+		nextPage    int
+		err         error
+		eventsCount int64
+		events      []entity.Event
+		rows        []tele.Row
+		menuRow     tele.Row
+	)
+
+	clubID, p, err := parseEventsListCallback(c.Callback().Data)
+	if err != nil {
+		return err
+	}
+
+	eventsCount, err = h.eventService.CountByClubID(context.Background(), clubID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get events count: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:club:back", struct {
+				ID string
+			}{
+				ID: clubID,
+			}),
+		)
+	}
+
+	events, err = h.eventService.GetByClubIDWithPagination(context.Background(), eventsOnPage, p*eventsOnPage, clubID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get events: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:club:back", struct {
+				ID string
+			}{
+				ID: clubID,
+			}),
+		)
+	}
+
+	markup := c.Bot().NewMarkup()
+	for _, event := range events {
+		rows = append(rows, markup.Row(*h.layout.Button(c, "clubOwner:events:event", struct {
+			ID   string
+			Page int
+			Name string
+		}{
+			ID:   event.ID,
+			Page: p,
+			Name: event.Name,
+		})))
+	}
+	pagesCount := int(eventsCount) / (eventsOnPage + 1)
+	if p == 0 {
+		prevPage = pagesCount
+	} else {
+		prevPage = p - 1
+	}
+
+	if p >= pagesCount {
+		nextPage = 0
+	} else {
+		nextPage = p + 1
+	}
+
+	menuRow = append(menuRow,
+		*h.layout.Button(c, "clubOwner:events:prev_page", struct {
+			ID   string
+			Page int
+		}{
+			ID:   clubID,
+			Page: prevPage,
+		}),
+		*h.layout.Button(c, "core:page_counter", struct {
+			Page       int
+			PagesCount int
+		}{
+			Page:       p + 1,
+			PagesCount: pagesCount + 1,
+		}),
+		*h.layout.Button(c, "clubOwner:events:next_page", struct {
+			ID   string
+			Page int
+		}{
+			ID:   clubID,
+			Page: nextPage,
+		}),
+	)
+
+	rows = append(
+		rows,
+		menuRow,
+		markup.Row(*h.layout.Button(c, "clubOwner:club:back", struct {
+			ID string
+		}{
+			ID: clubID,
+		})),
+	)
+
+	markup.Inline(rows...)
+
+	h.logger.Debugf("(user: %d) events list (pages_count=%d, page=%d, club_id=%s events_count=%d, next_page=%d, prev_page=%d)",
+		c.Sender().ID,
+		pagesCount,
+		p,
+		clubID,
+		eventsCount,
+		nextPage,
+		prevPage,
+	)
+
+	_ = c.Edit(
+		banner.ClubOwner.Caption(h.layout.Text(c, "events_list")),
+		markup,
+	)
+	return nil
+}
+
+func parseEventsListCallback(callbackData string) (string, int, error) {
+	var (
+		p      int
+		clubID string
+		err    error
+	)
+
+	data := strings.Split(callbackData, " ")
+	if len(data) == 2 {
+		clubID = data[0]
+		p, err = strconv.Atoi(data[1])
+		if err != nil {
+			return "", 0, errorz.ErrInvalidCallbackData
+		}
+	} else if len(data) == 1 {
+		clubID = data[0]
+		p = 0
+	} else {
+		return "", 0, errorz.ErrInvalidCallbackData
+	}
+
+	return clubID, p, nil
+}
+
 func (h Handler) ClubOwnerSetup(group *tele.Group) {
 	group.Handle(h.layout.Callback("clubOwner:my_clubs"), h.clubsList)
 	group.Handle(h.layout.Callback("clubOwner:myClubs:back"), h.clubsList)
 	group.Handle(h.layout.Callback("clubOwner:myClubs:club"), h.clubMenu)
 	group.Handle(h.layout.Callback("clubOwner:club:back"), h.clubMenu)
+
 	group.Handle(h.layout.Callback("clubOwner:club:create_event"), h.createEvent)
 	group.Handle(h.layout.Callback("clubOwner:create_event:refill"), h.createEvent)
 	group.Handle(h.layout.Callback("clubOwner:create_event:confirm"), h.confirmEventCreation)
 	group.Handle(h.layout.Callback("clubOwner:create_event:role"), h.eventAllowedRoles)
 	group.Handle(h.layout.Callback("clubOwner:club:back"), h.clubMenu)
+
+	group.Handle(h.layout.Callback("clubOwner:club:events"), h.eventsList)
+	group.Handle(h.layout.Callback("clubOwner:events:prev_page"), h.eventsList)
+	group.Handle(h.layout.Callback("clubOwner:events:next_page"), h.eventsList)
+
 	group.Handle(h.layout.Callback("clubOwner:club:settings"), h.clubSettings)
 	group.Handle(h.layout.Callback("clubOwner:club:settings:back"), h.clubSettings)
 	group.Handle(h.layout.Callback("clubOwner:club:settings:edit_name"), h.editName)

@@ -218,6 +218,21 @@ buttons:
     callback_data: '{{.ID}}'
     text: '{{ text `club_events` }}'
 
+  clubOwner:events:event:
+    unique: cOwner_events_event
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{.Name}}'
+
+  clubOwner:events:next_page:
+    unique: cOwner_events_nextPage
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `next` }}'
+
+  clubOwner:events:prev_page:
+    unique: cOwner_events_prevPage
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `prev` }}'
+
   admin:create_club:
     unique: admin_createClub
     callback_data: admin_createClub

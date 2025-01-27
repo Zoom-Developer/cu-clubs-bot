@@ -45,6 +45,13 @@ func (s *EventStorage) GetAll(ctx context.Context) ([]entity.Event, error) {
 	return events, err
 }
 
+// GetByClubIDWithPagination is a function that gets events by club_id with pagination from the database.
+func (s *EventStorage) GetByClubIDWithPagination(ctx context.Context, limit, offset int, clubID string) ([]entity.Event, error) {
+	var events []entity.Event
+	err := s.db.WithContext(ctx).Where("club_id = ?", clubID).Limit(limit).Offset(offset).Find(&events).Error
+	return events, err
+}
+
 // Update is a function that updates an event in the database.
 func (s *EventStorage) Update(ctx context.Context, event *entity.Event) (*entity.Event, error) {
 	err := s.db.WithContext(ctx).Save(&event).Error
@@ -58,6 +65,14 @@ func (s *EventStorage) Count(ctx context.Context, role string) (int64, error) {
 		Where("registration_end > ?", time.Now()).
 		Where("? = ANY(allowed_roles)", role)
 
+	err := query.Count(&count).Error
+	return count, err
+}
+
+func (s *EventStorage) CountByClubID(ctx context.Context, clubID string) (int64, error) {
+	var count int64
+
+	query := s.db.WithContext(ctx).Where("club_id = ?", clubID).Find(&entity.Event{})
 	err := query.Count(&count).Error
 	return count, err
 }

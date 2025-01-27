@@ -15,6 +15,8 @@ type EventStorage interface {
 	Update(ctx context.Context, event *entity.Event) (*entity.Event, error)
 	Count(ctx context.Context, role string) (int64, error)
 	GetWithPagination(ctx context.Context, limit, offset int, order string, role string, userID int64) ([]dto.Event, error)
+	GetByClubIDWithPagination(ctx context.Context, limit, offset int, clubID string) ([]entity.Event, error)
+	CountByClubID(ctx context.Context, clubID string) (int64, error)
 }
 
 type EventService struct {
@@ -38,8 +40,13 @@ func (s *EventService) Get(ctx context.Context, id string) (*entity.Event, error
 func (s *EventService) GetMany(ctx context.Context, ids []string) ([]entity.Event, error) {
 	return s.eventStorage.GetMany(ctx, ids)
 }
+
 func (s *EventService) GetAll(ctx context.Context) ([]entity.Event, error) {
 	return s.eventStorage.GetAll(ctx)
+}
+
+func (s *EventService) GetByClubIDWithPagination(ctx context.Context, limit, offset int, clubID string) ([]entity.Event, error) {
+	return s.eventStorage.GetByClubIDWithPagination(ctx, limit, offset, clubID)
 }
 
 func (s *EventService) Update(ctx context.Context, event *entity.Event) (*entity.Event, error) {
@@ -48,6 +55,10 @@ func (s *EventService) Update(ctx context.Context, event *entity.Event) (*entity
 
 func (s *EventService) Count(ctx context.Context, role entity.Role) (int64, error) {
 	return s.eventStorage.Count(ctx, string(role))
+}
+
+func (s *EventService) CountByClubID(ctx context.Context, clubID string) (int64, error) {
+	return s.eventStorage.CountByClubID(ctx, clubID)
 }
 
 func (s *EventService) GetWithPagination(ctx context.Context, limit, offset int, order string, role entity.Role, userID int64) ([]dto.Event, error) {
