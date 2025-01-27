@@ -2,7 +2,9 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/dto"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 	"gorm.io/gorm"
 )
@@ -18,7 +20,29 @@ func NewClubOwnerStorage(db *gorm.DB) *ClubOwnerStorage {
 }
 
 func (s *ClubOwnerStorage) Create(ctx context.Context, clubOwner *entity.ClubOwner) (*entity.ClubOwner, error) {
-	err := s.db.WithContext(ctx).Create(&clubOwner).Error
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Check if club exists
+		var clubExists int64
+		if err := tx.Model(&entity.Club{}).Where("id = ?", clubOwner.ClubID).Count(&clubExists).Error; err != nil {
+			return err
+		}
+		if clubExists == 0 {
+			return fmt.Errorf("club with id %s not found", clubOwner.ClubID)
+		}
+
+		// Check if user exists
+		var userExists int64
+		if err := tx.Model(&entity.User{}).Where("id = ?", clubOwner.UserID).Count(&userExists).Error; err != nil {
+			return err
+		}
+		if userExists == 0 {
+			return fmt.Errorf("user with id %d not found", clubOwner.UserID)
+		}
+
+		// Create club owner
+		return tx.Create(&clubOwner).Error
+	})
+
 	return clubOwner, err
 }
 
@@ -33,14 +57,29 @@ func (s *ClubOwnerStorage) Get(ctx context.Context, clubID string, userID int64)
 	return &clubOwner, err
 }
 
-func (s *ClubOwnerStorage) GetByClubID(ctx context.Context, clubID string) ([]entity.ClubOwner, error) {
-	var clubOwners []entity.ClubOwner
-	err := s.db.WithContext(ctx).Where("club_id = ?", clubID).Find(&clubOwners).Error
-	return clubOwners, err
+func (s *ClubOwnerStorage) Update(ctx context.Context, clubOwner *entity.ClubOwner) (*entity.ClubOwner, error) {
+	err := s.db.WithContext(ctx).Save(&clubOwner).Error
+	return clubOwner, err
 }
 
-func (s *ClubOwnerStorage) GetByUserID(ctx context.Context, userID int64) ([]entity.ClubOwner, error) {
-	var clubOwners []entity.ClubOwner
-	err := s.db.WithContext(ctx).Where("user_id = ?", userID).Find(&clubOwners).Error
-	return clubOwners, err
+func (s *ClubOwnerStorage) GetByClubID(ctx context.Context, clubID string) ([]dto.ClubOwner, error) {
+	var result []dto.ClubOwner
+	err := s.db.WithContext(ctx).
+		Table("club_owners").
+		Select("club_owners.club_id, club_owners.user_id, club_owners.warnings, users.fio, users.email, users.role, users.is_banned").
+		Joins("LEFT JOIN users ON users.id = club_owners.user_id").
+		Where("club_owners.club_id = ?", clubID).
+		Scan(&result).Error
+	return result, err
+}
+
+func (s *ClubOwnerStorage) GetByUserID(ctx context.Context, userID int64) ([]dto.ClubOwner, error) {
+	var result []dto.ClubOwner
+	err := s.db.WithContext(ctx).
+		Table("club_owners").
+		Select("club_owners.club_id, club_owners.user_id, club_owners.warnings, users.fio, users.email, users.role, users.is_banned").
+		Joins("LEFT JOIN users ON users.id = club_owners.user_id").
+		Where("club_owners.user_id = ?", userID).
+		Scan(&result).Error
+	return result, err
 }

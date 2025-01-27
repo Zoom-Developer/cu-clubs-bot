@@ -88,6 +88,216 @@ buttons:
     callback_data: mainMenu_back
     text: '{{ text `back` }}'
 
+  user:events:event:
+    unique: user_event
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{if .IsRegistered}}✔️ {{end}}{{.Name}}'
+
+  user:events:next_page:
+    unique: user_events_nextPage
+    callback_data: '{{.Page}}'
+    text: '{{ text `next` }}'
+
+  user:events:prev_page:
+    unique: user_events_prevPage
+    callback_data: '{{.Page}}'
+    text: '{{ text `prev` }}'
+
+  user:events:back:
+    unique: user_events_back
+    callback_data: '{{.Page}}'
+    text: '{{ text `back` }}'
+
+  user:events:event:register:
+    unique: event_register
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{if .IsRegistered}}{{text `registered` }}{{else}}{{ text `register` }}{{end}}'
+
+  user:myEvents:event:
+    unique: user_myEvent
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{if .IsOver}}{{text `over` }} {{end}}{{.Name}}'
+
+  user:myEvents:next_page:
+    unique: user_myEvents_nextPage
+    callback_data: '{{.Page}}'
+    text: '{{ text `next` }}'
+
+  user:myEvents:prev_page:
+    unique: user_myEvents_prevPage
+    callback_data: '{{.Page}}'
+    text: '{{ text `prev` }}'
+
+  user:myEvents:back:
+    unique: user_myEvents_back
+    callback_data: '{{.Page}}'
+    text: '{{ text `back` }}'
+
+  clubOwner:my_clubs:
+    unique: clubOwner_myClubs
+    callback_data: clubOwner_myClubs
+    text: '{{ text `my_clubs` }}'
+
+  clubOwner:back_to_menu:
+    unique: clubOwner_backToMenu
+    callback_data: clubOwner_backToMenu
+    text: '{{ text `back` }}'
+
+  clubOwner:myClubs:club:
+    unique: clubOwner_myClubs_club
+    callback_data: '{{.ID}}'
+    text: '{{.Name}}'
+
+  clubOwner:myClubs:back:
+    unique: clubOwner_myClubs_back
+    callback_data: clubOwner_myClubs_back
+    text: '{{ text `back` }}'
+
+  clubOwner:club:back:
+    unique: clubOwner_club_back
+    callback_data: '{{.ID}}'
+    text: '{{ text `back` }}'
+
+  clubOwner:club:settings:
+    unique: clubOwner_club_settings
+    callback_data: '{{.ID}}'
+    text: '{{ text `club_settings` }}'
+
+  clubOwner:club:settings:back:
+    unique: cOwner_club_settings_back
+    callback_data: '{{.ID}}'
+    text: '{{ text `back` }}'
+
+  clubOwner:club:settings:edit_name:
+    unique: clubOwner_club_editName
+    callback_data: '{{.ID}}'
+    text: '{{ text `edit_name` }}'
+
+  clubOwner:club:settings:edit_description:
+    unique: clubOwner_club_editDesc
+    callback_data: '{{.ID}}'
+    text: '{{ text `edit_description` }}'
+
+  clubOwner:club:settings:add_owner:
+    unique: clubOwner_club_addOwner
+    callback_data: '{{.ID}}'
+    text: '{{ text `add_club_owner` }}'
+
+  clubOwner:club:settings:warnings:
+    unique: clubOwner_club_warnings
+    callback_data: '{{.ID}}'
+    text: '{{ text `warnings` }}'
+
+  clubOwner:club:settings:warnings:user:
+    unique: cOwner_warnings
+    callback_data: '{{.ClubID}} {{.UserID}}'
+    text: '{{if .Warnings}}✔️ {{.FIO}}{{else}}❌ {{.FIO}}{{end}}'
+
+  clubOwner:club:create_event:
+    unique: clubOwner_club_createEvent
+    callback_data: '{{.ID}}'
+    text: '{{ text `create_event` }}'
+
+  clubOwner:create_event:confirm:
+    unique: clubOwner_event_confirm
+    callback_data: '{{.ID}}'
+    text: '{{ text `create` }}'
+
+  clubOwner:create_event:refill:
+    unique: clubOwner_event_refill
+    callback_data: '{{.ID}}'
+    text: '{{ text `refill` }}'
+
+  clubOwner:create_event:role:
+    unique: event_role
+    callback_data: '{{.ID}} {{.Role}}'
+    text: '{{if .Allowed}}✔️ {{.RoleName}}{{else}}❌ {{.RoleName}}{{end}}'
+
+  clubOwner:club:events:
+    unique: clubOwner_club_events
+    callback_data: '{{.ID}}'
+    text: '{{ text `club_events` }}'
+
+  clubOwner:events:back:
+    unique: clubOwner_events_back
+    callback_data: '{{.ClubID}} {{.Page}}'
+    text: '{{ text `back` }}'
+
+  clubOwner:events:next_page:
+    unique: cOwner_events_nextPage
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `next` }}'
+
+  clubOwner:events:prev_page:
+    unique: cOwner_events_prevPage
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `prev` }}'
+
+  clubOwner:events:event:
+    unique: cOwner_events_event
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{.Name}}'
+
+  clubOwner:event:back:
+    unique: clubOwner_event_back
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `back` }}'
+
+  clubOwner:event:qr:
+    unique: clubOwner_event_qr
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `qr` }}'
+
+  clubOwner:event:settings:
+    unique: clubOwner_event_settings
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `event_settings` }}'
+
+  clubOwner:event:settings:back:
+    unique: cOwner_event_set_back
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `back` }}'
+
+  clubOwner:event:settings:edit_name:
+    unique: clubOwner_event_editName
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `edit_name` }}'
+
+  clubOwner:event:settings:edit_description:
+    unique: clubOwner_event_editDesk
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `edit_description` }}'
+
+  clubOwner:event:settings:edit_after_reg_text:
+    unique: cOwner_event_editARText
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `edit_after_reg_text` }}'
+
+  clubOwner:event:users:
+    unique: clubOwner_event_users
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `event_users` }}'
+
+  clubOwner:event:delete:
+    unique: clubOwner_event_delete
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `delete` }}'
+
+  clubOwner:event:delete:back:
+    unique: cOwner_event_delete_back
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `back` }}'
+
+  clubOwner:event:delete:accept:
+    unique: cOwner_event_delete_ac
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `accept` }}'
+
+  clubOwner:event:delete:decline:
+    unique: cOwner_event_delete_de
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `decline` }}'
+
   admin:create_club:
     unique: admin_createClub
     callback_data: admin_createClub
@@ -104,7 +314,7 @@ buttons:
     text: '{{ text `back` }}'
 
   admin:clubs:club:
-    unique: admin_clubs_club
+    unique: admin_club
     callback_data: '{{.ID}} {{.Page}}'
     text: '{{.Name}}'
 
@@ -117,6 +327,16 @@ buttons:
     unique: admin_clubs_prevPage
     callback_data: '{{.Page}}'
     text: '{{ text `prev` }}'
+
+  admin:club:roles:
+    unique: admin_club_roles
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `roles` }}'
+
+  admin:club:roles:role:
+    unique: admin_role
+    callback_data: '{{.ID}} {{.Page}} {{.Role}}'
+    text: '{{if .On}}✔️ {{.RoleText}}{{else}}❌ {{.RoleText}}{{end}}'
 
   admin:clubs:back:
     unique: admin_clubs_back
@@ -169,6 +389,56 @@ markups:
   mainMenu:back:
     - [ mainMenu:back ]
 
+  user:events:back:
+    - [ user:events:back ]
+  user:events:event:
+    - [ user:events:event:register ]
+    - [ user:events:back ]
+  user:myEvents:back:
+    - [ user:myEvents:back ]
+  user:myEvents:event:
+    - [ user:myEvents:back ]
+
+  clubOwner:club:menu:
+    - [ clubOwner:club:events ]
+    - [ clubOwner:club:create_event ]
+    - [ clubOwner:club:settings ]
+  clubOwner:club:settings:
+    - [ clubOwner:club:settings:edit_name ]
+    - [ clubOwner:club:settings:edit_description ]
+    - [ clubOwner:club:settings:add_owner ]
+    - [ clubOwner:club:settings:warnings ]
+    - [ clubOwner:club:back ]
+  clubOwner:club:settings:back:
+    - [ clubOwner:club:settings:back ]
+  clubOwner:club:settings:warnings:
+    - [ clubOwner:club:settings:back ]
+  clubOwner:club:back:
+    - [ clubOwner:club:back ]
+  clubOwner:createClub:confirm:
+    - [ clubOwner:create_event:confirm ]
+    - [ clubOwner:create_event:refill ]
+    - [ clubOwner:club:back ]
+  clubOwner:event:menu:
+    - [ clubOwner:event:qr ]
+    - [ clubOwner:event:settings ]
+    - [ clubOwner:event:users ]
+    - [ clubOwner:event:delete ]
+    - [ clubOwner:events:back ]
+  clubOwner:event:settings:
+    - [ clubOwner:event:settings:edit_name ]
+    - [ clubOwner:event:settings:edit_description ]
+    - [ clubOwner:event:settings:edit_after_reg_text ]
+    - [ clubOwner:event:back ]
+  clubOwner:event:settings:back:
+    - [ clubOwner:event:settings:back ]
+  clubOwner:event:delete:
+    - [ clubOwner:event:delete:accept ]
+    - [ clubOwner:event:delete:decline ]
+    - [ clubOwner:event:back ]
+  clubOwner:event:delete:back:
+    - [ clubOwner:events:back ]
+
   admin:menu:
     - [ admin:clubs ]
     - [ admin:create_club ]
@@ -180,7 +450,10 @@ markups:
   admin:club:menu:
     - [ admin:club:add_owner ]
     - [ admin:club:del_owner ]
+    - [ admin:club:roles ]
     - [ admin:club:delete ]
     - [ admin:clubs:back ]
+  admin:club:roles:
+    - [ admin:club:back ]
   admin:club:back:
     - [ admin:club:back ]

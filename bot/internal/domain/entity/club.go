@@ -1,8 +1,10 @@
 package entity
 
 import (
-	"gorm.io/gorm"
 	"time"
+
+	"github.com/lib/pq"
+	"gorm.io/gorm"
 )
 
 type Club struct {
@@ -12,4 +14,8 @@ type Club struct {
 	DeletedAt   gorm.DeletedAt
 	Name        string `gorm:"not null;unique"`
 	Description string
+	// AllowedRoles - list of roles for which this group can create events
+	AllowedRoles pq.StringArray `gorm:"type:text[]"`
+	// QrAllowed - true if group can create qr code that can be scanned by users for event registration
+	QrAllowed bool
 }

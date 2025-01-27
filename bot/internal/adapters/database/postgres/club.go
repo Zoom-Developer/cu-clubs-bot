@@ -28,6 +28,12 @@ func (s *ClubStorage) Get(ctx context.Context, id string) (*entity.Club, error) 
 	return &club, err
 }
 
+func (s *ClubStorage) GetByOwnerID(ctx context.Context, id int64) ([]entity.Club, error) {
+	var user entity.User
+	err := s.db.WithContext(ctx).Preload("Clubs").First(&user, "id = ?", id).Error
+	return user.Clubs, err
+}
+
 func (s *ClubStorage) Update(ctx context.Context, club *entity.Club) (*entity.Club, error) {
 	err := s.db.WithContext(ctx).Save(&club).Error
 	return club, err
@@ -49,8 +55,8 @@ func (s *ClubStorage) Count(ctx context.Context) (int64, error) {
 	return count, err
 }
 
-func (s *ClubStorage) GetWithPagination(ctx context.Context, offset, limit int, order string) ([]entity.Club, error) {
+func (s *ClubStorage) GetWithPagination(ctx context.Context, limit, offset int, order string) ([]entity.Club, error) {
 	var clubs []entity.Club
-	err := s.db.WithContext(ctx).Order(order).Offset(offset).Limit(limit).Find(&clubs).Error
+	err := s.db.WithContext(ctx).Order(order).Limit(limit).Offset(offset).Find(&clubs).Error
 	return clubs, err
 }

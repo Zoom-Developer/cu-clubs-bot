@@ -63,8 +63,8 @@ func (s *UserStorage) Count(ctx context.Context) (int64, error) {
 }
 
 // GetWithPagination is a function that gets a list of users from the database with pagination.
-func (s *UserStorage) GetWithPagination(ctx context.Context, offset, limit int, order string) ([]entity.User, error) {
+func (s *UserStorage) GetWithPagination(ctx context.Context, limit, offset int, order string) ([]entity.User, error) {
 	var users []entity.User
-	err := s.db.WithContext(ctx).Order(order).Offset(offset).Limit(limit).Find(&users).Error
+	err := s.db.WithContext(ctx).Order(order).Limit(limit).Offset(offset).Find(&users).Error
 	return users, err
 }

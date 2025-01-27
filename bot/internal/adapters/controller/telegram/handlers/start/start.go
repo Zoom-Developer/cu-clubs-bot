@@ -45,7 +45,7 @@ func New(b *bot.Bot) *Handler {
 	smtpClient := smtp.NewClient(b.SMTPDialer)
 
 	return &Handler{
-		userService:   service.NewUserService(userStorage, studentDataStorage, smtpClient),
+		userService:   service.NewUserService(userStorage, studentDataStorage, nil, smtpClient),
 		menuHandler:   menu.New(b),
 		codesStorage:  b.Redis.Codes,
 		emailsStorage: b.Redis.Emails,
@@ -56,8 +56,6 @@ func New(b *bot.Bot) *Handler {
 
 func (h *Handler) Start(c tele.Context) error {
 	h.logger.Infof("(user: %d) press start button", c.Sender().ID)
-
-	_ = c.Delete()
 
 	user, err := h.userService.Get(context.Background(), c.Sender().ID)
 

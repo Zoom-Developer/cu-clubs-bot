@@ -11,8 +11,9 @@ type ClubOwnerStorage interface {
 	Create(ctx context.Context, clubOwner *entity.ClubOwner) (*entity.ClubOwner, error)
 	Delete(ctx context.Context, userID int64, clubID string) error
 	Get(ctx context.Context, clubID string, userID int64) (*entity.ClubOwner, error)
-	GetByClubID(ctx context.Context, clubID string) ([]entity.ClubOwner, error)
-	GetByUserID(ctx context.Context, userID int64) ([]entity.ClubOwner, error)
+	Update(ctx context.Context, clubOwner *entity.ClubOwner) (*entity.ClubOwner, error)
+	GetByClubID(ctx context.Context, clubID string) ([]dto.ClubOwner, error)
+	GetByUserID(ctx context.Context, userID int64) ([]dto.ClubOwner, error)
 }
 
 type ClubOwnerService struct {
@@ -39,68 +40,14 @@ func (s *ClubOwnerService) Get(ctx context.Context, clubID string, userID int64)
 	return s.storage.Get(ctx, clubID, userID)
 }
 
-func (s *ClubOwnerService) GetByClubID(ctx context.Context, clubID string) ([]dto.ClubOwner, error) {
-	clubOwners, err := s.storage.GetByClubID(ctx, clubID)
-	if err != nil {
-		return nil, err
-	}
-	var userIDs []int64
-	for _, clubOwner := range clubOwners {
-		userIDs = append(userIDs, clubOwner.UserID)
-	}
+func (s *ClubOwnerService) Update(ctx context.Context, clubOwner *entity.ClubOwner) (*entity.ClubOwner, error) {
+	return s.storage.Update(ctx, clubOwner)
+}
 
-	users, err := s.userStorage.GetMany(ctx, userIDs)
-	if err != nil {
-		return nil, err
-	}
-	var result []dto.ClubOwner
-	for _, user := range users {
-		for _, clubOwner := range clubOwners {
-			if user.ID == clubOwner.UserID {
-				result = append(result, dto.ClubOwner{
-					ClubID:   clubOwner.ClubID,
-					UserID:   user.ID,
-					FIO:      user.FIO,
-					Email:    user.Email,
-					Role:     user.Role,
-					IsBanned: user.IsBanned,
-				})
-			}
-		}
-	}
-	return result, nil
+func (s *ClubOwnerService) GetByClubID(ctx context.Context, clubID string) ([]dto.ClubOwner, error) {
+	return s.storage.GetByClubID(ctx, clubID)
 }
 
 func (s *ClubOwnerService) GetByUserID(ctx context.Context, userID int64) ([]dto.ClubOwner, error) {
-	clubOwners, err := s.storage.GetByUserID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	var userIDs []int64
-	for _, clubOwner := range clubOwners {
-		userIDs = append(userIDs, clubOwner.UserID)
-	}
-
-	users, err := s.userStorage.GetMany(ctx, userIDs)
-	if err != nil {
-		return nil, err
-	}
-
-	var result []dto.ClubOwner
-	for _, user := range users {
-		for _, clubOwner := range clubOwners {
-			if user.ID == clubOwner.UserID {
-				result = append(result, dto.ClubOwner{
-					ClubID:   clubOwner.ClubID,
-					UserID:   user.ID,
-					FIO:      user.FIO,
-					Email:    user.Email,
-					Role:     user.Role,
-					IsBanned: user.IsBanned,
-				})
-			}
-		}
-	}
-	return result, nil
+	return s.storage.GetByUserID(ctx, userID)
 }
