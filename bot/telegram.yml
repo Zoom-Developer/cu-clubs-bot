@@ -89,7 +89,7 @@ buttons:
     text: '{{ text `back` }}'
 
   user:events:event:
-    unique: user_events_event
+    unique: user_event
     callback_data: '{{.ID}} {{.Page}}'
     text: '{{if .IsRegistered}}✔️ {{end}}{{.Name}}'
 
@@ -114,7 +114,7 @@ buttons:
     text: '{{if .IsRegistered}}{{text `registered` }}{{else}}{{ text `register` }}{{end}}'
 
   user:myEvents:event:
-    unique: user_myEvents_event
+    unique: user_myEvent
     callback_data: '{{.ID}} {{.Page}}'
     text: '{{if .IsOver}}{{text `over` }} {{end}}{{.Name}}'
 
@@ -299,7 +299,7 @@ buttons:
     text: '{{ text `back` }}'
 
   admin:clubs:club:
-    unique: admin_clubs_club
+    unique: admin_club
     callback_data: '{{.ID}} {{.Page}}'
     text: '{{.Name}}'
 

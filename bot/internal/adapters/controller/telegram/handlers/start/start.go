@@ -57,8 +57,6 @@ func New(b *bot.Bot) *Handler {
 func (h *Handler) Start(c tele.Context) error {
 	h.logger.Infof("(user: %d) press start button", c.Sender().ID)
 
-	_ = c.Delete()
-
 	user, err := h.userService.Get(context.Background(), c.Sender().ID)
 
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {

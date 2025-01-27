@@ -220,7 +220,7 @@ func (h Handler) clubsList(c tele.Context) error {
 			Page: p,
 		})))
 	}
-	pagesCount := int(clubsCount) / (clubsOnPage + 1)
+	pagesCount := (int(clubsCount) - 1) / clubsOnPage
 	if p == 0 {
 		prevPage = pagesCount
 	} else {
@@ -427,7 +427,7 @@ func (h Handler) addClubOwner(c tele.Context) error {
 						ID   int64
 						Text string
 					}{
-						ID:   user.ID,
+						ID:   userID,
 						Text: h.layout.Text(c, "input_user_id"),
 					})),
 					h.layout.Markup(c, "admin:club:back", struct {
