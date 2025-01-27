@@ -25,6 +25,7 @@ type User struct {
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 	Localization string `gorm:"default:ru"`
+	Username     string
 	Role         Role   `gorm:"not null"`
 	Email        string `gorm:"uniqueIndex:idx_users_email,where:email <> ''"`
 	FIO          string `gorm:"not null"`

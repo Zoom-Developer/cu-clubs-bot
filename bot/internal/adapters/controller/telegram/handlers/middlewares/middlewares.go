@@ -21,6 +21,7 @@ import (
 type userService interface {
 	Get(ctx context.Context, userID int64) (*entity.User, error)
 	UpdateData(ctx context.Context, c tele.Context) (*entity.User, error)
+	Update(ctx context.Context, user *entity.User) (*entity.User, error)
 }
 
 type Handler struct {
@@ -69,6 +70,18 @@ func (h Handler) Authorized(next tele.HandlerFunc) tele.HandlerFunc {
 				banner.Auth.Caption(h.layout.Text(c, "auth_required")),
 				h.layout.Markup(c, "core:hide"),
 			)
+		}
+
+		if c.Sender().Username != user.Username {
+			h.logger.Infof("(user: %d) update username", c.Sender().ID)
+			user.Username = c.Sender().Username
+			_, err = h.userService.Update(context.Background(), user)
+			if err != nil {
+				return c.Send(
+					banner.Auth.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+					h.layout.Markup(c, "core:hide"),
+				)
+			}
 		}
 
 		if user.IsBanned {
