@@ -218,6 +218,11 @@ buttons:
     callback_data: '{{.ID}}'
     text: '{{ text `club_events` }}'
 
+  clubOwner:events:back:
+    unique: clubOwner_events_back
+    callback_data: '{{.ClubID}} {{.Page}}'
+    text: '{{ text `back` }}'
+
   clubOwner:events:next_page:
     unique: cOwner_events_nextPage
     callback_data: '{{.ID}} {{.Page}}'
@@ -233,6 +238,11 @@ buttons:
     callback_data: '{{.ID}} {{.Page}}'
     text: '{{.Name}}'
 
+  clubOwner:event:back:
+    unique: clubOwner_event_back
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `back` }}'
+
   clubOwner:event:qr:
     unique: clubOwner_event_qr
     callback_data: '{{.ID}} {{.Page}}'
@@ -243,6 +253,26 @@ buttons:
     callback_data: '{{.ID}} {{.Page}}'
     text: '{{ text `event_settings` }}'
 
+  clubOwner:event:settings:back:
+    unique: cOwner_event_set_back
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `back` }}'
+
+  clubOwner:event:settings:edit_name:
+    unique: clubOwner_event_editName
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `edit_name` }}'
+
+  clubOwner:event:settings:edit_description:
+    unique: clubOwner_event_editDesk
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `edit_description` }}'
+
+  clubOwner:event:settings:edit_after_reg_text:
+    unique: cOwner_event_editARText
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `edit_after_reg_text` }}'
+
   clubOwner:event:users:
     unique: clubOwner_event_users
     callback_data: '{{.ID}} {{.Page}}'
@@ -252,11 +282,6 @@ buttons:
     unique: clubOwner_event_delete
     callback_data: '{{.ID}} {{.Page}}'
     text: '{{ text `delete` }}'
-
-  clubOwner:events:back:
-    unique: clubOwner_events_back
-    callback_data: '{{.ID}} {{.Page}}'
-    text: '{{ text `back` }}'
 
   admin:create_club:
     unique: admin_createClub
@@ -385,6 +410,14 @@ markups:
     - [ clubOwner:event:users ]
     - [ clubOwner:event:delete ]
     - [ clubOwner:events:back ]
+  clubOwner:event:settings:
+    - [ clubOwner:event:settings:edit_name ]
+    - [ clubOwner:event:settings:edit_description ]
+    - [ clubOwner:event:settings:edit_after_reg_text ]
+    - [ clubOwner:event:back ]
+  clubOwner:event:settings:back:
+    - [ clubOwner:event:settings:back ]
+
 
   admin:menu:
     - [ admin:clubs ]
