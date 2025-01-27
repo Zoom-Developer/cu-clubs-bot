@@ -46,9 +46,9 @@ func (s *EventStorage) GetAll(ctx context.Context) ([]entity.Event, error) {
 }
 
 // GetByClubIDWithPagination is a function that gets events by club_id with pagination from the database.
-func (s *EventStorage) GetByClubIDWithPagination(ctx context.Context, limit, offset int, clubID string) ([]entity.Event, error) {
+func (s *EventStorage) GetByClubIDWithPagination(ctx context.Context, limit, offset int, order string, clubID string) ([]entity.Event, error) {
 	var events []entity.Event
-	err := s.db.WithContext(ctx).Where("club_id = ?", clubID).Limit(limit).Offset(offset).Find(&events).Error
+	err := s.db.WithContext(ctx).Where("club_id = ?", clubID).Order(order).Limit(limit).Offset(offset).Find(&events).Error
 	return events, err
 }
 
@@ -56,6 +56,12 @@ func (s *EventStorage) GetByClubIDWithPagination(ctx context.Context, limit, off
 func (s *EventStorage) Update(ctx context.Context, event *entity.Event) (*entity.Event, error) {
 	err := s.db.WithContext(ctx).Save(&event).Error
 	return event, err
+}
+
+// Delete is a function that deletes an event from the database.
+func (s *EventStorage) Delete(ctx context.Context, id string) error {
+	err := s.db.WithContext(ctx).Where("id = ?", id).Delete(&entity.Event{}).Error
+	return err
 }
 
 // Count is a function that gets the count of events from the database.

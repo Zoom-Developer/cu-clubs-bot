@@ -283,6 +283,21 @@ buttons:
     callback_data: '{{.ID}} {{.Page}}'
     text: '{{ text `delete` }}'
 
+  clubOwner:event:delete:back:
+    unique: cOwner_event_delete_back
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `back` }}'
+
+  clubOwner:event:delete:accept:
+    unique: cOwner_event_delete_ac
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `accept` }}'
+
+  clubOwner:event:delete:decline:
+    unique: cOwner_event_delete_de
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `decline` }}'
+
   admin:create_club:
     unique: admin_createClub
     callback_data: admin_createClub
@@ -417,7 +432,12 @@ markups:
     - [ clubOwner:event:back ]
   clubOwner:event:settings:back:
     - [ clubOwner:event:settings:back ]
-
+  clubOwner:event:delete:
+    - [ clubOwner:event:delete:accept ]
+    - [ clubOwner:event:delete:decline ]
+    - [ clubOwner:event:back ]
+  clubOwner:event:delete:back:
+    - [ clubOwner:events:back ]
 
   admin:menu:
     - [ admin:clubs ]

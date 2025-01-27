@@ -46,8 +46,9 @@ type eventService interface {
 	Create(ctx context.Context, event *entity.Event) (*entity.Event, error)
 	Update(ctx context.Context, event *entity.Event) (*entity.Event, error)
 	Get(ctx context.Context, id string) (*entity.Event, error)
-	GetByClubIDWithPagination(ctx context.Context, limit, offset int, clubID string) ([]entity.Event, error)
+	GetByClubIDWithPagination(ctx context.Context, limit, offset int, order string, clubID string) ([]entity.Event, error)
 	CountByClubID(ctx context.Context, clubID string) (int64, error)
+	Delete(ctx context.Context, id string) error
 }
 
 type eventParticipantService interface {
@@ -1150,7 +1151,13 @@ func (h Handler) eventsList(c tele.Context) error {
 		)
 	}
 
-	events, err = h.eventService.GetByClubIDWithPagination(context.Background(), eventsOnPage, p*eventsOnPage, clubID)
+	events, err = h.eventService.GetByClubIDWithPagination(
+		context.Background(),
+		eventsOnPage,
+		p*eventsOnPage,
+		"start_time ASC",
+		clubID,
+	)
 	if err != nil {
 		h.logger.Errorf("(user: %d) error while get events: %v", c.Sender().ID, err)
 		return c.Edit(
@@ -1333,7 +1340,7 @@ func (h Handler) eventSettings(c tele.Context) error {
 	}
 
 	return c.Edit(
-		banner.Events.Caption(h.layout.Text(c, "club_owner_event_text", struct {
+		banner.ClubOwner.Caption(h.layout.Text(c, "club_owner_event_text", struct {
 			Name                  string
 			Description           string
 			Location              string
@@ -1735,6 +1742,165 @@ func (h Handler) editEventAfterRegistrationText(c tele.Context) error {
 	)
 }
 
+func (h Handler) deleteEvent(c tele.Context) error {
+	data := strings.Split(c.Callback().Data, " ")
+	if len(data) != 2 {
+		return errorz.ErrInvalidCallbackData
+	}
+
+	eventID := data[0]
+	page := data[1]
+	h.logger.Infof("(user: %d) delete event(eventID=%s) request", c.Sender().ID, eventID)
+
+	event, err := h.eventService.Get(context.Background(), eventID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get event: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:event:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   eventID,
+				Page: page,
+			}),
+		)
+	}
+
+	return c.Edit(
+		banner.ClubOwner.Caption(h.layout.Text(c, "delete_event_text", struct {
+			Name string
+		}{
+			Name: event.Name,
+		})),
+		h.layout.Markup(c, "clubOwner:event:delete", struct {
+			ID   string
+			Page string
+		}{
+			ID:   event.ID,
+			Page: page,
+		}),
+	)
+}
+
+func (h Handler) acceptEventDelete(c tele.Context) error {
+	data := strings.Split(c.Callback().Data, " ")
+	if len(data) != 2 {
+		return errorz.ErrInvalidCallbackData
+	}
+
+	eventID := data[0]
+	page := data[1]
+	h.logger.Infof("(user: %d) delete event(eventID=%s)", c.Sender().ID, eventID)
+
+	event, err := h.eventService.Get(context.Background(), eventID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while delete event: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:event:delete:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   eventID,
+				Page: page,
+			}),
+		)
+	}
+
+	err = h.eventService.Delete(context.Background(), eventID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while delete event: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:event:delete:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   eventID,
+				Page: page,
+			}),
+		)
+	}
+
+	return c.Edit(
+		banner.ClubOwner.Caption(h.layout.Text(c, "event_deleted", struct {
+			Name string
+		}{
+			Name: event.Name,
+		})),
+		h.layout.Markup(c, "clubOwner:event:delete:back", struct {
+			ClubID string
+			Page   string
+		}{
+			ClubID: event.ClubID,
+			Page:   page,
+		}),
+	)
+}
+
+func (h Handler) declineEventDelete(c tele.Context) error {
+	data := strings.Split(c.Callback().Data, " ")
+	if len(data) != 2 {
+		return errorz.ErrInvalidCallbackData
+	}
+
+	eventID := data[0]
+	page := data[1]
+	h.logger.Infof("(user: %d) decline delete event(eventID=%s)", c.Sender().ID, eventID)
+
+	event, err := h.eventService.Get(context.Background(), eventID)
+	if err != nil {
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:event:delete:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   eventID,
+				Page: page,
+			}),
+		)
+	}
+
+	endTime := event.EndTime.Format("02.01.2006 15:04")
+	if event.EndTime.IsZero() {
+		endTime = ""
+	}
+
+	return c.Edit(
+		banner.ClubOwner.Caption(h.layout.Text(c, "club_owner_event_text", struct {
+			Name                  string
+			Description           string
+			Location              string
+			StartTime             string
+			EndTime               string
+			RegistrationEnd       string
+			MaxParticipants       int
+			AfterRegistrationText string
+			IsRegistered          bool
+		}{
+			Name:                  event.Name,
+			Description:           event.Description,
+			Location:              event.Location,
+			StartTime:             event.StartTime.Format("02.01.2006 15:04"),
+			EndTime:               endTime,
+			RegistrationEnd:       event.RegistrationEnd.Format("02.01.2006 15:04"),
+			MaxParticipants:       event.MaxParticipants,
+			AfterRegistrationText: event.AfterRegistrationText,
+		})),
+		h.layout.Markup(c, "clubOwner:event:menu", struct {
+			ID     string
+			ClubID string
+			Page   string
+		}{
+			ID:     eventID,
+			ClubID: event.ClubID,
+			Page:   page,
+		}),
+	)
+}
+
 func (h Handler) ClubOwnerSetup(group *tele.Group) {
 	group.Handle(h.layout.Callback("clubOwner:my_clubs"), h.clubsList)
 	group.Handle(h.layout.Callback("clubOwner:myClubs:back"), h.clubsList)
@@ -1758,6 +1924,9 @@ func (h Handler) ClubOwnerSetup(group *tele.Group) {
 	group.Handle(h.layout.Callback("clubOwner:event:settings:edit_name"), h.editEventName)
 	group.Handle(h.layout.Callback("clubOwner:event:settings:edit_description"), h.editEventDescription)
 	group.Handle(h.layout.Callback("clubOwner:event:settings:edit_after_reg_text"), h.editEventAfterRegistrationText)
+	group.Handle(h.layout.Callback("clubOwner:event:delete"), h.deleteEvent)
+	group.Handle(h.layout.Callback("clubOwner:event:delete:accept"), h.acceptEventDelete)
+	group.Handle(h.layout.Callback("clubOwner:event:delete:decline"), h.declineEventDelete)
 
 	group.Handle(h.layout.Callback("clubOwner:club:settings"), h.clubSettings)
 	group.Handle(h.layout.Callback("clubOwner:club:settings:back"), h.clubSettings)
