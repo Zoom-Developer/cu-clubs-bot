@@ -211,7 +211,7 @@ buttons:
   clubOwner:create_event:role:
     unique: event_role
     callback_data: '{{.ID}} {{.Role}}'
-    text: '{{if .Allowed}}{{text `tick`}} {{.RoleName}}{{else}{{text `cross`}} {{.RoleName}}{{end}}'
+    text: '{{if .Allowed}}{{text `tick`}}{{else}}{{text `cross`}}{{end}} {{.RoleName}}'
 
   clubOwner:club:events:
     unique: clubOwner_club_events
