@@ -93,8 +93,8 @@ func (h *Handler) Start(c tele.Context) error {
 	switch payloadType {
 	case "auth":
 		return h.auth(c, data)
-	case "qr":
-		return h.qr(c, data)
+	case "user_qr":
+		return h.userQR(c, data)
 	default:
 		return c.Send(
 			h.layout.Text(c, "something_went_wrong"),

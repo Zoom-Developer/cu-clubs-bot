@@ -5,7 +5,7 @@ import (
 	tele "gopkg.in/telebot.v3"
 )
 
-func (h *Handler) qr(c tele.Context, qrCodeID string) error {
+func (h *Handler) userQR(c tele.Context, qrCodeID string) error {
 	h.logger.Infof("(user: %d) scan QR code", c.Sender().ID)
 
 	user, err := h.userService.GetByQRCodeID(context.Background(), qrCodeID)

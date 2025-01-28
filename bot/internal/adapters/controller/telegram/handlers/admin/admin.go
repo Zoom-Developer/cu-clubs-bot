@@ -299,6 +299,22 @@ func (h Handler) clubMenu(c tele.Context) error {
 		)
 	}
 
+	if c.Callback().Unique == "admin_club_qr" {
+		club.QrAllowed = !club.QrAllowed
+		club, err = h.clubService.Update(context.Background(), club)
+		if err != nil {
+			h.logger.Errorf("(user: %d) error while update club: %v", c.Sender().ID, err)
+			return c.Send(
+				banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+				h.layout.Markup(c, "admin:clubs:back", struct {
+					Page string
+				}{
+					Page: page,
+				}),
+			)
+		}
+	}
+
 	clubOwners, err := h.clubOwnerService.GetByClubID(context.Background(), clubID)
 	if err != nil {
 		h.logger.Errorf("(user: %d) error while get club owners: %v", c.Sender().ID, err)
@@ -321,11 +337,13 @@ func (h Handler) clubMenu(c tele.Context) error {
 			Owners: clubOwners,
 		})),
 		h.layout.Markup(c, "admin:club:menu", struct {
-			ID   string
-			Page string
+			ID        string
+			Page      string
+			QrAllowed bool
 		}{
-			ID:   clubID,
-			Page: page,
+			ID:        clubID,
+			Page:      page,
+			QrAllowed: club.QrAllowed,
 		}),
 	)
 }
@@ -879,6 +897,7 @@ func (h Handler) AdminSetup(group *tele.Group) {
 	group.Handle(h.layout.Callback("admin:clubs:next_page"), h.clubsList)
 	group.Handle(h.layout.Callback("admin:clubs:back"), h.clubsList)
 	group.Handle(h.layout.Callback("admin:clubs:club"), h.clubMenu)
+	group.Handle(h.layout.Callback("admin:club:qr_allowed"), h.clubMenu)
 	group.Handle(h.layout.Callback("admin:club:back"), h.clubMenu)
 	group.Handle(h.layout.Callback("admin:club:add_owner"), h.addClubOwner)
 	group.Handle(h.layout.Callback("admin:club:del_owner"), h.removeClubOwner)
