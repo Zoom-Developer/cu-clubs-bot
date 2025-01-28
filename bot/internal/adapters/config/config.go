@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/redis"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/location"
 	"log"
 	"os"
 	"time"
@@ -41,10 +42,10 @@ func Get() *Config {
 	initConfig()
 
 	err := logger.Init(logger.Config{
-		Debug:     viper.GetBool("settings.logging.debug"),
-		TimeZone:  viper.GetString("settings.logging.timezone"),
-		LogToFile: viper.GetBool("settings.logging.log-to-file"),
-		LogsDir:   viper.GetString("settings.logging.logs-dir"),
+		Debug:        viper.GetBool("settings.logging.debug"),
+		TimeLocation: location.Location,
+		LogToFile:    viper.GetBool("settings.logging.log-to-file"),
+		LogsDir:      viper.GetString("settings.logging.logs-dir"),
 	})
 	if err != nil {
 		panic(err)

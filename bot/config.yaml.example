@@ -49,7 +49,6 @@ settings:
     logging:
       log-to-file: true # логирование в файл
       logs-dir: "./logs"
-      timezone: "GMT+3" # часовой пояс для логирования
       debug: true # дебаг мод
       log-to-channel: true # логирование в канал
       channel-id: -10000000000 # канал для логов
