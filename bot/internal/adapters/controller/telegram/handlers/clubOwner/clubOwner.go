@@ -2073,19 +2073,21 @@ func usersToXLSX(users []entity.User) (string, error) {
 	f := excelize.NewFile()
 
 	sheet := "Sheet1"
-	_ = f.SetCellValue(sheet, "A1", "Фамилия")
-	_ = f.SetCellValue(sheet, "B1", "Имя")
-	_ = f.SetCellValue(sheet, "C1", "Отчество")
-	_ = f.SetCellValue(sheet, "D1", "Username")
+	_ = f.SetCellValue(sheet, "A1", "ID")
+	_ = f.SetCellValue(sheet, "B1", "Фамилия")
+	_ = f.SetCellValue(sheet, "C1", "Имя")
+	_ = f.SetCellValue(sheet, "D1", "Отчество")
+	_ = f.SetCellValue(sheet, "E1", "Username")
 
 	for i, user := range users {
 		fio := strings.Split(user.FIO, " ")
 
 		row := i + 2
-		_ = f.SetCellValue(sheet, "A"+strconv.Itoa(row), fio[0])
-		_ = f.SetCellValue(sheet, "B"+strconv.Itoa(row), fio[1])
-		_ = f.SetCellValue(sheet, "C"+strconv.Itoa(row), fio[2])
-		_ = f.SetCellValue(sheet, "D"+strconv.Itoa(row), user.Username)
+		_ = f.SetCellValue(sheet, "A"+strconv.Itoa(row), user.ID)
+		_ = f.SetCellValue(sheet, "B"+strconv.Itoa(row), fio[0])
+		_ = f.SetCellValue(sheet, "C"+strconv.Itoa(row), fio[1])
+		_ = f.SetCellValue(sheet, "D"+strconv.Itoa(row), fio[2])
+		_ = f.SetCellValue(sheet, "E"+strconv.Itoa(row), user.Username)
 	}
 
 	if err := f.SaveAs(filePath); err != nil {
