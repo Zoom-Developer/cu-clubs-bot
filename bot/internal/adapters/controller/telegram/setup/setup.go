@@ -33,6 +33,7 @@ func Setup(b *bot.Bot) {
 	b.Handle(tele.OnMedia, b.Input.Handler())
 	b.Use(middle.ResetInputOnBack)
 	b.Handle(b.Layout.Callback("core:hide"), userHandler.Hide)
+	b.Handle(b.Layout.Callback("core:cancel"), userHandler.Hide)
 	b.Handle(b.Layout.Callback("core:back"), userHandler.Hide)
 
 	// Setup handlers
@@ -42,6 +43,9 @@ func Setup(b *bot.Bot) {
 	//Auth
 	userHandler.AuthSetup(b.Group())
 	b.Use(middle.Authorized)
+
+	//Qr
+	startHandler.SetupQR(b.Group())
 
 	//User:
 	b.Handle(b.Layout.Callback("mainMenu:back"), menuHandler.EditMenu)

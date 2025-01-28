@@ -44,7 +44,7 @@ type eventService interface {
 }
 
 type eventParticipantService interface {
-	Register(ctx context.Context, userID int64, eventID string) (*entity.EventParticipant, error)
+	Register(ctx context.Context, eventID string, userID int64) (*entity.EventParticipant, error)
 	Get(ctx context.Context, eventID string, userID int64) (*entity.EventParticipant, error)
 	CountByEventID(ctx context.Context, eventID string) (int, error)
 }
@@ -324,7 +324,7 @@ func (h Handler) event(c tele.Context) error {
 	if c.Callback().Unique == "event_register" {
 		if !registered {
 			if (event.MaxParticipants == 0 || participantsCount < event.MaxParticipants) && event.RegistrationEnd.After(time.Now().In(location.Location)) {
-				_, err = h.eventParticipantService.Register(context.Background(), c.Sender().ID, eventID)
+				_, err = h.eventParticipantService.Register(context.Background(), eventID, c.Sender().ID)
 				if err != nil {
 					h.logger.Errorf("(user: %d) error while register to event: %v", c.Sender().ID, err)
 					return c.Edit(
@@ -459,7 +459,7 @@ func (h Handler) myEvents(c tele.Context) error {
 			ID:     event.ID,
 			Name:   event.Name,
 			Page:   p,
-			IsOver: event.IsOver(),
+			IsOver: event.IsOver(0),
 		})))
 	}
 
@@ -564,7 +564,7 @@ func (h Handler) myEvent(c tele.Context) error {
 			RegistrationEnd:       event.RegistrationEnd.Format("02.01.2006 15:04"),
 			MaxParticipants:       event.MaxParticipants,
 			AfterRegistrationText: event.AfterRegistrationText,
-			IsOver:                event.IsOver(),
+			IsOver:                event.IsOver(0),
 		})),
 		h.layout.Markup(c, "user:myEvents:event", struct {
 			ID   string

@@ -46,7 +46,7 @@ type eventService interface {
 	Create(ctx context.Context, event *entity.Event) (*entity.Event, error)
 	Update(ctx context.Context, event *entity.Event) (*entity.Event, error)
 	Get(ctx context.Context, id string) (*entity.Event, error)
-	GetByClubIDWithPagination(ctx context.Context, limit, offset int, order string, clubID string) ([]entity.Event, error)
+	GetByClubID(ctx context.Context, limit, offset int, order string, clubID string) ([]entity.Event, error)
 	CountByClubID(ctx context.Context, clubID string) (int64, error)
 	Delete(ctx context.Context, id string) error
 }
@@ -1151,7 +1151,7 @@ func (h Handler) eventsList(c tele.Context) error {
 		)
 	}
 
-	events, err = h.eventService.GetByClubIDWithPagination(
+	events, err = h.eventService.GetByClubID(
 		context.Background(),
 		eventsOnPage,
 		p*eventsOnPage,

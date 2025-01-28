@@ -26,6 +26,6 @@ type Event struct {
 	AllowedRoles          pq.StringArray `gorm:"type:text[]"`
 }
 
-func (e *Event) IsOver() bool {
-	return e.StartTime.Before(time.Now().In(location.Location))
+func (e *Event) IsOver(additionalTime time.Duration) bool {
+	return e.StartTime.Before(time.Now().In(location.Location).Add(-additionalTime))
 }
