@@ -20,7 +20,6 @@ type QrService struct {
 	bot         *tele.Bot
 	qrChat      *tele.Chat
 	qrCFG       qr.Config
-	logoPath    string
 	botName     string
 }
 

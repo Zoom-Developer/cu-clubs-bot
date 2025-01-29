@@ -181,6 +181,6 @@ func (h Handler) eventRegister(c tele.Context) error {
 	return nil
 }
 
-func (h Handler) SetupUrlEvent(group *tele.Group) {
+func (h Handler) SetupURLEvent(group *tele.Group) {
 	group.Handle(h.layout.Callback("user:url:event:register"), h.eventRegister)
 }

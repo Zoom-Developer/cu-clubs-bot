@@ -50,7 +50,7 @@ func Setup(b *bot.Bot) {
 	//User:
 	b.Handle(b.Layout.Callback("mainMenu:back"), menuHandler.EditMenu)
 	userHandler.UserSetup(b.Group())
-	startHandler.SetupUrlEvent(b.Group())
+	startHandler.SetupURLEvent(b.Group())
 
 	// ClubOwner:
 	clubOwnerHandler.ClubOwnerSetup(b.Group())

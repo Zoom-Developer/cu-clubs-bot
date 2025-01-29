@@ -306,7 +306,7 @@ func (h Handler) activateUserQR(c tele.Context) error {
 	}
 
 	eventParticipant.IsUserQr = true
-	eventParticipant, err = h.eventParticipantService.Update(context.Background(), eventParticipant)
+	_, err = h.eventParticipantService.Update(context.Background(), eventParticipant)
 	if err != nil {
 		h.logger.Errorf("(user: %d) error while updating event participant: %v", c.Sender().ID, err)
 		return c.Edit(
