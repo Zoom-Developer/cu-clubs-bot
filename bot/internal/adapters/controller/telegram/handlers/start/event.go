@@ -127,7 +127,7 @@ func (h Handler) eventRegister(c tele.Context) error {
 
 			} else {
 				switch {
-				case event.RegistrationEnd.Before(time.Now().In(location.Location)):
+				case event.RegistrationEnd.Before(time.Now().In(location.Location())):
 					return c.Respond(&tele.CallbackResponse{
 						Text:      h.layout.Text(c, "registration_ended"),
 						ShowAlert: true,

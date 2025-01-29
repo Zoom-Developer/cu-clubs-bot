@@ -86,8 +86,8 @@ func (h Handler) Authorized(next tele.HandlerFunc) tele.HandlerFunc {
 
 		if user.IsBanned {
 			return c.Send(
-				banner.Auth.Caption(h.layout.TextLocale(user.Localization, "banned")),
-				h.layout.MarkupLocale(user.Localization, "core:hide"),
+				banner.Auth.Caption(h.layout.TextLocale(user.Localisation, "banned")),
+				h.layout.MarkupLocale(user.Localisation, "core:hide"),
 			)
 		}
 

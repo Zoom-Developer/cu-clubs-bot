@@ -29,7 +29,7 @@ func EventStartTime(start string, _ map[string]interface{}) bool {
 
 	currentTime := time.Now()
 
-	moscowTime := currentTime.In(location.Location)
+	moscowTime := currentTime.In(location.Location())
 
 	tomorrow := moscowTime.Add(time.Hour * time.Duration(24))
 
@@ -54,7 +54,7 @@ func EventEndTime(end string, params map[string]interface{}) bool {
 		return false
 	}
 
-	if !endTime.In(location.Location).After(startTime) {
+	if !endTime.In(location.Location()).After(startTime) {
 		return false
 	}
 
@@ -74,7 +74,7 @@ func EventRegisteredEndTime(registeredEnd string, params map[string]interface{})
 		return false
 	}
 
-	return registeredEndTime.In(location.Location).Add(22 * time.Hour).Before(startTime)
+	return registeredEndTime.In(location.Location()).Add(22 * time.Hour).Before(startTime)
 }
 
 func EventAfterRegistrationText(afterRegistrationText string, _ map[string]interface{}) bool {

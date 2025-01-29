@@ -8,12 +8,30 @@ import (
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/handlers/middlewares"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/handlers/start"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/handlers/user"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/postgres"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/service"
+	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger"
 	"github.com/spf13/viper"
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/middleware"
 )
 
 func Setup(b *bot.Bot) {
+	// Start notification scheduler
+	notifyLogger, err := logger.Named("notify")
+	if err != nil {
+		b.Logger.Fatalf("Failed to create notify logger: %v", err)
+	}
+	notifyService := service.NewNotifyService(
+		b.Bot,
+		b.Layout,
+		notifyLogger,
+		service.NewClubOwnerService(postgres.NewClubOwnerStorage(b.DB), postgres.NewUserStorage(b.DB)),
+		postgres.NewEventStorage(b.DB),
+		postgres.NewNotificationStorage(b.DB),
+	)
+	notifyService.StartNotifyScheduler()
+
 	// Pre-setup and global middlewares
 	middle := middlewares.New(b)
 	startHandler := start.New(b)

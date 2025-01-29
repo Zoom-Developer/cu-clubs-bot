@@ -7,7 +7,6 @@ import (
 	"log"
 
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/config"
-	_ "time/tzdata"
 )
 
 func main() {
