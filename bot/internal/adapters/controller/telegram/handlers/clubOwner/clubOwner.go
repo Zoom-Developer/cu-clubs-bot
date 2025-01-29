@@ -884,6 +884,7 @@ func (h Handler) createEvent(c tele.Context) error {
 		eventEndTimeStr              string
 		eventRegistrationEndTime     time.Time
 		eventRegistrationEndTimeStr  string
+		eventAfterRegistrationText   string
 		eventMaxParticipants         int
 		eventMaxExpectedParticipants int
 	)
@@ -906,6 +907,11 @@ func (h Handler) createEvent(c tele.Context) error {
 	eventRegistrationEndTime, _ = time.Parse(timeLayout, *steps[5].result)
 	eventRegistrationEndTimeStr = *steps[5].result
 
+	eventAfterRegistrationText = *steps[6].result
+	if *steps[6].result == "skip" {
+		eventAfterRegistrationText = ""
+	}
+
 	eventMaxParticipants, _ = strconv.Atoi(*steps[7].result)
 	eventMaxExpectedParticipants, _ = strconv.Atoi(*steps[8].result)
 
@@ -917,7 +923,7 @@ func (h Handler) createEvent(c tele.Context) error {
 		StartTime:             eventStartTime,
 		EndTime:               eventEndTime,
 		RegistrationEnd:       eventRegistrationEndTime,
-		AfterRegistrationText: *steps[6].result,
+		AfterRegistrationText: eventAfterRegistrationText,
 		MaxParticipants:       eventMaxParticipants,
 		ExpectedParticipants:  eventMaxExpectedParticipants,
 	}
@@ -929,22 +935,26 @@ func (h Handler) createEvent(c tele.Context) error {
 	}{
 		ID: clubID,
 	})
+
+	var row []tele.InlineButton
 	for _, role := range club.AllowedRoles {
-		markup.InlineKeyboard = append(
-			[][]tele.InlineButton{{*h.layout.Button(c, "clubOwner:create_event:role", struct {
-				Role     entity.Role
-				ID       string
-				RoleName string
-				Allowed  bool
-			}{
-				Role:     entity.Role(role),
-				ID:       club.ID,
-				RoleName: h.layout.Text(c, role),
-				Allowed:  slices.Contains(event.AllowedRoles, role),
-			}).Inline()}},
-			markup.InlineKeyboard...,
-		)
+		row = append(row, []tele.InlineButton{*h.layout.Button(c, "clubOwner:create_event:role", struct {
+			Role     entity.Role
+			ID       string
+			RoleName string
+			Allowed  bool
+		}{
+			Role:     entity.Role(role),
+			ID:       club.ID,
+			RoleName: h.layout.Text(c, role),
+			Allowed:  slices.Contains(event.AllowedRoles, role),
+		}).Inline()}...)
 	}
+
+	markup.InlineKeyboard = append(
+		[][]tele.InlineButton{row},
+		markup.InlineKeyboard...,
+	)
 
 	confirmationPayload := struct {
 		Name                  string
@@ -1031,22 +1041,26 @@ func (h Handler) eventAllowedRoles(c tele.Context) error {
 		ID: club.ID,
 	})
 
-	for _, role = range club.AllowedRoles {
-		markup.InlineKeyboard = append(
-			[][]tele.InlineButton{{*h.layout.Button(c, "clubOwner:create_event:role", struct {
-				Role     entity.Role
-				ID       string
-				RoleName string
-				Allowed  bool
-			}{
-				Role:     entity.Role(role),
-				ID:       club.ID,
-				RoleName: h.layout.Text(c, role),
-				Allowed:  slices.Contains(event.AllowedRoles, role),
-			}).Inline()}},
-			markup.InlineKeyboard...,
-		)
+	var row []tele.InlineButton
+	for _, role := range club.AllowedRoles {
+		row = append(row, []tele.InlineButton{*h.layout.Button(c, "clubOwner:create_event:role", struct {
+			Role     entity.Role
+			ID       string
+			RoleName string
+			Allowed  bool
+		}{
+			Role:     entity.Role(role),
+			ID:       club.ID,
+			RoleName: h.layout.Text(c, role),
+			Allowed:  slices.Contains(event.AllowedRoles, role),
+		}).Inline()}...)
 	}
+
+	markup.InlineKeyboard = append(
+		[][]tele.InlineButton{row},
+		markup.InlineKeyboard...,
+	)
+
 	const timeLayout = "02.01.2006 15:04"
 
 	eventTimeStr := event.EndTime.Format(timeLayout)
@@ -1097,6 +1111,13 @@ func (h Handler) confirmEventCreation(c tele.Context) error {
 			}{
 				ID: clubID,
 			}),
+		)
+	}
+
+	if len(event.AllowedRoles) == 0 {
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "event_without_allowed_roles")),
+			h.layout.Markup(c, "core:hide"),
 		)
 	}
 
@@ -1713,6 +1734,9 @@ func (h Handler) editEventAfterRegistrationText(c tele.Context) error {
 			)
 		case validator.EventAfterRegistrationText(message.Text, nil):
 			eventAfterRegistrationText = message.Text
+			if eventAfterRegistrationText == "skip" {
+				eventAfterRegistrationText = ""
+			}
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
 			done = true
 		}

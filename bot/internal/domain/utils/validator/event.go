@@ -78,6 +78,9 @@ func EventRegisteredEndTime(registeredEnd string, params map[string]interface{})
 }
 
 func EventAfterRegistrationText(afterRegistrationText string, _ map[string]interface{}) bool {
+	if afterRegistrationText == "skip" {
+		return true
+	}
 	return utf8.RuneCountInString(afterRegistrationText) >= 10 && utf8.RuneCountInString(afterRegistrationText) <= 200
 }
 
