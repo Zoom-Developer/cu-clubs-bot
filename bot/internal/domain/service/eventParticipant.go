@@ -13,6 +13,7 @@ type EventParticipantStorage interface {
 	Delete(ctx context.Context, eventID string, userID int64) error
 	GetByEventID(ctx context.Context, eventID string) ([]entity.EventParticipant, error)
 	CountByEventID(ctx context.Context, eventID string) (int64, error)
+	CountVisitedByEventID(ctx context.Context, eventID string) (int64, error)
 	GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]entity.Event, error)
 	CountUserEvents(ctx context.Context, userID int64) (int64, error)
 }
@@ -50,6 +51,11 @@ func (s *EventParticipantService) GetByEventID(ctx context.Context, eventID stri
 
 func (s *EventParticipantService) CountByEventID(ctx context.Context, eventID string) (int, error) {
 	count, err := s.storage.CountByEventID(ctx, eventID)
+	return int(count), err
+}
+
+func (s *EventParticipantService) CountVisitedByEventID(ctx context.Context, eventID string) (int, error) {
+	count, err := s.storage.CountVisitedByEventID(ctx, eventID)
 	return int(count), err
 }
 

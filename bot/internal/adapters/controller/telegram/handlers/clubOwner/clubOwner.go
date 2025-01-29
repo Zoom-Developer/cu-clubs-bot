@@ -61,6 +61,7 @@ type eventService interface {
 
 type eventParticipantService interface {
 	CountByEventID(ctx context.Context, eventID string) (int, error)
+	CountVisitedByEventID(ctx context.Context, eventID string) (int, error)
 }
 
 type qrService interface {
@@ -1353,6 +1354,21 @@ func (h Handler) event(c tele.Context) error {
 		)
 	}
 
+	visitedUsersCount, err := h.eventParticipantService.CountVisitedByEventID(context.Background(), event.ID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get visited users count: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:events:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   event.ClubID,
+				Page: page,
+			}),
+		)
+	}
+
 	eventMarkup := h.layout.Markup(c, "clubOwner:event:menu", struct {
 		ID     string
 		ClubID string
@@ -1390,6 +1406,7 @@ func (h Handler) event(c tele.Context) error {
 			EndTime               string
 			RegistrationEnd       string
 			MaxParticipants       int
+			VisitedCount          int
 			ParticipantsCount     int
 			AfterRegistrationText string
 			IsRegistered          bool
@@ -1403,6 +1420,7 @@ func (h Handler) event(c tele.Context) error {
 			RegistrationEnd:       event.RegistrationEnd.Format("02.01.2006 15:04"),
 			MaxParticipants:       event.MaxParticipants,
 			ParticipantsCount:     registeredUsersCount,
+			VisitedCount:          visitedUsersCount,
 			AfterRegistrationText: event.AfterRegistrationText,
 			Link:                  event.Link(c.Bot().Me.Username),
 		})),
@@ -1451,6 +1469,21 @@ func (h Handler) eventSettings(c tele.Context) error {
 		)
 	}
 
+	visitedUsersCount, err := h.eventParticipantService.CountVisitedByEventID(context.Background(), event.ID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get visited users count: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:events:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   event.ClubID,
+				Page: page,
+			}),
+		)
+	}
+
 	endTime := event.EndTime.Format("02.01.2006 15:04")
 	if event.EndTime.IsZero() {
 		endTime = ""
@@ -1466,6 +1499,7 @@ func (h Handler) eventSettings(c tele.Context) error {
 			RegistrationEnd       string
 			MaxParticipants       int
 			ParticipantsCount     int
+			VisitedCount          int
 			AfterRegistrationText string
 			IsRegistered          bool
 			Link                  string
@@ -1478,6 +1512,7 @@ func (h Handler) eventSettings(c tele.Context) error {
 			RegistrationEnd:       event.RegistrationEnd.Format("02.01.2006 15:04"),
 			MaxParticipants:       event.MaxParticipants,
 			ParticipantsCount:     registeredUsersCount,
+			VisitedCount:          visitedUsersCount,
 			AfterRegistrationText: event.AfterRegistrationText,
 			Link:                  event.Link(c.Bot().Me.Username),
 		})),
@@ -2147,6 +2182,21 @@ func (h Handler) declineEventDelete(c tele.Context) error {
 		)
 	}
 
+	visitedUsersCount, err := h.eventParticipantService.CountVisitedByEventID(context.Background(), event.ID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get visited users count: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:events:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   event.ClubID,
+				Page: page,
+			}),
+		)
+	}
+
 	endTime := event.EndTime.Format("02.01.2006 15:04")
 	if event.EndTime.IsZero() {
 		endTime = ""
@@ -2162,6 +2212,7 @@ func (h Handler) declineEventDelete(c tele.Context) error {
 			RegistrationEnd       string
 			MaxParticipants       int
 			ParticipantsCount     int
+			VisitedCount          int
 			AfterRegistrationText string
 			IsRegistered          bool
 			Link                  string
@@ -2174,6 +2225,7 @@ func (h Handler) declineEventDelete(c tele.Context) error {
 			RegistrationEnd:       event.RegistrationEnd.Format("02.01.2006 15:04"),
 			MaxParticipants:       event.MaxParticipants,
 			ParticipantsCount:     registeredUsersCount,
+			VisitedCount:          visitedUsersCount,
 			AfterRegistrationText: event.AfterRegistrationText,
 			Link:                  event.Link(c.Bot().Me.Username),
 		})),
@@ -2210,6 +2262,21 @@ func (h Handler) registeredUsers(c tele.Context) error {
 	registeredUsersCount, err := h.eventParticipantService.CountByEventID(context.Background(), event.ID)
 	if err != nil {
 		h.logger.Errorf("(user: %d) error while get registered users count: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:events:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   event.ClubID,
+				Page: page,
+			}),
+		)
+	}
+
+	visitedUsersCount, err := h.eventParticipantService.CountVisitedByEventID(context.Background(), event.ID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get visited users count: %v", c.Sender().ID, err)
 		return c.Edit(
 			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
 			h.layout.Markup(c, "clubOwner:events:back", struct {
@@ -2270,6 +2337,7 @@ func (h Handler) registeredUsers(c tele.Context) error {
 			RegistrationEnd       string
 			MaxParticipants       int
 			ParticipantsCount     int
+			VisitedCount          int
 			AfterRegistrationText string
 			IsRegistered          bool
 			Link                  string
@@ -2282,6 +2350,7 @@ func (h Handler) registeredUsers(c tele.Context) error {
 			RegistrationEnd:       event.RegistrationEnd.Format("02.01.2006 15:04"),
 			MaxParticipants:       event.MaxParticipants,
 			ParticipantsCount:     registeredUsersCount,
+			VisitedCount:          visitedUsersCount,
 			AfterRegistrationText: event.AfterRegistrationText,
 			Link:                  event.Link(c.Bot().Me.Username),
 		})),

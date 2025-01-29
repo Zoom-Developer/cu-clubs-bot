@@ -74,6 +74,12 @@ func (s *EventParticipantStorage) CountByEventID(ctx context.Context, eventID st
 	return count, err
 }
 
+func (s *EventParticipantStorage) CountVisitedByEventID(ctx context.Context, eventID string) (int64, error) {
+	var count int64
+	err := s.db.WithContext(ctx).Model(&entity.EventParticipant{}).Where("event_id = ? AND (is_event_qr = true OR is_user_qr = true)", eventID).Count(&count).Error
+	return count, err
+}
+
 func (s *EventParticipantStorage) GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]entity.Event, error) {
 	var events []entity.Event
 	currentTime := time.Now()

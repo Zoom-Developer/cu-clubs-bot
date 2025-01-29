@@ -264,10 +264,10 @@ club_owner_event_text: |-
   <b>📌 Завершение регистрации:</b> {{.RegistrationEnd}}
   <b>👥 Максимальное количество участников:</b> {{if .MaxParticipants}}{{.MaxParticipants}}{{else}}<i>Не ограничено</i>{{end}}
   
-  <b>👤 Количество участников: {{.ParticipantsCount}}</b>
-  
   <blockquote><b>📄 Текст после регистрации:</b>
   {{if .AfterRegistrationText}}{{.AfterRegistrationText}}{{else}}<i>Не указан</i>{{end}}</blockquote>
+  
+  <b>👤 Посетили: {{.VisitedCount}}/{{.ParticipantsCount}}</b>
   
   <b>🔗 Ссылка на мероприятие:</b> <code>{{.Link}}</code>
 
