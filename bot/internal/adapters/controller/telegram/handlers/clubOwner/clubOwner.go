@@ -1302,6 +1302,21 @@ func (h Handler) event(c tele.Context) error {
 		)
 	}
 
+	club, err := h.clubService.Get(context.Background(), event.ClubID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get club: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:events:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   event.ClubID,
+				Page: page,
+			}),
+		)
+	}
+
 	registeredUsersCount, err := h.eventParticipantService.CountByEventID(context.Background(), event.ID)
 	if err != nil {
 		h.logger.Errorf("(user: %d) error while get registered users count: %v", c.Sender().ID, err)
@@ -1314,6 +1329,29 @@ func (h Handler) event(c tele.Context) error {
 				ID:   event.ClubID,
 				Page: page,
 			}),
+		)
+	}
+
+	eventMarkup := h.layout.Markup(c, "clubOwner:event:menu", struct {
+		ID     string
+		ClubID string
+		Page   string
+	}{
+		ID:     eventID,
+		ClubID: event.ClubID,
+		Page:   page,
+	})
+
+	if club.QrAllowed {
+		eventMarkup.InlineKeyboard = append(
+			[][]tele.InlineButton{{*h.layout.Button(c, "clubOwner:event:qr", struct {
+				ID   string
+				Page string
+			}{
+				ID:   eventID,
+				Page: page,
+			}).Inline()}},
+			eventMarkup.InlineKeyboard...,
 		)
 	}
 
@@ -1347,15 +1385,9 @@ func (h Handler) event(c tele.Context) error {
 			AfterRegistrationText: event.AfterRegistrationText,
 			Link:                  event.Link(c.Bot().Me.Username),
 		})),
-		h.layout.Markup(c, "clubOwner:event:menu", struct {
-			ID     string
-			ClubID string
-			Page   string
-		}{
-			ID:     eventID,
-			ClubID: event.ClubID,
-			Page:   page,
-		}))
+		eventMarkup,
+	)
+
 }
 
 func (h Handler) eventSettings(c tele.Context) error {
