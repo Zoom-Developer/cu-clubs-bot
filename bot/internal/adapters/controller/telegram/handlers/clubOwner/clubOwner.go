@@ -786,14 +786,14 @@ func (h Handler) createEvent(c tele.Context) error {
 			promptKey:  "input_max_participants",
 			errorKey:   "invalid_max_participants",
 			result:     new(string),
-			validator:  validator.MaxParticipants,
+			validator:  validator.EventMaxParticipants,
 			paramsFunc: nil,
 		},
 		{
 			promptKey:  "input_expected_participants",
 			errorKey:   "invalid_expected_participants",
 			result:     new(string),
-			validator:  validator.ExpectedParticipants,
+			validator:  validator.EventExpectedParticipants,
 			paramsFunc: nil,
 		},
 	}
@@ -1813,6 +1813,151 @@ func (h Handler) editEventAfterRegistrationText(c tele.Context) error {
 	)
 }
 
+func (h Handler) editEventMaxParticipants(c tele.Context) error {
+	data := strings.Split(c.Callback().Data, " ")
+	if len(data) != 2 {
+		return errorz.ErrInvalidCallbackData
+	}
+
+	eventID := data[0]
+	page := data[1]
+	h.logger.Infof("(user: %d) edit event max count", c.Sender().ID)
+
+	event, err := h.eventService.Get(context.Background(), eventID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get event: %v", c.Sender().ID, err)
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:event:settings:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   eventID,
+				Page: page,
+			}),
+		)
+	}
+
+	registeredUsersCount, err := h.eventParticipantService.CountByEventID(context.Background(), event.ID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get registered users count: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:events:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   event.ClubID,
+				Page: page,
+			}),
+		)
+	}
+
+	inputCollector := collector.New()
+	_ = c.Edit(
+		banner.ClubOwner.Caption(h.layout.Text(c, "input_edit_max_participants")),
+		h.layout.Markup(c, "clubOwner:event:settings:back", struct {
+			ID   string
+			Page string
+		}{
+			ID:   eventID,
+			Page: page,
+		}),
+	)
+	inputCollector.Collect(c.Message())
+
+	var (
+		maxParticipants int
+		done            bool
+	)
+	params := make(map[string]interface{})
+	params["previousMaxParticipants"] = event.MaxParticipants
+	if event.MaxParticipants == 0 {
+		params["previousMaxParticipants"] = registeredUsersCount
+	}
+
+	for {
+		message, canceled, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
+		if message != nil {
+			inputCollector.Collect(message)
+		}
+		switch {
+		case canceled:
+			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
+			return nil
+		case errGet != nil:
+			h.logger.Errorf("(user: %d) error while input event after registration text: %v", c.Sender().ID, errGet)
+			_ = inputCollector.Send(c,
+				banner.ClubOwner.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "input_edit_max_participants"))),
+				h.layout.Markup(c, "clubOwner:event:settings:back", struct {
+					ID   string
+					Page string
+				}{
+					ID:   eventID,
+					Page: page,
+				}),
+			)
+		case message == nil:
+			h.logger.Errorf("(user: %d) error while input event after registration text: %v", c.Sender().ID, errGet)
+			_ = inputCollector.Send(c,
+				banner.ClubOwner.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "input_edit_max_participants"))),
+				h.layout.Markup(c, "clubOwner:event:settings:back", struct {
+					ID   string
+					Page string
+				}{
+					ID:   eventID,
+					Page: page,
+				}),
+			)
+		case !validator.EventEditMaxParticipants(message.Text, params):
+			_ = inputCollector.Send(c,
+				banner.ClubOwner.Caption(h.layout.Text(c, "invalid_edit_max_participants")),
+				h.layout.Markup(c, "clubOwner:event:settings:back", struct {
+					ID   string
+					Page string
+				}{
+					ID:   eventID,
+					Page: page,
+				}),
+			)
+		case validator.EventEditMaxParticipants(message.Text, params):
+			maxParticipants, _ = strconv.Atoi(message.Text)
+			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
+			done = true
+		}
+		if done {
+			break
+		}
+	}
+
+	event.MaxParticipants = maxParticipants
+	_, err = h.eventService.Update(context.Background(), event)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while update event max participants: %v", c.Sender().ID, err)
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:event:settings:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   eventID,
+				Page: page,
+			}),
+		)
+	}
+
+	return c.Send(
+		banner.ClubOwner.Caption(h.layout.Text(c, "event_max_participants_changed")),
+		h.layout.Markup(c, "clubOwner:event:settings:back", struct {
+			ID   string
+			Page string
+		}{
+			ID:   eventID,
+			Page: page,
+		}),
+	)
+}
+
 func (h Handler) deleteEvent(c tele.Context) error {
 	data := strings.Split(c.Callback().Data, " ")
 	if len(data) != 2 {
@@ -2121,6 +2266,7 @@ func (h Handler) ClubOwnerSetup(group *tele.Group) {
 	group.Handle(h.layout.Callback("clubOwner:event:settings:edit_name"), h.editEventName)
 	group.Handle(h.layout.Callback("clubOwner:event:settings:edit_description"), h.editEventDescription)
 	group.Handle(h.layout.Callback("clubOwner:event:settings:edit_after_reg_text"), h.editEventAfterRegistrationText)
+	group.Handle(h.layout.Callback("clubOwner:event:settings:edit:max_participants"), h.editEventMaxParticipants)
 	group.Handle(h.layout.Callback("clubOwner:event:delete"), h.deleteEvent)
 	group.Handle(h.layout.Callback("clubOwner:event:delete:accept"), h.acceptEventDelete)
 	group.Handle(h.layout.Callback("clubOwner:event:delete:decline"), h.declineEventDelete)

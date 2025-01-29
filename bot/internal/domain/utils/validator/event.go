@@ -84,12 +84,30 @@ func EventAfterRegistrationText(afterRegistrationText string, _ map[string]inter
 	return utf8.RuneCountInString(afterRegistrationText) >= 10 && utf8.RuneCountInString(afterRegistrationText) <= 200
 }
 
-func MaxParticipants(maxParticipants string, _ map[string]interface{}) bool {
-	_, err := strconv.Atoi(maxParticipants)
+func EventMaxParticipants(maxParticipantsStr string, _ map[string]interface{}) bool {
+	maxParticipants, err := strconv.Atoi(maxParticipantsStr)
+	if err != nil {
+		return false
+	}
+	return maxParticipants >= 0
+}
+
+func EventExpectedParticipants(expectedParticipants string, _ map[string]interface{}) bool {
+	_, err := strconv.Atoi(expectedParticipants)
 	return err == nil
 }
 
-func ExpectedParticipants(expectedParticipants string, _ map[string]interface{}) bool {
-	_, err := strconv.Atoi(expectedParticipants)
-	return err == nil
+func EventEditMaxParticipants(maxParticipantsStr string, params map[string]interface{}) bool {
+	previousMaxParticipants, ok := params["previousMaxParticipants"].(int)
+	if !ok {
+		return false
+	}
+	maxParticipants, err := strconv.Atoi(maxParticipantsStr)
+	if err != nil {
+		return false
+	}
+	if maxParticipants == 0 {
+		return true
+	}
+	return maxParticipants > 0 && maxParticipants > previousMaxParticipants
 }

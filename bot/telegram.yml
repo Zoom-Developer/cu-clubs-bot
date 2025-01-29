@@ -283,6 +283,11 @@ buttons:
     callback_data: '{{.ID}} {{.Page}}'
     text: '{{ text `edit_after_reg_text` }}'
 
+  clubOwner:event:settings:edit:max_participants:
+    unique: cOwner_event_editMaxPart
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `edit_max_participants` }}'
+
   clubOwner:event:users:
     unique: clubOwner_event_users
     callback_data: '{{.ID}} {{.Page}}'
@@ -462,6 +467,7 @@ markups:
     - [ clubOwner:event:settings:edit_name ]
     - [ clubOwner:event:settings:edit_description ]
     - [ clubOwner:event:settings:edit_after_reg_text ]
+    - [ clubOwner:event:settings:edit:max_participants ]
     - [ clubOwner:event:back ]
   clubOwner:event:settings:back:
     - [ clubOwner:event:settings:back ]
