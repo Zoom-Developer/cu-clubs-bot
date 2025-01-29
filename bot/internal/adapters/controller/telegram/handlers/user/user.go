@@ -53,11 +53,16 @@ type qrService interface {
 	GetUserQR(ctx context.Context, userID int64) (qr tele.File, err error)
 }
 
+type notificationService interface {
+	SendClubWarning(clubID string, what interface{}, opts ...interface{}) error
+}
+
 type Handler struct {
 	userService             userService
 	eventService            eventService
 	eventParticipantService eventParticipantService
 	qrService               qrService
+	notificationService     notificationService
 
 	menuHandler *menu.Handler
 
@@ -73,6 +78,7 @@ func New(b *bot.Bot) *Handler {
 	studentDataStorage := postgres.NewStudentDataStorage(b.DB)
 	eventStorage := postgres.NewEventStorage(b.DB)
 	eventParticipantStorage := postgres.NewEventParticipantStorage(b.DB)
+	clubOwnerStorage := postgres.NewClubOwnerStorage(b.DB)
 
 	eventPartService := service.NewEventParticipantService(eventParticipantStorage)
 
@@ -97,12 +103,18 @@ func New(b *bot.Bot) *Handler {
 		eventService:            service.NewEventService(eventStorage),
 		eventParticipantService: eventPartService,
 		qrService:               qrSrvc,
-		menuHandler:             menu.New(b),
-		codesStorage:            b.Redis.Codes,
-		emailsStorage:           b.Redis.Emails,
-		layout:                  b.Layout,
-		input:                   b.Input,
-		logger:                  b.Logger,
+		notificationService: service.NewNotifyService(
+			b.Bot,
+			b.Layout,
+			b.Logger,
+			service.NewClubOwnerService(clubOwnerStorage, userStorage),
+		),
+		menuHandler:   menu.New(b),
+		codesStorage:  b.Redis.Codes,
+		emailsStorage: b.Redis.Emails,
+		layout:        b.Layout,
+		input:         b.Input,
+		logger:        b.Logger,
 	}
 }
 
@@ -335,6 +347,37 @@ func (h Handler) event(c tele.Context) error {
 							Page: page,
 						}),
 					)
+				}
+
+				switch {
+				case participantsCount+1 == event.ExpectedParticipants:
+					errSendWarning := h.notificationService.SendClubWarning(event.ClubID,
+						h.layout.Text(c, "expected_participants_reached_warning", struct {
+							Name              string
+							ParticipantsCount int
+						}{
+							Name:              event.Name,
+							ParticipantsCount: participantsCount + 1,
+						}),
+						h.layout.Markup(c, "core:hide"),
+					)
+					if errSendWarning != nil {
+						h.logger.Errorf("(user: %d) error while send expected participants reached warning: %v", c.Sender().ID, errSendWarning)
+					}
+				case participantsCount+1 == event.MaxParticipants:
+					errSendWarning := h.notificationService.SendClubWarning(event.ClubID,
+						h.layout.Text(c, "max_participants_reached_warning", struct {
+							Name              string
+							ParticipantsCount int
+						}{
+							Name:              event.Name,
+							ParticipantsCount: participantsCount + 1,
+						}),
+						h.layout.Markup(c, "core:hide"),
+					)
+					if errSendWarning != nil {
+						h.logger.Errorf("(user: %d) error while send expected participants reached warning: %v", c.Sender().ID, errSendWarning)
+					}
 				}
 				registered = true
 

@@ -87,7 +87,7 @@ func (b *Bot) Start() {
 			if err != nil {
 				logger.Log.Errorf("Failed to create notify logger: %v", err)
 			} else {
-				notifyService := service.NewNotifyService(b.Bot, b.Layout, notifyLogger)
+				notifyService := service.NewNotifyService(b.Bot, b.Layout, notifyLogger, nil)
 				logHook, err := notifyService.LogHook(
 					viper.GetInt64("settings.logging.channel-id"),
 					viper.GetString("settings.logging.locale"),
