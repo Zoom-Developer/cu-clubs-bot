@@ -1881,6 +1881,7 @@ func (h Handler) declineEventDelete(c tele.Context) error {
 			MaxParticipants       int
 			AfterRegistrationText string
 			IsRegistered          bool
+			Link                  string
 		}{
 			Name:                  event.Name,
 			Description:           event.Description,
@@ -1890,6 +1891,7 @@ func (h Handler) declineEventDelete(c tele.Context) error {
 			RegistrationEnd:       event.RegistrationEnd.Format("02.01.2006 15:04"),
 			MaxParticipants:       event.MaxParticipants,
 			AfterRegistrationText: event.AfterRegistrationText,
+			Link:                  event.Link(c.Bot().Me.Username),
 		})),
 		h.layout.Markup(c, "clubOwner:event:menu", struct {
 			ID     string
