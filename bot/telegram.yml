@@ -138,6 +138,11 @@ buttons:
     callback_data: '{{.Page}}'
     text: '{{ text `back` }}'
 
+  user:url:event:register:
+    unique: user_url_event_reg
+    callback_data: '{{.ID}}'
+    text: '{{if .IsOver}}{{text `event_over` }}{{else if .IsRegistered}}{{ text `registered` }}{{else}}{{ text `register` }}{{end}}'
+
   clubOwner:my_clubs:
     unique: clubOwner_myClubs
     callback_data: clubOwner_myClubs
@@ -423,6 +428,9 @@ markups:
     - [ user:myEvents:back ]
   user:myEvents:event:
     - [ user:myEvents:back ]
+  user:url:event:
+    - [ user:url:event:register ]
+    - [ mainMenu:back ]
 
   clubOwner:club:menu:
     - [ clubOwner:club:events ]

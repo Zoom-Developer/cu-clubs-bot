@@ -52,6 +52,7 @@ type eventParticipantService interface {
 	Register(ctx context.Context, eventID string, userID int64) (*entity.EventParticipant, error)
 	Get(ctx context.Context, eventID string, userID int64) (*entity.EventParticipant, error)
 	Update(ctx context.Context, eventParticipant *entity.EventParticipant) (*entity.EventParticipant, error)
+	CountByEventID(ctx context.Context, eventID string) (int, error)
 }
 
 type qrService interface {
@@ -151,6 +152,8 @@ func (h Handler) Start(c tele.Context) error {
 		return h.auth(c, data)
 	case "userQR":
 		return h.userQR(c, data)
+	case "event":
+		return h.eventMenu(c, data)
 	default:
 		return c.Send(
 			h.layout.Text(c, "something_went_wrong"),

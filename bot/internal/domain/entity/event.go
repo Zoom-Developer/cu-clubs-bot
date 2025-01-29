@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"fmt"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/location"
 	"github.com/lib/pq"
 	"gorm.io/gorm"
@@ -28,4 +29,8 @@ type Event struct {
 
 func (e *Event) IsOver(additionalTime time.Duration) bool {
 	return e.StartTime.Before(time.Now().In(location.Location).Add(-additionalTime))
+}
+
+func (e *Event) Link(botName string) string {
+	return fmt.Sprintf("https://t.me/%s?start=event_%s", botName, e.ID)
 }
