@@ -24,23 +24,30 @@ type userService interface {
 	Update(ctx context.Context, user *entity.User) (*entity.User, error)
 }
 
+type clubService interface {
+	GetByOwnerID(ctx context.Context, id int64) ([]entity.Club, error)
+}
+
 type Handler struct {
 	bot         *tele.Bot
 	layout      *layout.Layout
 	logger      *types.Logger
 	userService userService
+	clubService clubService
 	input       *intele.InputManager
 }
 
 func New(b *bot.Bot) *Handler {
 	userStorageLocal := postgres.NewUserStorage(b.DB)
 	userServiceLocal := service.NewUserService(userStorageLocal, nil, nil, nil, "")
+	clubStorage := postgres.NewClubStorage(b.DB)
 
 	return &Handler{
 		bot:         b.Bot,
 		layout:      b.Layout,
 		logger:      b.Logger,
 		userService: userServiceLocal,
+		clubService: service.NewClubService(clubStorage),
 		input:       b.Input,
 	}
 }
@@ -88,6 +95,37 @@ func (h Handler) Authorized(next tele.HandlerFunc) tele.HandlerFunc {
 			return c.Send(
 				banner.Auth.Caption(h.layout.TextLocale(user.Localisation, "banned")),
 				h.layout.MarkupLocale(user.Localisation, "core:hide"),
+			)
+		}
+
+		return next(c)
+	}
+}
+
+func (h Handler) IsClubOwner(next tele.HandlerFunc) tele.HandlerFunc {
+	return func(c tele.Context) error {
+		user, err := h.userService.Get(context.Background(), c.Sender().ID)
+		if err != nil {
+			h.logger.Errorf("(user: %d) error while getting user from db: %v", c.Sender().ID, err)
+			return c.Send(
+				banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+				h.layout.Markup(c, "core:hide"),
+			)
+		}
+
+		clubs, err := h.clubService.GetByOwnerID(context.Background(), user.ID)
+		if err != nil {
+			h.logger.Errorf("(user: %d) error while getting user's clubs from db: %v", c.Sender().ID, err)
+			return c.Send(
+				banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+				h.layout.Markup(c, "core:hide"),
+			)
+		}
+
+		if len(clubs) < 1 {
+			return c.Send(
+				banner.ClubOwner.Caption(h.layout.Text(c, "no_clubs")),
+				h.layout.Markup(c, "core:hide"),
 			)
 		}
 

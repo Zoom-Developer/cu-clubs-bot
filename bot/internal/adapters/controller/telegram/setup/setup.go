@@ -71,7 +71,7 @@ func Setup(b *bot.Bot) {
 	startHandler.SetupURLEvent(b.Group())
 
 	// ClubOwner:
-	clubOwnerHandler.ClubOwnerSetup(b.Group())
+	clubOwnerHandler.ClubOwnerSetup(b.Group(), middle)
 
 	//Admin:
 	admins := viper.GetIntSlice("bot.admin-ids")

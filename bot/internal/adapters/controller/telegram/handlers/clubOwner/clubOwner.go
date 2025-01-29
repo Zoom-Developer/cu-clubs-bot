@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/handlers/middlewares"
 	qr "github.com/Badsnus/cu-clubs-bot/bot/pkg/qrcode"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
@@ -2450,7 +2451,8 @@ func (h Handler) eventQRCode(c tele.Context) error {
 	)
 }
 
-func (h Handler) ClubOwnerSetup(group *tele.Group) {
+func (h Handler) ClubOwnerSetup(group *tele.Group, middle *middlewares.Handler) {
+	group.Use(middle.IsClubOwner)
 	group.Handle(h.layout.Callback("clubOwner:my_clubs"), h.clubsList)
 	group.Handle(h.layout.Callback("clubOwner:myClubs:back"), h.clubsList)
 	group.Handle(h.layout.Callback("clubOwner:myClubs:club"), h.clubMenu)
