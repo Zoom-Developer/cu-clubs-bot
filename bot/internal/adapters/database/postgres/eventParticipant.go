@@ -124,7 +124,8 @@ func (s *EventParticipantStorage) GetUserEvents(ctx context.Context, userID int6
 func (s *EventParticipantStorage) CountUserEvents(ctx context.Context, userID int64) (int64, error) {
 	var count int64
 	err := s.db.WithContext(ctx).Model(&entity.EventParticipant{}).
-		Where("user_id = ?", userID).
+		Joins("JOIN events ON event_participants.event_id = events.id").
+		Where("event_participants.user_id = ? AND events.deleted_at IS NULL", userID).
 		Count(&count).Error
 	return count, err
 }

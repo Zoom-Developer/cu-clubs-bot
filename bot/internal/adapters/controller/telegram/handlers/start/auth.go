@@ -10,7 +10,7 @@ import (
 	tele "gopkg.in/telebot.v3"
 )
 
-func (h *Handler) auth(c tele.Context, authCode string) error {
+func (h Handler) auth(c tele.Context, authCode string) error {
 	code, err := h.codesStorage.Get(c.Sender().ID)
 	if err != nil {
 		if !errors.Is(err, redis.Nil) {

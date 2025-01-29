@@ -2,7 +2,7 @@ package postgres
 
 import (
 	"context"
-	"fmt"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/location"
 	"time"
 
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/dto"
@@ -46,13 +46,42 @@ func (s *EventStorage) GetAll(ctx context.Context) ([]entity.Event, error) {
 	return events, err
 }
 
-// GetByClubIDWithPagination is a function that gets events by club_id with pagination from the database.
-func (s *EventStorage) GetByClubIDWithPagination(ctx context.Context, limit, offset int, order string, clubID string) ([]entity.Event, error) {
+// GetByClubID is a function that gets events by club_id with pagination from the database.
+func (s *EventStorage) GetByClubID(ctx context.Context, limit, offset int, order string, clubID string) ([]entity.Event, error) {
 	var events []entity.Event
-	fmt.Println(order)
 	err := s.db.WithContext(ctx).Where("club_id = ?", clubID).Order(order).Limit(limit).Offset(offset).Find(&events).Error
 	return events, err
 }
+
+// GetFutureByClubID is a function that gets future events by club_id with pagination from the database.
+//
+// NOTE:
+//
+// additionalTime time.Duration is a time, the time that will be subtracted from the current time when checking start_time > time.Now()
+func (s *EventStorage) GetFutureByClubID(
+	ctx context.Context,
+	limit, offset int,
+	order string,
+	clubID string,
+	additionalTime time.Duration,
+) ([]entity.Event, error) {
+	var events []entity.Event
+	err := s.db.WithContext(ctx).
+		Where("club_id = ? AND start_time > ?", clubID, time.Now().In(location.Location).Add(-additionalTime)).
+		Order(order).
+		Limit(limit).
+		Offset(offset).
+		Find(&events).Error
+	return events, err
+}
+
+//func (s *EventStorage) CountFutureByClubID(ctx context.Context, clubID string) (int64, error) {
+//	var count int64
+//	err := s.db.WithContext(ctx).
+//		Where("club_id = ? AND start_time > ?", clubID, time.Now().In(location.Location)).
+//		Count(&count).Error
+//	return count, err
+//}
 
 // Update is a function that updates an event in the database.
 func (s *EventStorage) Update(ctx context.Context, event *entity.Event) (*entity.Event, error) {

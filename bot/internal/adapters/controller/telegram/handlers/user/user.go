@@ -14,8 +14,8 @@ import (
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/service"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/banner"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/location"
-	"github.com/Badsnus/cu-clubs-bot/bot/pkg/generator"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger/types"
+	qr "github.com/Badsnus/cu-clubs-bot/bot/pkg/qrcode"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/smtp"
 	"github.com/nlypage/intele"
 	"github.com/spf13/viper"
@@ -37,11 +37,6 @@ type userService interface {
 	CountUserEvents(ctx context.Context, userID int64) (int64, error)
 }
 
-type qrCodesGenerator interface {
-	Generate() (string, string, error)
-	Delete(filePath string) error
-}
-
 type eventService interface {
 	Get(ctx context.Context, id string) (*entity.Event, error)
 	GetWithPagination(ctx context.Context, limit, offset int, order string, role entity.Role, userID int64) ([]dto.Event, error)
@@ -49,24 +44,28 @@ type eventService interface {
 }
 
 type eventParticipantService interface {
-	Register(ctx context.Context, userID int64, eventID string) (*entity.EventParticipant, error)
+	Register(ctx context.Context, eventID string, userID int64) (*entity.EventParticipant, error)
 	Get(ctx context.Context, eventID string, userID int64) (*entity.EventParticipant, error)
 	CountByEventID(ctx context.Context, eventID string) (int, error)
+}
+
+type qrService interface {
+	GetUserQR(ctx context.Context, userID int64) (qr tele.File, err error)
 }
 
 type Handler struct {
 	userService             userService
 	eventService            eventService
 	eventParticipantService eventParticipantService
+	qrService               qrService
 
 	menuHandler *menu.Handler
 
-	qrCodesGenerator qrCodesGenerator
-	codesStorage     *codes.Storage
-	emailsStorage    *emails.Storage
-	input            *intele.InputManager
-	layout           *layout.Layout
-	logger           *types.Logger
+	codesStorage  *codes.Storage
+	emailsStorage *emails.Storage
+	input         *intele.InputManager
+	layout        *layout.Layout
+	logger        *types.Logger
 }
 
 func New(b *bot.Bot) *Handler {
@@ -78,15 +77,26 @@ func New(b *bot.Bot) *Handler {
 	eventPartService := service.NewEventParticipantService(eventParticipantStorage)
 
 	smtpClient := smtp.NewClient(b.SMTPDialer)
-	botName := viper.GetString("bot.username")
-	qrCodeLogo := viper.GetString("settings.qr.logo-path")
-	qrCodeOutputDir := viper.GetString("settings.qr.output-dir")
+
+	usrService := service.NewUserService(userStorage, studentDataStorage, eventPartService, smtpClient)
+
+	qrSrvc, err := service.NewQrService(
+		b.Bot,
+		qr.CU,
+		usrService,
+		viper.GetInt64("bot.qr.chat-id"),
+		viper.GetString("settings.qr.logo-path"),
+	)
+
+	if err != nil {
+		b.Logger.Fatalf("failed to create qr service: %v", err)
+	}
 
 	return &Handler{
-		userService:             service.NewUserService(userStorage, studentDataStorage, eventPartService, smtpClient),
+		userService:             usrService,
 		eventService:            service.NewEventService(eventStorage),
 		eventParticipantService: eventPartService,
-		qrCodesGenerator:        generator.NewQrCode(generator.CU, qrCodeOutputDir, qrCodeLogo, botName),
+		qrService:               qrSrvc,
 		menuHandler:             menu.New(b),
 		codesStorage:            b.Redis.Codes,
 		emailsStorage:           b.Redis.Emails,
@@ -103,87 +113,18 @@ func (h Handler) Hide(c tele.Context) error {
 func (h Handler) qrCode(c tele.Context) error {
 	h.logger.Infof("(user: %d) requested QR code", c.Sender().ID)
 
-	user, err := h.userService.Get(context.Background(), c.Sender().ID)
-	if err != nil {
-		h.logger.Errorf("(user: %d) error while getting user from db: %v", c.Sender().ID, err)
-		return c.Send(
-			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
-			h.layout.Markup(c, "mainMenu:back"),
-		)
-	}
-
-	var file tele.File
-	if user.QRCodeID != "" {
-		h.logger.Infof("(user: %d) existing QR code found, sending...", c.Sender().ID)
-		file, err = c.Bot().FileByID(user.QRFileID)
-		if err != nil {
-			h.logger.Errorf("(user: %d) failed to retrieve existing QR file: %v", c.Sender().ID, err)
-			return c.Edit(
-				banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
-				h.layout.Markup(c, "mainMenu:back"),
-			)
-		}
-
-		return c.Edit(
-			&tele.Photo{
-				File:    file,
-				Caption: h.layout.Text(c, "qr_text"),
-			},
-			h.layout.Markup(c, "mainMenu:back"),
-		)
-	}
+	h.logger.Infof("(user: %d) getting user QR code", c.Sender().ID)
 	loading, _ := c.Bot().Send(c.Chat(), h.layout.Text(c, "loading"))
-	h.logger.Infof("(user: %d) generating new QR code...", c.Sender().ID)
-	qrID, qrFilePath, err := h.qrCodesGenerator.Generate()
+	file, err := h.qrService.GetUserQR(context.Background(), c.Sender().ID)
 	if err != nil {
-		h.logger.Errorf("(user: %d) failed to generate QR code: %v", c.Sender().ID, err)
-		return c.Edit(
-			h.layout.Text(c, "technical_issues", err.Error()),
-		)
-	}
-
-	qrChatID := viper.GetInt64("bot.qr.chat-id")
-	qrImg := &tele.Photo{File: tele.FromDisk(qrFilePath)}
-	_, err = c.Bot().Send(&tele.Chat{ID: qrChatID}, qrImg)
-	if err != nil {
-		h.logger.Errorf("(user: %d) failed to send QR code to admin chat: %v", c.Sender().ID, err)
+		h.logger.Errorf("(user: %d) error while getting user QR code: %v", c.Sender().ID, err)
 		return c.Edit(
 			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
 			h.layout.Markup(c, "mainMenu:back"),
 		)
 	}
-
-	user.QRCodeID = qrID
-	user.QRFileID = qrImg.FileID
-	user, err = h.userService.Update(context.Background(), user)
-	if err != nil {
-		h.logger.Errorf("(user: %d) failed to update user data: %v", c.Sender().ID, err)
-		return c.Edit(
-			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
-			h.layout.Markup(c, "mainMenu:back"),
-		)
-	}
-
-	if err = h.qrCodesGenerator.Delete(qrFilePath); err != nil {
-		h.logger.Errorf("(user: %d) failed to delete temporary QR code file: %v", c.Sender().ID, err)
-		return c.Edit(
-			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
-			h.layout.Markup(c, "mainMenu:back"),
-		)
-	}
-
-	h.logger.Infof("(user: %d) sending QR code to user...", c.Sender().ID)
-
-	file, err = c.Bot().FileByID(user.QRFileID)
-	if err != nil {
-		h.logger.Errorf("(user: %d) failed to retrieve final QR file: %v", c.Sender().ID, err)
-		return c.Edit(
-			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
-			h.layout.Markup(c, "mainMenu:back"),
-		)
-	}
-
 	_ = c.Bot().Delete(loading)
+
 	return c.Edit(
 		&tele.Photo{
 			File:    file,
@@ -383,7 +324,7 @@ func (h Handler) event(c tele.Context) error {
 	if c.Callback().Unique == "event_register" {
 		if !registered {
 			if (event.MaxParticipants == 0 || participantsCount < event.MaxParticipants) && event.RegistrationEnd.After(time.Now().In(location.Location)) {
-				_, err = h.eventParticipantService.Register(context.Background(), c.Sender().ID, eventID)
+				_, err = h.eventParticipantService.Register(context.Background(), eventID, c.Sender().ID)
 				if err != nil {
 					h.logger.Errorf("(user: %d) error while register to event: %v", c.Sender().ID, err)
 					return c.Edit(
@@ -518,7 +459,7 @@ func (h Handler) myEvents(c tele.Context) error {
 			ID:     event.ID,
 			Name:   event.Name,
 			Page:   p,
-			IsOver: event.IsOver(),
+			IsOver: event.IsOver(0),
 		})))
 	}
 
@@ -623,7 +564,7 @@ func (h Handler) myEvent(c tele.Context) error {
 			RegistrationEnd:       event.RegistrationEnd.Format("02.01.2006 15:04"),
 			MaxParticipants:       event.MaxParticipants,
 			AfterRegistrationText: event.AfterRegistrationText,
-			IsOver:                event.IsOver(),
+			IsOver:                event.IsOver(0),
 		})),
 		h.layout.Markup(c, "user:myEvents:event", struct {
 			ID   string

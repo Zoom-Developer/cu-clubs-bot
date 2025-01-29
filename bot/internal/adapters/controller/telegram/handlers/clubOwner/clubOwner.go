@@ -53,7 +53,7 @@ type eventService interface {
 	Create(ctx context.Context, event *entity.Event) (*entity.Event, error)
 	Update(ctx context.Context, event *entity.Event) (*entity.Event, error)
 	Get(ctx context.Context, id string) (*entity.Event, error)
-	GetByClubIDWithPagination(ctx context.Context, limit, offset int, order string, clubID string) ([]entity.Event, error)
+	GetByClubID(ctx context.Context, limit, offset int, order string, clubID string) ([]entity.Event, error)
 	CountByClubID(ctx context.Context, clubID string) (int64, error)
 	Delete(ctx context.Context, id string) error
 }
@@ -1179,7 +1179,7 @@ func (h Handler) eventsList(c tele.Context) error {
 		)
 	}
 
-	events, err = h.eventService.GetByClubIDWithPagination(
+	events, err = h.eventService.GetByClubID(
 		context.Background(),
 		eventsOnPage,
 		p*eventsOnPage,
@@ -1316,6 +1316,7 @@ func (h Handler) event(c tele.Context) error {
 			MaxParticipants       int
 			AfterRegistrationText string
 			IsRegistered          bool
+			Link                  string
 		}{
 			Name:                  event.Name,
 			Description:           event.Description,
@@ -1325,6 +1326,7 @@ func (h Handler) event(c tele.Context) error {
 			RegistrationEnd:       event.RegistrationEnd.Format("02.01.2006 15:04"),
 			MaxParticipants:       event.MaxParticipants,
 			AfterRegistrationText: event.AfterRegistrationText,
+			Link:                  event.Link(c.Bot().Me.Username),
 		})),
 		h.layout.Markup(c, "clubOwner:event:menu", struct {
 			ID     string
@@ -1378,6 +1380,7 @@ func (h Handler) eventSettings(c tele.Context) error {
 			MaxParticipants       int
 			AfterRegistrationText string
 			IsRegistered          bool
+			Link                  string
 		}{
 			Name:                  event.Name,
 			Description:           event.Description,
@@ -1387,6 +1390,7 @@ func (h Handler) eventSettings(c tele.Context) error {
 			RegistrationEnd:       event.RegistrationEnd.Format("02.01.2006 15:04"),
 			MaxParticipants:       event.MaxParticipants,
 			AfterRegistrationText: event.AfterRegistrationText,
+			Link:                  event.Link(c.Bot().Me.Username),
 		})),
 		h.layout.Markup(c, "clubOwner:event:settings", struct {
 			ID   string
@@ -1910,6 +1914,7 @@ func (h Handler) declineEventDelete(c tele.Context) error {
 			MaxParticipants       int
 			AfterRegistrationText string
 			IsRegistered          bool
+			Link                  string
 		}{
 			Name:                  event.Name,
 			Description:           event.Description,
@@ -1919,6 +1924,7 @@ func (h Handler) declineEventDelete(c tele.Context) error {
 			RegistrationEnd:       event.RegistrationEnd.Format("02.01.2006 15:04"),
 			MaxParticipants:       event.MaxParticipants,
 			AfterRegistrationText: event.AfterRegistrationText,
+			Link:                  event.Link(c.Bot().Me.Username),
 		})),
 		h.layout.Markup(c, "clubOwner:event:menu", struct {
 			ID     string

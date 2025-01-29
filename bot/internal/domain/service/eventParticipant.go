@@ -25,7 +25,7 @@ func NewEventParticipantService(storage EventParticipantStorage) *EventParticipa
 	return &EventParticipantService{storage}
 }
 
-func (s *EventParticipantService) Register(ctx context.Context, userID int64, eventID string) (*entity.EventParticipant, error) {
+func (s *EventParticipantService) Register(ctx context.Context, eventID string, userID int64) (*entity.EventParticipant, error) {
 	return s.storage.Create(ctx, &entity.EventParticipant{
 		UserID:  userID,
 		EventID: eventID,

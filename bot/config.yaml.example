@@ -20,7 +20,6 @@ service:
     email: email@domain.ru
 
 bot:
-  name: "your_bot_name"
   token: "BOT_TOKEN"
   grant-chat-id: -500000
   admin-ids:
@@ -44,13 +43,12 @@ bot:
 
 settings:
     qr:
-      output-dir: "./qrs"
       logo-path: "./logo.png"
 
+    timezone: "Europe/Moscow"
     logging:
       log-to-file: true # логирование в файл
       logs-dir: "./logs"
-      timezone: "GMT+3" # часовой пояс для логирования
       debug: true # дебаг мод
       log-to-channel: true # логирование в канал
       channel-id: -10000000000 # канал для логов
