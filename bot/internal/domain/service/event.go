@@ -11,6 +11,7 @@ import (
 type EventStorage interface {
 	Create(ctx context.Context, event *entity.Event) (*entity.Event, error)
 	Get(ctx context.Context, id string) (*entity.Event, error)
+	GetByQRCodeID(ctx context.Context, qrCodeID string) (*entity.Event, error)
 	GetMany(ctx context.Context, ids []string) ([]entity.Event, error)
 	GetAll(ctx context.Context) ([]entity.Event, error)
 	Update(ctx context.Context, event *entity.Event) (*entity.Event, error)
@@ -51,6 +52,10 @@ func (s *EventService) Create(ctx context.Context, event *entity.Event) (*entity
 
 func (s *EventService) Get(ctx context.Context, id string) (*entity.Event, error) {
 	return s.eventStorage.Get(ctx, id)
+}
+
+func (s *EventService) GetByQRCodeID(ctx context.Context, qrCodeID string) (*entity.Event, error) {
+	return s.eventStorage.GetByQRCodeID(ctx, qrCodeID)
 }
 
 func (s *EventService) GetMany(ctx context.Context, ids []string) ([]entity.Event, error) {

@@ -22,6 +22,8 @@ import (
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/layout"
 	"gorm.io/gorm"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -82,14 +84,18 @@ func New(b *bot.Bot) *Handler {
 
 	eventPartService := service.NewEventParticipantService(eventParticipantStorage)
 
-	smtpClient := smtp.NewClient(b.SMTPDialer)
+	smtpClient := smtp.NewClient(b.SMTPDialer, viper.GetString("service.smtp.domain"), viper.GetString("service.smtp.email"))
 
-	usrService := service.NewUserService(userStorage, studentDataStorage, eventPartService, smtpClient)
+	wd, _ := os.Getwd()
+	emailHTMLFilePath := filepath.Join(wd, viper.GetString("settings.html.email-confirmation"))
+
+	userSrvc := service.NewUserService(userStorage, studentDataStorage, eventPartService, smtpClient, emailHTMLFilePath)
 
 	qrSrvc, err := service.NewQrService(
 		b.Bot,
 		qr.CU,
-		usrService,
+		userSrvc,
+		nil,
 		viper.GetInt64("bot.qr.chat-id"),
 		viper.GetString("settings.qr.logo-path"),
 	)
@@ -99,7 +105,7 @@ func New(b *bot.Bot) *Handler {
 	}
 
 	return &Handler{
-		userService:             usrService,
+		userService:             userSrvc,
 		eventService:            service.NewEventService(eventStorage),
 		eventParticipantService: eventPartService,
 		qrService:               qrSrvc,

@@ -18,7 +18,6 @@ import (
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/service"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger/types"
-	"github.com/Badsnus/cu-clubs-bot/bot/pkg/smtp"
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/layout"
 	"gorm.io/gorm"
@@ -28,7 +27,6 @@ type userService interface {
 	Create(ctx context.Context, user entity.User) (*entity.User, error)
 	Get(ctx context.Context, userID int64) (*entity.User, error)
 	GetByQRCodeID(ctx context.Context, qrCodeID string) (*entity.User, error)
-	SendAuthCode(ctx context.Context, email string) (string, string, error)
 	Update(ctx context.Context, user *entity.User) (*entity.User, error)
 }
 
@@ -45,6 +43,7 @@ type eventService interface {
 		clubID string,
 		additionalTime time.Duration,
 	) ([]entity.Event, error)
+	GetByQRCodeID(ctx context.Context, qrCodeID string) (*entity.Event, error)
 	//CountFutureByClubID(ctx context.Context, clubID string) (int64, error)
 }
 
@@ -82,13 +81,15 @@ func New(b *bot.Bot) *Handler {
 	eventStorage := postgres.NewEventStorage(b.DB)
 	clubStorage := postgres.NewClubStorage(b.DB)
 	eventParticipantStorage := postgres.NewEventParticipantStorage(b.DB)
-	smtpClient := smtp.NewClient(b.SMTPDialer)
 
-	userSrvc := service.NewUserService(userStorage, studentDataStorage, nil, smtpClient)
+	userSrvc := service.NewUserService(userStorage, studentDataStorage, nil, nil, "")
+	eventSrvc := service.NewEventService(eventStorage)
+
 	qrSrvc, err := service.NewQrService(
 		b.Bot,
 		qr.CU,
 		userSrvc,
+		eventSrvc,
 		viper.GetInt64("bot.qr.chat-id"),
 		viper.GetString("settings.qr.logo-path"),
 	)
@@ -99,7 +100,7 @@ func New(b *bot.Bot) *Handler {
 	return &Handler{
 		userService:             userSrvc,
 		clubService:             service.NewClubService(clubStorage),
-		eventService:            service.NewEventService(eventStorage),
+		eventService:            eventSrvc,
 		eventParticipantService: service.NewEventParticipantService(eventParticipantStorage),
 		qrService:               qrSrvc,
 		callbacksStorage:        b.Redis.Callbacks,
@@ -152,6 +153,8 @@ func (h Handler) Start(c tele.Context) error {
 		return h.auth(c, data)
 	case "userQR":
 		return h.userQR(c, data)
+	case "eventQR":
+		return h.eventQR(c, data)
 	case "event":
 		return h.eventMenu(c, data)
 	default:

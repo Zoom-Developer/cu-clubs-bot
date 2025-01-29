@@ -33,6 +33,12 @@ func (s *EventStorage) Get(ctx context.Context, id string) (*entity.Event, error
 	return &event, err
 }
 
+func (s *EventStorage) GetByQRCodeID(ctx context.Context, qrCodeID string) (*entity.Event, error) {
+	var event entity.Event
+	err := s.db.WithContext(ctx).Where("qr_code_id = ?", qrCodeID).First(&event).Error
+	return &event, err
+}
+
 func (s *EventStorage) GetMany(ctx context.Context, ids []string) ([]entity.Event, error) {
 	var events []entity.Event
 	err := s.db.WithContext(ctx).Where("id IN ?", ids).Find(&events).Error

@@ -329,8 +329,71 @@ func (h Handler) activateUserQR(c tele.Context) error {
 	)
 }
 
-func (h Handler) SetupQR(group *tele.Group) {
+func (h Handler) SetupUserQR(group *tele.Group) {
 	group.Handle(h.layout.Callback("clubOwner:activateQR:clubs:back"), h.backToClubsList)
 	group.Handle(h.layout.Callback("clubOwner:activateQR:club"), h.qrEventsList)
 	group.Handle(h.layout.Callback("clubOwner:activateQR:event"), h.activateUserQR)
+}
+
+func (h Handler) eventQR(c tele.Context, qrCodeID string) error {
+	_ = c.Delete()
+	h.logger.Infof("(user: %d) scan event QR code", c.Sender().ID)
+
+	event, err := h.eventService.GetByQRCodeID(context.Background(), qrCodeID)
+	if err != nil {
+		h.logger.Infof("(user: %d) event qr expired: %v", c.Sender().ID, err)
+		return c.Send(
+			banner.Events.Caption(h.layout.Text(c, "qr_expired")),
+			h.layout.Markup(c, "core:hide"),
+		)
+	}
+
+	if event.IsOver(time.Hour * 24) {
+		h.logger.Infof("(user: %d) event already started (event_id=%s)", c.Sender().ID, event.ID)
+		return c.Edit(
+			banner.Events.Caption(h.layout.Text(c, "event_started")),
+			h.layout.Markup(c, "core:hide"),
+		)
+	}
+
+	eventParticipant, err := h.eventParticipantService.Get(context.Background(), event.ID, c.Sender().ID)
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			h.logger.Infof("(user: %d) error while getting event participant from db: %v", c.Sender().ID, err)
+			return c.Edit(
+				banner.Events.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+				h.layout.Markup(c, "core:hide"),
+			)
+		}
+		h.logger.Infof("(user: %d) participant not found (event_id=%s)", c.Sender().ID, event.ID)
+		eventParticipant, err = h.eventParticipantService.Register(context.Background(), event.ID, c.Sender().ID)
+		if err != nil {
+			h.logger.Errorf("(user: %d) error while registering participant: %v", c.Sender().ID, err)
+			return c.Edit(
+				banner.Events.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+				h.layout.Markup(c, "core:hide"),
+			)
+		}
+		h.logger.Infof("(user: %d) participant registered (event_id=%s, user_id=%d)", c.Sender().ID, event.ID, c.Sender().ID)
+	}
+
+	eventParticipant.IsEventQr = true
+	_, err = h.eventParticipantService.Update(context.Background(), eventParticipant)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while updating event participant: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.Events.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "core:hide"),
+		)
+	}
+	h.logger.Infof("(user: %d) event qr activated (event_id=%s, user_id=%d)", c.Sender().ID, event.ID, c.Sender().ID)
+
+	return c.Send(
+		banner.Events.Caption(h.layout.Text(c, "event_qr_activated", struct {
+			Name string
+		}{
+			Name: event.Name,
+		})),
+		h.layout.Markup(c, "core:hide"),
+	)
 }

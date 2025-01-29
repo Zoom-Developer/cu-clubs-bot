@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"github.com/Badsnus/cu-clubs-bot/bot/pkg/smtp"
 	"strings"
 
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
@@ -29,7 +30,7 @@ type StudentDataStorage interface {
 }
 
 type smtpClient interface {
-	SendConfirmationEmail(to string, code string)
+	Send(to string, body, message string, subject string)
 }
 
 type eventParticipantStorage interface {
@@ -42,14 +43,18 @@ type UserService struct {
 	studentDataStorage      StudentDataStorage
 	eventParticipantStorage eventParticipantStorage
 	smtpClient              smtpClient
+
+	emailHTMLFilePath string
 }
 
-func NewUserService(userStorage UserStorage, studentDataStorage StudentDataStorage, eventParticipantStorage eventParticipantStorage, smtpClient smtpClient) *UserService {
+func NewUserService(userStorage UserStorage, studentDataStorage StudentDataStorage, eventParticipantStorage eventParticipantStorage, smtpClient smtpClient, emailHTMLFilePath string) *UserService {
 	return &UserService{
 		userStorage:             userStorage,
 		studentDataStorage:      studentDataStorage,
 		eventParticipantStorage: eventParticipantStorage,
 		smtpClient:              smtpClient,
+
+		emailHTMLFilePath: emailHTMLFilePath,
 	}
 }
 
@@ -121,10 +126,17 @@ func (s *UserService) SendAuthCode(_ context.Context, email string) (string, str
 
 	login := strings.Split(email, "@")[0]
 
+	message, err := smtp.GenerateEmailConfirmationMessage(s.emailHTMLFilePath, map[string]string{
+		"Code": code,
+	})
+	if err != nil {
+		return "", "", err
+	}
+
 	var data string
 	studentData, err := s.studentDataStorage.GetByLogin(context.Background(), login)
 	if err == nil {
-		s.smtpClient.SendConfirmationEmail(email, code)
+		s.smtpClient.Send(email, "Email confirmation", message, "Email confirmation")
 		data = fmt.Sprintf("%s;%s", email, studentData.Fio)
 	}
 
