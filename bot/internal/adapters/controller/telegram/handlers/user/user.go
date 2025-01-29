@@ -108,6 +108,8 @@ func New(b *bot.Bot) *Handler {
 			b.Layout,
 			b.Logger,
 			service.NewClubOwnerService(clubOwnerStorage, userStorage),
+			nil,
+			nil,
 		),
 		menuHandler:   menu.New(b),
 		codesStorage:  b.Redis.Codes,
@@ -335,7 +337,7 @@ func (h Handler) event(c tele.Context) error {
 
 	if c.Callback().Unique == "event_register" {
 		if !registered {
-			if (event.MaxParticipants == 0 || participantsCount < event.MaxParticipants) && event.RegistrationEnd.After(time.Now().In(location.Location)) {
+			if (event.MaxParticipants == 0 || participantsCount < event.MaxParticipants) && event.RegistrationEnd.After(time.Now().In(location.Location())) {
 				_, err = h.eventParticipantService.Register(context.Background(), eventID, c.Sender().ID)
 				if err != nil {
 					h.logger.Errorf("(user: %d) error while register to event: %v", c.Sender().ID, err)
@@ -349,8 +351,7 @@ func (h Handler) event(c tele.Context) error {
 					)
 				}
 
-				switch {
-				case participantsCount+1 == event.ExpectedParticipants:
+				if participantsCount+1 == event.ExpectedParticipants {
 					errSendWarning := h.notificationService.SendClubWarning(event.ClubID,
 						h.layout.Text(c, "expected_participants_reached_warning", struct {
 							Name              string
@@ -364,7 +365,9 @@ func (h Handler) event(c tele.Context) error {
 					if errSendWarning != nil {
 						h.logger.Errorf("(user: %d) error while send expected participants reached warning: %v", c.Sender().ID, errSendWarning)
 					}
-				case participantsCount+1 == event.MaxParticipants:
+				}
+
+				if participantsCount+1 == event.MaxParticipants {
 					errSendWarning := h.notificationService.SendClubWarning(event.ClubID,
 						h.layout.Text(c, "max_participants_reached_warning", struct {
 							Name              string
@@ -383,7 +386,7 @@ func (h Handler) event(c tele.Context) error {
 
 			} else {
 				switch {
-				case event.RegistrationEnd.Before(time.Now().In(location.Location)):
+				case event.RegistrationEnd.Before(time.Now().In(location.Location())):
 					return c.Respond(&tele.CallbackResponse{
 						Text:      h.layout.Text(c, "registration_ended"),
 						ShowAlert: true,

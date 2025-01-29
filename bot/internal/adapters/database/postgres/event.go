@@ -106,10 +106,19 @@ func (s *EventStorage) GetFutureByClubID(
 ) ([]entity.Event, error) {
 	var events []entity.Event
 	err := s.db.WithContext(ctx).
-		Where("club_id = ? AND start_time > ?", clubID, time.Now().In(location.Location).Add(-additionalTime)).
+		Where("club_id = ? AND start_time > ?", clubID, time.Now().In(location.Location()).Add(-additionalTime)).
 		Order(order).
 		Limit(limit).
 		Offset(offset).
+		Find(&events).Error
+	return events, err
+}
+
+// GetUpcomingEvents returns all events that start before the given time
+func (s *EventStorage) GetUpcomingEvents(ctx context.Context, before time.Time) ([]entity.Event, error) {
+	var events []entity.Event
+	err := s.db.WithContext(ctx).
+		Where("start_time <= ? AND start_time > ?", before.In(location.Location()), time.Now().In(location.Location())).
 		Find(&events).Error
 	return events, err
 }

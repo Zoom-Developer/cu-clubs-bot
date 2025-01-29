@@ -43,7 +43,7 @@ func Get() *Config {
 
 	err := logger.Init(logger.Config{
 		Debug:        viper.GetBool("settings.logging.debug"),
-		TimeLocation: location.Location,
+		TimeLocation: location.Location(),
 		LogToFile:    viper.GetBool("settings.logging.log-to-file"),
 		LogsDir:      viper.GetString("settings.logging.logs-dir"),
 	})

@@ -28,7 +28,7 @@ type Event struct {
 }
 
 func (e *Event) IsOver(additionalTime time.Duration) bool {
-	return e.StartTime.Before(time.Now().In(location.Location).Add(-additionalTime))
+	return e.StartTime.Before(time.Now().In(location.Location()).Add(-additionalTime))
 }
 
 func (e *Event) Link(botName string) string {
