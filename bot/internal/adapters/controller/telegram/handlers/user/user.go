@@ -83,12 +83,13 @@ func New(b *bot.Bot) *Handler {
 	wd, _ := os.Getwd()
 	emailHTMLFilePath := filepath.Join(wd, viper.GetString("settings.html.email-confirmation"))
 
-	usrService := service.NewUserService(userStorage, studentDataStorage, eventPartService, smtpClient, emailHTMLFilePath)
+	userSrvc := service.NewUserService(userStorage, studentDataStorage, eventPartService, smtpClient, emailHTMLFilePath)
 
 	qrSrvc, err := service.NewQrService(
 		b.Bot,
 		qr.CU,
-		usrService,
+		userSrvc,
+		nil,
 		viper.GetInt64("bot.qr.chat-id"),
 		viper.GetString("settings.qr.logo-path"),
 	)
@@ -98,7 +99,7 @@ func New(b *bot.Bot) *Handler {
 	}
 
 	return &Handler{
-		userService:             usrService,
+		userService:             userSrvc,
 		eventService:            service.NewEventService(eventStorage),
 		eventParticipantService: eventPartService,
 		qrService:               qrSrvc,

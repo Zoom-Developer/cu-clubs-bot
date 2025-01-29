@@ -254,7 +254,7 @@ buttons:
     text: '{{ text `back` }}'
 
   clubOwner:event:qr:
-    unique: clubOwner_event_qr
+    unique: cOwner_event_qr
     callback_data: '{{.ID}} {{.Page}}'
     text: '{{ text `qr` }}'
 
@@ -462,6 +462,8 @@ markups:
     - [ clubOwner:event:users ]
     - [ clubOwner:event:delete ]
     - [ clubOwner:events:back ]
+  clubOwner:event:back:
+    - [ clubOwner:event:back ]
   clubOwner:event:settings:
     - [ clubOwner:event:settings:edit_name ]
     - [ clubOwner:event:settings:edit_description ]

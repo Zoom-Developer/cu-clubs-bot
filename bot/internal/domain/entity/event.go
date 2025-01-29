@@ -24,6 +24,8 @@ type Event struct {
 	RegistrationEnd       time.Time `gorm:"not null"`
 	MaxParticipants       int
 	ExpectedParticipants  int
+	QRCodeID              string
+	QRFileID              string
 	AllowedRoles          pq.StringArray `gorm:"type:text[]"`
 }
 

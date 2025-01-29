@@ -15,26 +15,33 @@ type qrUserService interface {
 	Update(ctx context.Context, user *entity.User) (*entity.User, error)
 }
 
-type QrService struct {
-	userService qrUserService
-	bot         *tele.Bot
-	qrChat      *tele.Chat
-	qrCFG       qr.Config
-	botName     string
+type qrEventService interface {
+	Get(ctx context.Context, eventID string) (*entity.Event, error)
+	Update(ctx context.Context, event *entity.Event) (*entity.Event, error)
 }
 
-func NewQrService(bot *tele.Bot, qrCFG qr.Config, userService qrUserService, qrChatID int64, logoPath string) (*QrService, error) {
+type QrService struct {
+	userService  qrUserService
+	eventService qrEventService
+	bot          *tele.Bot
+	qrChat       *tele.Chat
+	qrCFG        qr.Config
+	botName      string
+}
+
+func NewQrService(bot *tele.Bot, qrCFG qr.Config, userService qrUserService, eventService qrEventService, qrChatID int64, logoPath string) (*QrService, error) {
 	chat, err := bot.ChatByID(qrChatID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get qr chat: %v", err)
 	}
 	qrCFG.LogoPath = logoPath
 	return &QrService{
-		userService: userService,
-		bot:         bot,
-		qrChat:      chat,
-		qrCFG:       qrCFG,
-		botName:     bot.Me.Username,
+		userService:  userService,
+		eventService: eventService,
+		bot:          bot,
+		qrChat:       chat,
+		qrCFG:        qrCFG,
+		botName:      bot.Me.Username,
 	}, nil
 }
 
@@ -96,4 +103,48 @@ func (s *QrService) RevokeUserQR(ctx context.Context, userID int64) error {
 		}
 	}
 	return nil
+}
+
+func (s *QrService) GetEventQR(ctx context.Context, eventID string) (qr tele.File, err error) {
+	event, err := s.eventService.Get(ctx, eventID)
+	if err != nil {
+		return qr, err
+	}
+	if event.QRFileID != "" {
+		qr, err = s.bot.FileByID(event.QRFileID)
+		if err != nil {
+			return qr, err
+		}
+		return qr, nil
+	}
+
+	qrCodeID := uuid.New().String()
+	link := fmt.Sprintf("https://t.me/%s?start=eventQR_%s", s.botName, qrCodeID)
+	cfg := s.qrCFG
+	cfg.Content = link
+	qrData, err := cfg.Generate()
+	if err != nil {
+		return qr, err
+	}
+
+	tempQR := tele.FromReader(bytes.NewReader(qrData))
+	qrMsg, err := s.bot.Send(s.qrChat, &tele.Photo{
+		File: tempQR,
+	})
+	if err != nil {
+		return qr, err
+	}
+	event.QRFileID = qrMsg.Photo.FileID
+	event.QRCodeID = qrCodeID
+	_, err = s.eventService.Update(ctx, event)
+	if err != nil {
+		return qr, err
+	}
+
+	qr, err = s.bot.FileByID(qrMsg.Photo.FileID)
+	if err != nil {
+		return qr, err
+	}
+
+	return qr, err
 }

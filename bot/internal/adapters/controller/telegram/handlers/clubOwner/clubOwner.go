@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	qr "github.com/Badsnus/cu-clubs-bot/bot/pkg/qrcode"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
 	"github.com/xuri/excelize/v2"
@@ -62,6 +63,10 @@ type eventParticipantService interface {
 	CountByEventID(ctx context.Context, eventID string) (int, error)
 }
 
+type qrService interface {
+	GetEventQR(ctx context.Context, eventID string) (qr tele.File, err error)
+}
+
 type Handler struct {
 	layout *layout.Layout
 	logger *types.Logger
@@ -74,6 +79,7 @@ type Handler struct {
 	userService             userService
 	eventService            eventService
 	eventParticipantService eventParticipantService
+	qrService               qrService
 }
 
 func NewHandler(b *bot.Bot) *Handler {
@@ -82,6 +88,20 @@ func NewHandler(b *bot.Bot) *Handler {
 	userStorage := postgres.NewUserStorage(b.DB)
 	eventStorage := postgres.NewEventStorage(b.DB)
 	eventParticipantStorage := postgres.NewEventParticipantStorage(b.DB)
+
+	eventSrvc := service.NewEventService(eventStorage)
+
+	qrSrvc, err := service.NewQrService(
+		b.Bot,
+		qr.CU,
+		nil,
+		eventSrvc,
+		viper.GetInt64("bot.qr.chat-id"),
+		viper.GetString("settings.qr.logo-path"),
+	)
+	if err != nil {
+		b.Logger.Fatalf("failed to create qr service: %v", err)
+	}
 
 	return &Handler{
 		layout: b.Layout,
@@ -93,8 +113,9 @@ func NewHandler(b *bot.Bot) *Handler {
 		clubService:             service.NewClubService(clubStorage),
 		clubOwnerService:        service.NewClubOwnerService(clubOwnerStorage, userStorage),
 		userService:             service.NewUserService(userStorage, nil, nil, nil, ""),
-		eventService:            service.NewEventService(eventStorage),
+		eventService:            eventSrvc,
 		eventParticipantService: service.NewEventParticipantService(eventParticipantStorage),
+		qrService:               qrSrvc,
 	}
 }
 
@@ -2275,6 +2296,91 @@ func (h Handler) registeredUsers(c tele.Context) error {
 		}))
 }
 
+func (h Handler) eventQRCode(c tele.Context) error {
+	data := strings.Split(c.Callback().Data, " ")
+	if len(data) != 2 {
+		return errorz.ErrInvalidCallbackData
+	}
+
+	eventID := data[0]
+	page := data[1]
+	h.logger.Infof("(user: %d) getting user Event QR code", c.Sender().ID)
+
+	event, err := h.eventService.Get(context.Background(), eventID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get event: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:event:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   eventID,
+				Page: page,
+			}),
+		)
+	}
+
+	club, err := h.clubService.Get(context.Background(), event.ClubID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get club: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:event:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   eventID,
+				Page: page,
+			}),
+		)
+	}
+
+	if !club.QrAllowed {
+		return c.Edit(
+			h.layout.Text(c, "qr_not_allowed"),
+			h.layout.Markup(c, "clubOwner:event:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   eventID,
+				Page: page,
+			}),
+		)
+	}
+
+	loading, _ := c.Bot().Send(c.Chat(), h.layout.Text(c, "loading"))
+	file, err := h.qrService.GetEventQR(context.Background(), eventID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get event QR: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:event:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   eventID,
+				Page: page,
+			}),
+		)
+	}
+	_ = c.Bot().Delete(loading)
+
+	return c.Edit(
+		&tele.Photo{
+			File:    file,
+			Caption: h.layout.Text(c, "event_qr_text"),
+		},
+		h.layout.Markup(c, "clubOwner:event:back", struct {
+			ID   string
+			Page string
+		}{
+			ID:   eventID,
+			Page: page,
+		}),
+	)
+}
+
 func (h Handler) ClubOwnerSetup(group *tele.Group) {
 	group.Handle(h.layout.Callback("clubOwner:my_clubs"), h.clubsList)
 	group.Handle(h.layout.Callback("clubOwner:myClubs:back"), h.clubsList)
@@ -2303,6 +2409,7 @@ func (h Handler) ClubOwnerSetup(group *tele.Group) {
 	group.Handle(h.layout.Callback("clubOwner:event:delete:accept"), h.acceptEventDelete)
 	group.Handle(h.layout.Callback("clubOwner:event:delete:decline"), h.declineEventDelete)
 	group.Handle(h.layout.Callback("clubOwner:event:users"), h.registeredUsers)
+	group.Handle(h.layout.Callback("clubOwner:event:qr"), h.eventQRCode)
 
 	group.Handle(h.layout.Callback("clubOwner:club:settings"), h.clubSettings)
 	group.Handle(h.layout.Callback("clubOwner:club:settings:back"), h.clubSettings)

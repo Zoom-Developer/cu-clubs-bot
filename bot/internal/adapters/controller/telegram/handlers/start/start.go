@@ -43,6 +43,7 @@ type eventService interface {
 		clubID string,
 		additionalTime time.Duration,
 	) ([]entity.Event, error)
+	GetByQRCodeID(ctx context.Context, qrCodeID string) (*entity.Event, error)
 	//CountFutureByClubID(ctx context.Context, clubID string) (int64, error)
 }
 
@@ -82,10 +83,13 @@ func New(b *bot.Bot) *Handler {
 	eventParticipantStorage := postgres.NewEventParticipantStorage(b.DB)
 
 	userSrvc := service.NewUserService(userStorage, studentDataStorage, nil, nil, "")
+	eventSrvc := service.NewEventService(eventStorage)
+
 	qrSrvc, err := service.NewQrService(
 		b.Bot,
 		qr.CU,
 		userSrvc,
+		eventSrvc,
 		viper.GetInt64("bot.qr.chat-id"),
 		viper.GetString("settings.qr.logo-path"),
 	)
@@ -96,7 +100,7 @@ func New(b *bot.Bot) *Handler {
 	return &Handler{
 		userService:             userSrvc,
 		clubService:             service.NewClubService(clubStorage),
-		eventService:            service.NewEventService(eventStorage),
+		eventService:            eventSrvc,
 		eventParticipantService: service.NewEventParticipantService(eventParticipantStorage),
 		qrService:               qrSrvc,
 		callbacksStorage:        b.Redis.Callbacks,
@@ -149,6 +153,8 @@ func (h Handler) Start(c tele.Context) error {
 		return h.auth(c, data)
 	case "userQR":
 		return h.userQR(c, data)
+	case "eventQR":
+		return h.eventQR(c, data)
 	case "event":
 		return h.eventMenu(c, data)
 	default:

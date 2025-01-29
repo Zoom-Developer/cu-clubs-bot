@@ -45,7 +45,7 @@ func Setup(b *bot.Bot) {
 	b.Use(middle.Authorized)
 
 	//Qr
-	startHandler.SetupQR(b.Group())
+	startHandler.SetupUserQR(b.Group())
 
 	//User:
 	b.Handle(b.Layout.Callback("mainMenu:back"), menuHandler.EditMenu)
