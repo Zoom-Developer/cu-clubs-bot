@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/dto"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 	"gorm.io/gorm"
 )
@@ -74,8 +75,14 @@ func (s *EventParticipantStorage) CountByEventID(ctx context.Context, eventID st
 	return count, err
 }
 
-func (s *EventParticipantStorage) GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]entity.Event, error) {
-	var events []entity.Event
+func (s *EventParticipantStorage) GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]dto.UserEvent, error) {
+	type eventWithQR struct {
+		entity.Event
+		IsUserQr  bool
+		IsEventQr bool
+	}
+
+	var events []eventWithQR
 	currentTime := time.Now()
 
 	// Count total upcoming events for this user
@@ -91,7 +98,9 @@ func (s *EventParticipantStorage) GetUserEvents(ctx context.Context, userID int6
 	// If offset is within upcoming events, get upcoming events
 	if offset < int(upcomingCount) {
 		if err := s.db.WithContext(ctx).
-			Joins("JOIN event_participants ON events.id = event_participants.event_id").
+			Table("events").
+			Select("events.*, event_participants.is_user_qr, event_participants.is_event_qr").
+			Joins("JOIN event_participants ON event_participants.event_id = events.id").
 			Where("event_participants.user_id = ? AND events.start_time > ?", userID, currentTime).
 			Order("events.start_time ASC").
 			Limit(limit).
@@ -105,9 +114,11 @@ func (s *EventParticipantStorage) GetUserEvents(ctx context.Context, userID int6
 	remainingLimit := limit - len(events)
 	if remainingLimit > 0 {
 		pastOffset := max(0, offset-int(upcomingCount)) // Adjust offset for past events
-		var pastEvents []entity.Event
+		var pastEvents []eventWithQR
 		if err := s.db.WithContext(ctx).
-			Joins("JOIN event_participants ON events.id = event_participants.event_id").
+			Table("events").
+			Select("events.*, event_participants.is_user_qr, event_participants.is_event_qr").
+			Joins("JOIN event_participants ON event_participants.event_id = events.id").
 			Where("event_participants.user_id = ? AND events.start_time <= ?", userID, currentTime).
 			Order("events.start_time DESC").
 			Limit(remainingLimit).
@@ -118,7 +129,13 @@ func (s *EventParticipantStorage) GetUserEvents(ctx context.Context, userID int6
 		events = append(events, pastEvents...)
 	}
 
-	return events, nil
+	// Convert to DTOs
+	result := make([]dto.UserEvent, len(events))
+	for i, event := range events {
+		result[i] = dto.NewUserEventFromEntity(event.Event, event.IsUserQr || event.IsEventQr)
+	}
+
+	return result, nil
 }
 
 func (s *EventParticipantStorage) CountUserEvents(ctx context.Context, userID int64) (int64, error) {
@@ -128,4 +145,11 @@ func (s *EventParticipantStorage) CountUserEvents(ctx context.Context, userID in
 		Where("event_participants.user_id = ? AND events.deleted_at IS NULL", userID).
 		Count(&count).Error
 	return count, err
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }

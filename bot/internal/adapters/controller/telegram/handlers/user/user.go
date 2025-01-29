@@ -35,7 +35,7 @@ type userService interface {
 	GetByQRCodeID(ctx context.Context, qrCodeID string) (*entity.User, error)
 	SendAuthCode(ctx context.Context, email string) (string, string, error)
 	Update(ctx context.Context, user *entity.User) (*entity.User, error)
-	GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]entity.Event, error)
+	GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]dto.UserEvent, error)
 	CountUserEvents(ctx context.Context, userID int64) (int64, error)
 }
 
@@ -456,7 +456,7 @@ func (h Handler) myEvents(c tele.Context) error {
 		nextPage    int
 		err         error
 		eventsCount int64
-		events      []entity.Event
+		events      []dto.UserEvent
 		rows        []tele.Row
 		menuRow     tele.Row
 	)
@@ -503,15 +503,17 @@ func (h Handler) myEvents(c tele.Context) error {
 	markup := c.Bot().NewMarkup()
 	for _, event := range events {
 		rows = append(rows, markup.Row(*h.layout.Button(c, "user:myEvents:event", struct {
-			ID     string
-			Name   string
-			Page   int
-			IsOver bool
+			ID        string
+			Name      string
+			Page      int
+			IsOver    bool
+			IsVisited bool
 		}{
-			ID:     event.ID,
-			Name:   event.Name,
-			Page:   p,
-			IsOver: event.IsOver(0),
+			ID:        event.ID,
+			Name:      event.Name,
+			Page:      p,
+			IsOver:    event.IsOver(0),
+			IsVisited: event.IsVisited,
 		})))
 	}
 
@@ -596,6 +598,19 @@ func (h Handler) myEvent(c tele.Context) error {
 		)
 	}
 
+	eventParticipant, err := h.eventParticipantService.Get(context.Background(), eventID, c.Sender().ID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while getting event participant from db: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.Events.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "user:myEvents:back", struct {
+				Page string
+			}{
+				Page: page,
+			}),
+		)
+	}
+
 	_ = c.Edit(
 		banner.Events.Caption(h.layout.Text(c, "my_event_text", struct {
 			Name                  string
@@ -607,6 +622,7 @@ func (h Handler) myEvent(c tele.Context) error {
 			MaxParticipants       int
 			AfterRegistrationText string
 			IsOver                bool
+			IsVisited             bool
 		}{
 			Name:                  event.Name,
 			Description:           event.Description,
@@ -617,6 +633,7 @@ func (h Handler) myEvent(c tele.Context) error {
 			MaxParticipants:       event.MaxParticipants,
 			AfterRegistrationText: event.AfterRegistrationText,
 			IsOver:                event.IsOver(0),
+			IsVisited:             eventParticipant.IsEventQr || eventParticipant.IsUserQr,
 		})),
 		h.layout.Markup(c, "user:myEvents:event", struct {
 			ID   string

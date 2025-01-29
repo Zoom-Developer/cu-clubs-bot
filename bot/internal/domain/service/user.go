@@ -5,9 +5,11 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"github.com/Badsnus/cu-clubs-bot/bot/pkg/smtp"
 	"strings"
 
+	"github.com/Badsnus/cu-clubs-bot/bot/pkg/smtp"
+
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/dto"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 
 	tele "gopkg.in/telebot.v3"
@@ -34,7 +36,7 @@ type smtpClient interface {
 }
 
 type eventParticipantStorage interface {
-	GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]entity.Event, error)
+	GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]dto.UserEvent, error)
 	CountUserEvents(ctx context.Context, userID int64) (int64, error)
 }
 
@@ -110,7 +112,7 @@ func (s *UserService) GetUsersByEventID(ctx context.Context, eventID string) ([]
 	return s.userStorage.GetUsersByEventID(ctx, eventID)
 }
 
-func (s *UserService) GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]entity.Event, error) {
+func (s *UserService) GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]dto.UserEvent, error) {
 	return s.eventParticipantStorage.GetUserEvents(ctx, userID, limit, offset)
 }
 

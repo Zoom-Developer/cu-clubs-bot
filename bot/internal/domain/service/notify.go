@@ -145,7 +145,6 @@ func (s *NotifyService) checkAndNotify(ctx context.Context) {
 			location.Location(),
 		)
 
-		s.logger.Debugf("Event %s start time: %s", event.ID, eventStartTime)
 		timeUntilStart := eventStartTime.Sub(now)
 		s.logger.Debugf("Event %s starts in %s", event.ID, timeUntilStart)
 
