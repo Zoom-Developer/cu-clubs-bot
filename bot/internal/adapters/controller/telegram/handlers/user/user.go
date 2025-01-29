@@ -135,7 +135,7 @@ func (h Handler) qrCode(c tele.Context) error {
 }
 
 func (h Handler) eventsList(c tele.Context) error {
-	const eventsOnPage = 10
+	const eventsOnPage = 5
 	h.logger.Infof("(user: %d) edit events list", c.Sender().ID)
 
 	var (
@@ -395,7 +395,7 @@ func (h Handler) event(c tele.Context) error {
 }
 
 func (h Handler) myEvents(c tele.Context) error {
-	const eventsOnPage = 10
+	const eventsOnPage = 5
 	h.logger.Infof("(user: %d) edit my events list", c.Sender().ID)
 
 	var (

@@ -1147,7 +1147,7 @@ func (h Handler) confirmEventCreation(c tele.Context) error {
 }
 
 func (h Handler) eventsList(c tele.Context) error {
-	const eventsOnPage = 10
+	const eventsOnPage = 5
 	h.logger.Infof("(user: %d) edit events list", c.Sender().ID)
 
 	var (
@@ -1201,13 +1201,15 @@ func (h Handler) eventsList(c tele.Context) error {
 	markup := c.Bot().NewMarkup()
 	for _, event := range events {
 		rows = append(rows, markup.Row(*h.layout.Button(c, "clubOwner:events:event", struct {
-			ID   string
-			Page int
-			Name string
+			ID     string
+			Page   int
+			Name   string
+			IsOver bool
 		}{
-			ID:   event.ID,
-			Page: p,
-			Name: event.Name,
+			ID:     event.ID,
+			Page:   p,
+			Name:   event.Name,
+			IsOver: event.IsOver(0),
 		})))
 	}
 	pagesCount := (int(eventsCount) - 1) / eventsOnPage

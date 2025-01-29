@@ -49,8 +49,47 @@ func (s *EventStorage) GetAll(ctx context.Context) ([]entity.Event, error) {
 // GetByClubID is a function that gets events by club_id with pagination from the database.
 func (s *EventStorage) GetByClubID(ctx context.Context, limit, offset int, order string, clubID string) ([]entity.Event, error) {
 	var events []entity.Event
-	err := s.db.WithContext(ctx).Where("club_id = ?", clubID).Order(order).Limit(limit).Offset(offset).Find(&events).Error
-	return events, err
+
+	currentTime := time.Now()
+
+	// Count total upcoming events for this club.
+	var upcomingCount int64
+	if err := s.db.WithContext(ctx).
+		Model(&entity.Event{}).
+		Where("club_id = ? AND start_time > ?", clubID, currentTime).
+		Count(&upcomingCount).Error; err != nil {
+		return nil, err
+	}
+
+	// If offset is within upcoming events, get upcoming events
+	if offset < int(upcomingCount) {
+		if err := s.db.WithContext(ctx).
+			Where("club_id = ? AND start_time > ?", clubID, currentTime).
+			Order(order).
+			Limit(limit).
+			Offset(offset).
+			Find(&events).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	// If we haven't filled the limit, and there might be past events to show
+	remainingLimit := limit - len(events)
+	if remainingLimit > 0 {
+		pastOffset := max(0, offset-int(upcomingCount)) // Adjust offset for past events
+		var pastEvents []entity.Event
+		if err := s.db.WithContext(ctx).
+			Where("club_id = ? AND start_time <= ?", clubID, currentTime).
+			Order(order).
+			Limit(remainingLimit).
+			Offset(pastOffset).
+			Find(&pastEvents).Error; err != nil {
+			return nil, err
+		}
+		events = append(events, pastEvents...)
+	}
+
+	return events, nil
 }
 
 // GetFutureByClubID is a function that gets future events by club_id with pagination from the database.
@@ -109,8 +148,9 @@ func (s *EventStorage) Count(ctx context.Context, role string) (int64, error) {
 func (s *EventStorage) CountByClubID(ctx context.Context, clubID string) (int64, error) {
 	var count int64
 
-	query := s.db.WithContext(ctx).Where("club_id = ?", clubID).Find(&entity.Event{})
-	err := query.Count(&count).Error
+	err := s.db.WithContext(ctx).Model(&entity.Event{}).
+		Where("club_id = ? AND deleted_at IS NULL", clubID).
+		Count(&count).Error
 	return count, err
 }
 

@@ -246,7 +246,7 @@ buttons:
   clubOwner:events:event:
     unique: cOwner_events_event
     callback_data: '{{.ID}} {{.Page}}'
-    text: '{{.Name}}'
+    text: '{{if .IsOver}}{{text `over` }} {{end}}{{.Name}}'
 
   clubOwner:event:back:
     unique: clubOwner_event_back
