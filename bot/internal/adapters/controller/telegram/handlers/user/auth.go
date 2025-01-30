@@ -99,7 +99,7 @@ func (h Handler) externalUserAuth(c tele.Context) error {
 func (h Handler) grantUserAuth(c tele.Context) error {
 	h.logger.Infof("(user: %d) grant user auth", c.Sender().ID)
 
-	grantChatID := int64(viper.GetInt("bot.grant-chat-id"))
+	grantChatID := int64(viper.GetInt("bot.auth.grant-chat-id"))
 	member, err := c.Bot().ChatMemberOf(&tele.Chat{ID: grantChatID}, &tele.User{ID: c.Sender().ID})
 	if err != nil {
 		h.logger.Errorf("(user: %d) error while verification user's membership in the grant chat: %v", c.Sender().ID, err)
