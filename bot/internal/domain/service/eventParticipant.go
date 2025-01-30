@@ -159,6 +159,10 @@ func (s *EventParticipantService) checkAndSend(ctx context.Context) {
 
 		var buf *bytes.Buffer
 		buf, err = participantsToXLSX(participants)
+		if err != nil {
+			s.logger.Errorf("failed to form xlsx with participants %s: %v", event.ID, err)
+			continue
+		}
 
 		s.eventParticipantSMTPClient.Send(s.passEmail, "Event passes", "Event passes", "Event passes", buf)
 	}
