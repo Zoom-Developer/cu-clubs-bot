@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/dto"
 
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 )
@@ -14,7 +15,7 @@ type EventParticipantStorage interface {
 	GetByEventID(ctx context.Context, eventID string) ([]entity.EventParticipant, error)
 	CountByEventID(ctx context.Context, eventID string) (int64, error)
 	CountVisitedByEventID(ctx context.Context, eventID string) (int64, error)
-	GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]entity.Event, error)
+	GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]dto.UserEvent, error)
 	CountUserEvents(ctx context.Context, userID int64) (int64, error)
 }
 
@@ -59,7 +60,7 @@ func (s *EventParticipantService) CountVisitedByEventID(ctx context.Context, eve
 	return int(count), err
 }
 
-func (s *EventParticipantService) GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]entity.Event, error) {
+func (s *EventParticipantService) GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]dto.UserEvent, error) {
 	return s.storage.GetUserEvents(ctx, userID, limit, offset)
 }
 

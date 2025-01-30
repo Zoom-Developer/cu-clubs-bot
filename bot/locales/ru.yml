@@ -125,7 +125,9 @@ my_event_text: |-
 
   {{if .AfterRegistrationText}}<blockquote><b>📄 Текст после регистрации:</b> 
   {{.AfterRegistrationText}}</blockquote>{{end}}
+  
   {{if .IsOver}}<i>⌛️ Мероприятие прошло</i>{{else}}<b>✔️ Вы зарегистрированы</b>{{end}}
+  {{if .IsVisited}}<b>✔️ Вы посетили мероприятие</b>{{else}}{{if .IsOver}}<i>❌ Вы не посетили мероприятие</i>{{end}}{{end}}
 
 #club owner menu
 no_clubs: |-

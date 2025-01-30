@@ -121,7 +121,7 @@ buttons:
   user:myEvents:event:
     unique: user_myEvent
     callback_data: '{{.ID}} {{.Page}}'
-    text: '{{if .IsOver}}{{text `over` }} {{end}}{{.Name}}'
+    text: '{{if .IsOver}}{{text `over` }} {{end}}{{.Name}}{{if .IsVisited}} {{text `tick`}}{{end}}'
 
   user:myEvents:next_page:
     unique: user_myEvents_nextPage
