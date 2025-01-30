@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/location"
 	"time"
 
@@ -22,6 +23,7 @@ func NewEventStorage(db *gorm.DB) *EventStorage {
 
 // Create is a function that creates a new event in the database.
 func (s *EventStorage) Create(ctx context.Context, event *entity.Event) (*entity.Event, error) {
+	fmt.Printf("%+v", event)
 	err := s.db.WithContext(ctx).Create(&event).Error
 	return event, err
 }
@@ -30,6 +32,7 @@ func (s *EventStorage) Create(ctx context.Context, event *entity.Event) (*entity
 func (s *EventStorage) Get(ctx context.Context, id string) (*entity.Event, error) {
 	var event entity.Event
 	err := s.db.WithContext(ctx).Where("id = ?", id).First(&event).Error
+	fmt.Println(event)
 	return &event, err
 }
 

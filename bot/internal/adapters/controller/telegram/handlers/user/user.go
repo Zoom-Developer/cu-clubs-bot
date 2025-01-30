@@ -82,7 +82,7 @@ func New(b *bot.Bot) *Handler {
 	eventParticipantStorage := postgres.NewEventParticipantStorage(b.DB)
 	clubOwnerStorage := postgres.NewClubOwnerStorage(b.DB)
 
-	eventPartService := service.NewEventParticipantService(eventParticipantStorage)
+	eventPartService := service.NewEventParticipantService(nil, eventParticipantStorage, nil, nil, nil, "")
 
 	smtpClient := smtp.NewClient(b.SMTPDialer, viper.GetString("service.smtp.domain"), viper.GetString("service.smtp.email"))
 

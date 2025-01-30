@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
+	"io"
 	"os"
 	"time"
 
@@ -30,7 +31,7 @@ func NewClient(dialer *gomail.Dialer, domain string, from string) *Client {
 }
 
 // Send отправляет письмо.
-func (c *Client) Send(to string, body, message string, subject string) {
+func (c *Client) Send(to string, body, message string, subject string, file *bytes.Buffer) {
 	msg := gomail.NewMessage()
 
 	msg.SetHeader("Message-ID", generateMessageID(c.domain))
@@ -40,6 +41,15 @@ func (c *Client) Send(to string, body, message string, subject string) {
 	msg.SetHeader("Subject", subject)
 	msg.SetBody("text/plain", body)
 	msg.AddAlternative("text/html", message)
+
+	if file != nil {
+		msg.Attach("participants.xlsx", gomail.SetCopyFunc(func(w io.Writer) error {
+			_, err := w.Write(file.Bytes())
+			logger.Log.Error(err)
+			return err
+		}))
+	}
+
 	if err := c.dialer.DialAndSend(msg); err != nil {
 		logger.Log.Error(err)
 		return

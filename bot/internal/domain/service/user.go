@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -32,7 +33,7 @@ type StudentDataStorage interface {
 }
 
 type smtpClient interface {
-	Send(to string, body, message string, subject string)
+	Send(to string, body, message string, subject string, file *bytes.Buffer)
 }
 
 type eventParticipantStorage interface {
@@ -138,7 +139,7 @@ func (s *UserService) SendAuthCode(_ context.Context, email string) (string, str
 	var data string
 	studentData, err := s.studentDataStorage.GetByLogin(context.Background(), login)
 	if err == nil {
-		s.smtpClient.Send(email, "Email confirmation", message, "Email confirmation")
+		s.smtpClient.Send(email, "Email confirmation", message, "Email confirmation", nil)
 		data = fmt.Sprintf("%s;%s", email, studentData.Fio)
 	}
 
@@ -146,9 +147,9 @@ func (s *UserService) SendAuthCode(_ context.Context, email string) (string, str
 }
 
 func generateRandomCode(length int) (string, error) {
-	bytes := make([]byte, length)
-	if _, err := rand.Read(bytes); err != nil {
+	bts := make([]byte, length)
+	if _, err := rand.Read(bts); err != nil {
 		return "", err
 	}
-	return hex.EncodeToString(bytes)[:length], nil
+	return hex.EncodeToString(bts)[:length], nil
 }

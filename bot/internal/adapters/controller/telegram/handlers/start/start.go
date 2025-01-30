@@ -101,7 +101,7 @@ func New(b *bot.Bot) *Handler {
 		userService:             userSrvc,
 		clubService:             service.NewClubService(clubStorage),
 		eventService:            eventSrvc,
-		eventParticipantService: service.NewEventParticipantService(eventParticipantStorage),
+		eventParticipantService: service.NewEventParticipantService(nil, eventParticipantStorage, nil, nil, nil, ""),
 		qrService:               qrSrvc,
 		callbacksStorage:        b.Redis.Callbacks,
 		menuHandler:             menu.New(b),

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/handlers/middlewares"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/location"
 	qr "github.com/Badsnus/cu-clubs-bot/bot/pkg/qrcode"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
@@ -121,7 +122,7 @@ func NewHandler(b *bot.Bot) *Handler {
 		clubOwnerService:        service.NewClubOwnerService(clubOwnerStorage, userStorage),
 		userService:             service.NewUserService(userStorage, nil, nil, nil, ""),
 		eventService:            eventSrvc,
-		eventParticipantService: service.NewEventParticipantService(eventParticipantStorage),
+		eventParticipantService: service.NewEventParticipantService(nil, eventParticipantStorage, nil, nil, nil, ""),
 		qrService:               qrSrvc,
 		notificationService: service.NewNotifyService(
 			b.Bot,
@@ -721,6 +722,8 @@ func (h Handler) createEvent(c tele.Context) error {
 
 	h.logger.Infof("(user: %d) create new event request(club=%s)", c.Sender().ID, clubID)
 
+	h.eventsStorage.Clear(c.Sender().ID)
+
 	club, err := h.clubService.Get(context.Background(), clubID)
 	if err != nil {
 		h.logger.Errorf("(user: %d) error while get clubs: %v", c.Sender().ID, err)
@@ -932,17 +935,17 @@ func (h Handler) createEvent(c tele.Context) error {
 	}
 
 	eventStartTime, _ = time.Parse(timeLayout, *steps[3].result)
-	eventStartTimeStr = *steps[3].result
+	eventStartTimeStr = time.Date(eventStartTime.Year(), eventStartTime.Month(), eventStartTime.Day(), eventStartTime.Hour(), eventStartTime.Minute(), eventStartTime.Second(), eventStartTime.Nanosecond(), location.Location()).Format(timeLayout)
 
 	eventEndTime, _ = time.Parse(timeLayout, *steps[4].result)
-	eventEndTimeStr = *steps[4].result
+	eventEndTimeStr = time.Date(eventEndTime.Year(), eventEndTime.Month(), eventEndTime.Day(), eventEndTime.Hour(), eventEndTime.Minute(), eventEndTime.Second(), eventEndTime.Nanosecond(), location.Location()).Format(timeLayout)
 	if *steps[4].result == "skip" {
 		eventEndTime = time.Time{}
 		eventEndTimeStr = ""
 	}
 
 	eventRegistrationEndTime, _ = time.Parse(timeLayout, *steps[5].result)
-	eventRegistrationEndTimeStr = *steps[5].result
+	eventRegistrationEndTimeStr = time.Date(eventRegistrationEndTime.Year(), eventRegistrationEndTime.Month(), eventRegistrationEndTime.Day(), eventRegistrationEndTime.Hour(), eventRegistrationEndTime.Minute(), eventRegistrationEndTime.Second(), eventRegistrationEndTime.Nanosecond(), location.Location()).Format(timeLayout)
 
 	eventAfterRegistrationText = *steps[6].result
 	if *steps[6].result == "skip" {
@@ -957,14 +960,13 @@ func (h Handler) createEvent(c tele.Context) error {
 		Name:                  *steps[0].result,
 		Description:           eventDescription,
 		Location:              *steps[2].result,
-		StartTime:             eventStartTime,
-		EndTime:               eventEndTime,
-		RegistrationEnd:       eventRegistrationEndTime,
+		StartTime:             time.Date(eventStartTime.Year(), eventStartTime.Month(), eventStartTime.Day(), eventStartTime.Hour(), eventStartTime.Minute(), eventStartTime.Second(), eventStartTime.Nanosecond(), location.Location()),
+		EndTime:               time.Date(eventEndTime.Year(), eventEndTime.Month(), eventEndTime.Day(), eventEndTime.Hour(), eventEndTime.Minute(), eventEndTime.Second(), eventEndTime.Nanosecond(), location.Location()),
+		RegistrationEnd:       time.Date(eventRegistrationEndTime.Year(), eventRegistrationEndTime.Month(), eventRegistrationEndTime.Day(), eventRegistrationEndTime.Hour(), eventRegistrationEndTime.Minute(), eventRegistrationEndTime.Second(), eventRegistrationEndTime.Nanosecond(), location.Location()),
 		AfterRegistrationText: eventAfterRegistrationText,
 		MaxParticipants:       eventMaxParticipants,
 		ExpectedParticipants:  eventMaxExpectedParticipants,
 	}
-
 	h.eventsStorage.Set(c.Sender().ID, event, 0)
 
 	markup := h.layout.Markup(c, "clubOwner:createClub:confirm", struct {
@@ -1158,6 +1160,10 @@ func (h Handler) confirmEventCreation(c tele.Context) error {
 		)
 	}
 
+	event.StartTime = event.StartTime.UTC()
+	event.EndTime = event.EndTime.UTC()
+	event.RegistrationEnd = event.RegistrationEnd.UTC()
+
 	_, err = h.eventService.Create(context.Background(), &event)
 	if err != nil {
 		return c.Edit(
@@ -1169,6 +1175,8 @@ func (h Handler) confirmEventCreation(c tele.Context) error {
 			}),
 		)
 	}
+
+	h.eventsStorage.Clear(c.Sender().ID)
 
 	return c.Edit(
 		banner.ClubOwner.Caption(h.layout.Text(c, "event_created", struct {
@@ -1407,7 +1415,7 @@ func (h Handler) event(c tele.Context) error {
 		)
 	}
 
-	endTime := event.EndTime.Format("02.01.2006 15:04")
+	endTime := event.EndTime.In(location.Location()).Format("02.01.2006 15:04")
 	if event.EndTime.IsZero() {
 		endTime = ""
 	}
@@ -1430,9 +1438,9 @@ func (h Handler) event(c tele.Context) error {
 			Name:                  event.Name,
 			Description:           event.Description,
 			Location:              event.Location,
-			StartTime:             event.StartTime.Format("02.01.2006 15:04"),
+			StartTime:             event.StartTime.In(location.Location()).Format("02.01.2006 15:04"),
 			EndTime:               endTime,
-			RegistrationEnd:       event.RegistrationEnd.Format("02.01.2006 15:04"),
+			RegistrationEnd:       event.RegistrationEnd.In(location.Location()).Format("02.01.2006 15:04"),
 			MaxParticipants:       event.MaxParticipants,
 			ParticipantsCount:     registeredUsersCount,
 			VisitedCount:          visitedUsersCount,
