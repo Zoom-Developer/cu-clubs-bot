@@ -29,6 +29,7 @@ func Setup(b *bot.Bot) {
 		service.NewClubOwnerService(postgres.NewClubOwnerStorage(b.DB), postgres.NewUserStorage(b.DB)),
 		postgres.NewEventStorage(b.DB),
 		postgres.NewNotificationStorage(b.DB),
+		nil,
 	)
 	notifyService.StartNotifyScheduler()
 

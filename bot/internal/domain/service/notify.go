@@ -28,10 +28,15 @@ type notificationStorage interface {
 	GetUnnotifiedUsers(ctx context.Context, eventID string, notificationType entity.NotificationType) ([]entity.EventParticipant, error)
 }
 
+type notifyEventParticipantStorage interface {
+	GetByEventID(ctx context.Context, eventID string) ([]entity.EventParticipant, error)
+}
+
 type NotifyService struct {
-	clubOwnerService    clubOwnerService
-	eventStorage        eventStorage
-	notificationStorage notificationStorage
+	clubOwnerService              clubOwnerService
+	eventStorage                  eventStorage
+	notificationStorage           notificationStorage
+	notifyEventParticipantStorage notifyEventParticipantStorage
 
 	bot    *tele.Bot
 	layout *layout.Layout
@@ -45,14 +50,16 @@ func NewNotifyService(
 	clubOwnerService clubOwnerService,
 	eventStorage eventStorage,
 	notificationStorage notificationStorage,
+	notifyEventParticipantStorage notifyEventParticipantStorage,
 ) *NotifyService {
 	return &NotifyService{
-		clubOwnerService:    clubOwnerService,
-		eventStorage:        eventStorage,
-		notificationStorage: notificationStorage,
-		bot:                 bot,
-		layout:              layout,
-		logger:              logger,
+		clubOwnerService:              clubOwnerService,
+		eventStorage:                  eventStorage,
+		notificationStorage:           notificationStorage,
+		notifyEventParticipantStorage: notifyEventParticipantStorage,
+		bot:                           bot,
+		layout:                        layout,
+		logger:                        logger,
 	}
 }
 
@@ -95,6 +102,30 @@ func (s *NotifyService) SendClubWarning(clubID string, what interface{}, opts ..
 			if errSend != nil {
 				errors = append(errors, errSend)
 			}
+		}
+	}
+
+	if len(errors) > 0 {
+		return errors[0]
+	}
+	return nil
+}
+
+func (s *NotifyService) SendEventUpdate(eventID string, what interface{}, opts ...interface{}) error {
+	participants, err := s.notifyEventParticipantStorage.GetByEventID(context.Background(), eventID)
+	if err != nil {
+		return err
+	}
+
+	var errors []error
+	for _, participant := range participants {
+		chat, errGetChat := s.bot.ChatByID(participant.UserID)
+		if errGetChat != nil {
+			errors = append(errors, errGetChat)
+		}
+		_, errSend := s.bot.Send(chat, what, opts...)
+		if errSend != nil {
+			errors = append(errors, errSend)
 		}
 	}
 

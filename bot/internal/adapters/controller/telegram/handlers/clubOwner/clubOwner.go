@@ -69,6 +69,10 @@ type qrService interface {
 	GetEventQR(ctx context.Context, eventID string) (qr tele.File, err error)
 }
 
+type notificationService interface {
+	SendEventUpdate(eventID string, what interface{}, opts ...interface{}) error
+}
+
 type Handler struct {
 	layout *layout.Layout
 	logger *types.Logger
@@ -82,6 +86,7 @@ type Handler struct {
 	eventService            eventService
 	eventParticipantService eventParticipantService
 	qrService               qrService
+	notificationService     notificationService
 }
 
 func NewHandler(b *bot.Bot) *Handler {
@@ -118,6 +123,15 @@ func NewHandler(b *bot.Bot) *Handler {
 		eventService:            eventSrvc,
 		eventParticipantService: service.NewEventParticipantService(eventParticipantStorage),
 		qrService:               qrSrvc,
+		notificationService: service.NewNotifyService(
+			b.Bot,
+			b.Layout,
+			b.Logger,
+			service.NewClubOwnerService(clubOwnerStorage, userStorage),
+			nil,
+			nil,
+			eventParticipantStorage,
+		),
 	}
 }
 
@@ -1568,6 +1582,9 @@ func (h Handler) editEventName(c tele.Context) error {
 		eventName string
 		done      bool
 	)
+
+	oldName := event.Name
+
 	for {
 		message, canceled, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
 		if message != nil {
@@ -1635,6 +1652,23 @@ func (h Handler) editEventName(c tele.Context) error {
 				Page: page,
 			}),
 		)
+	}
+
+	err = h.notificationService.SendEventUpdate(eventID,
+		h.layout.Text(c, "event_notification_update", struct {
+			Name                  string
+			OldName               string
+			Description           string
+			AfterRegistrationText string
+			MaxParticipants       int
+		}{
+			Name:    event.Name,
+			OldName: oldName,
+		}),
+		h.layout.Markup(c, "core:hide"),
+	)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while send event update notification: %v", c.Sender().ID, err)
 	}
 
 	return c.Send(
@@ -1763,6 +1797,23 @@ func (h Handler) editEventDescription(c tele.Context) error {
 		)
 	}
 
+	err = h.notificationService.SendEventUpdate(eventID,
+		h.layout.Text(c, "event_notification_update", struct {
+			Name                  string
+			OldName               string
+			Description           string
+			AfterRegistrationText string
+			MaxParticipants       int
+		}{
+			Name:        event.Name,
+			Description: event.Description,
+		}),
+		h.layout.Markup(c, "core:hide"),
+	)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while send event update notification: %v", c.Sender().ID, err)
+	}
+
 	return c.Send(
 		banner.ClubOwner.Caption(h.layout.Text(c, "event_description_changed")),
 		h.layout.Markup(c, "clubOwner:event:settings:back", struct {
@@ -1888,6 +1939,23 @@ func (h Handler) editEventAfterRegistrationText(c tele.Context) error {
 				Page: page,
 			}),
 		)
+	}
+
+	err = h.notificationService.SendEventUpdate(eventID,
+		h.layout.Text(c, "event_notification_update", struct {
+			Name                  string
+			OldName               string
+			Description           string
+			AfterRegistrationText string
+			MaxParticipants       int
+		}{
+			Name:                  event.Name,
+			AfterRegistrationText: event.AfterRegistrationText,
+		}),
+		h.layout.Markup(c, "core:hide"),
+	)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while send event update notification: %v", c.Sender().ID, err)
 	}
 
 	return c.Send(
@@ -2035,6 +2103,23 @@ func (h Handler) editEventMaxParticipants(c tele.Context) error {
 		)
 	}
 
+	err = h.notificationService.SendEventUpdate(eventID,
+		h.layout.Text(c, "event_notification_update", struct {
+			Name                  string
+			OldName               string
+			Description           string
+			AfterRegistrationText string
+			MaxParticipants       int
+		}{
+			Name:            event.Name,
+			MaxParticipants: event.MaxParticipants,
+		}),
+		h.layout.Markup(c, "core:hide"),
+	)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while send event update notification: %v", c.Sender().ID, err)
+	}
+
 	return c.Send(
 		banner.ClubOwner.Caption(h.layout.Text(c, "event_max_participants_changed")),
 		h.layout.Markup(c, "clubOwner:event:settings:back", struct {
@@ -2128,6 +2213,18 @@ func (h Handler) acceptEventDelete(c tele.Context) error {
 		)
 	}
 
+	err = h.notificationService.SendEventUpdate(eventID,
+		h.layout.Text(c, "event_notification_delete", struct {
+			Name string
+		}{
+			Name: event.Name,
+		}),
+		h.layout.Markup(c, "core:hide"),
+	)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while send event delete notification: %v", c.Sender().ID, err)
+	}
+
 	return c.Edit(
 		banner.ClubOwner.Caption(h.layout.Text(c, "event_deleted", struct {
 			Name string
@@ -2155,6 +2252,20 @@ func (h Handler) declineEventDelete(c tele.Context) error {
 	h.logger.Infof("(user: %d) decline delete event(eventID=%s)", c.Sender().ID, eventID)
 
 	event, err := h.eventService.Get(context.Background(), eventID)
+	if err != nil {
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:event:delete:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   eventID,
+				Page: page,
+			}),
+		)
+	}
+
+	club, err := h.clubService.Get(context.Background(), event.ClubID)
 	if err != nil {
 		return c.Edit(
 			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
@@ -2198,6 +2309,29 @@ func (h Handler) declineEventDelete(c tele.Context) error {
 		)
 	}
 
+	eventMarkup := h.layout.Markup(c, "clubOwner:event:menu", struct {
+		ID     string
+		ClubID string
+		Page   string
+	}{
+		ID:     eventID,
+		ClubID: event.ClubID,
+		Page:   page,
+	})
+
+	if club.QrAllowed {
+		eventMarkup.InlineKeyboard = append(
+			[][]tele.InlineButton{{*h.layout.Button(c, "clubOwner:event:qr", struct {
+				ID   string
+				Page string
+			}{
+				ID:   eventID,
+				Page: page,
+			}).Inline()}},
+			eventMarkup.InlineKeyboard...,
+		)
+	}
+
 	endTime := event.EndTime.Format("02.01.2006 15:04")
 	if event.EndTime.IsZero() {
 		endTime = ""
@@ -2230,15 +2364,7 @@ func (h Handler) declineEventDelete(c tele.Context) error {
 			AfterRegistrationText: event.AfterRegistrationText,
 			Link:                  event.Link(c.Bot().Me.Username),
 		})),
-		h.layout.Markup(c, "clubOwner:event:menu", struct {
-			ID     string
-			ClubID string
-			Page   string
-		}{
-			ID:     eventID,
-			ClubID: event.ClubID,
-			Page:   page,
-		}),
+		eventMarkup,
 	)
 }
 
@@ -2253,6 +2379,14 @@ func (h Handler) registeredUsers(c tele.Context) error {
 	h.logger.Infof("(user: %d) get registered users (eventID=%s)", c.Sender().ID, eventID)
 
 	event, err := h.eventService.Get(context.Background(), eventID)
+	if err != nil {
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "core:hide"),
+		)
+	}
+
+	club, err := h.clubService.Get(context.Background(), event.ClubID)
 	if err != nil {
 		return c.Send(
 			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
@@ -2323,6 +2457,29 @@ func (h Handler) registeredUsers(c tele.Context) error {
 
 	_ = c.Delete()
 
+	eventMarkup := h.layout.Markup(c, "clubOwner:event:menu", struct {
+		ID     string
+		ClubID string
+		Page   string
+	}{
+		ID:     eventID,
+		ClubID: event.ClubID,
+		Page:   page,
+	})
+
+	if club.QrAllowed {
+		eventMarkup.InlineKeyboard = append(
+			[][]tele.InlineButton{{*h.layout.Button(c, "clubOwner:event:qr", struct {
+				ID   string
+				Page string
+			}{
+				ID:   eventID,
+				Page: page,
+			}).Inline()}},
+			eventMarkup.InlineKeyboard...,
+		)
+	}
+
 	endTime := event.EndTime.Format("02.01.2006 15:04")
 	if event.EndTime.IsZero() {
 		endTime = ""
@@ -2355,15 +2512,8 @@ func (h Handler) registeredUsers(c tele.Context) error {
 			AfterRegistrationText: event.AfterRegistrationText,
 			Link:                  event.Link(c.Bot().Me.Username),
 		})),
-		h.layout.Markup(c, "clubOwner:event:menu", struct {
-			ID     string
-			ClubID string
-			Page   string
-		}{
-			ID:     eventID,
-			ClubID: event.ClubID,
-			Page:   page,
-		}))
+		eventMarkup,
+	)
 }
 
 func (h Handler) eventQRCode(c tele.Context) error {

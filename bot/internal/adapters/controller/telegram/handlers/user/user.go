@@ -116,6 +116,7 @@ func New(b *bot.Bot) *Handler {
 			service.NewClubOwnerService(clubOwnerStorage, userStorage),
 			nil,
 			nil,
+			nil,
 		),
 		menuHandler:   menu.New(b),
 		codesStorage:  b.Redis.Codes,
