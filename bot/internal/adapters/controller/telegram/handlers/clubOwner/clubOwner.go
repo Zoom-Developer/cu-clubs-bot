@@ -1,17 +1,14 @@
 package clubowner
 
 import (
+	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/handlers/middlewares"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/location"
 	qr "github.com/Badsnus/cu-clubs-bot/bot/pkg/qrcode"
-	"github.com/google/uuid"
 	"github.com/spf13/viper"
 	"github.com/xuri/excelize/v2"
-	"os"
-	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -2440,7 +2437,7 @@ func (h Handler) registeredUsers(c tele.Context) error {
 		)
 	}
 
-	filePath, err := usersToXLSX(users)
+	buffer, err := usersToXLSX(users)
 	if err != nil {
 		return c.Send(
 			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
@@ -2449,20 +2446,12 @@ func (h Handler) registeredUsers(c tele.Context) error {
 	}
 
 	file := &tele.Document{
-		File:     tele.FromDisk(filePath),
+		File:     tele.FromReader(buffer),
 		Caption:  h.layout.Text(c, "registered_users_text"),
 		FileName: "users.xlsx",
 	}
 
 	_ = c.Send(file)
-
-	if err = os.Remove(filePath); err != nil {
-		return c.Send(
-			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
-			h.layout.Markup(c, "core:hide"),
-		)
-	}
-
 	_ = c.Delete()
 
 	eventMarkup := h.layout.Markup(c, "clubOwner:event:menu", struct {
@@ -2673,19 +2662,7 @@ func parseEventCallback(callbackData string) (string, int, error) {
 	return clubID, p, nil
 }
 
-func usersToXLSX(users []entity.User) (string, error) {
-	wd, _ := os.Getwd()
-
-	fileDir := filepath.Join(wd, viper.GetString("settings.xlsx.output-dir"))
-	if _, err := os.Stat(fileDir); os.IsNotExist(err) {
-		err = os.MkdirAll(fileDir, os.ModePerm)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	filePath := filepath.Join(fileDir, fmt.Sprintf("users_%s.xlsx", uuid.New().String()))
-
+func usersToXLSX(users []entity.User) (*bytes.Buffer, error) {
 	f := excelize.NewFile()
 
 	sheet := "Sheet1"
@@ -2706,9 +2683,10 @@ func usersToXLSX(users []entity.User) (string, error) {
 		_ = f.SetCellValue(sheet, "E"+strconv.Itoa(row), user.Username)
 	}
 
-	if err := f.SaveAs(filePath); err != nil {
-		return "", err
+	var buf bytes.Buffer
+	if err := f.Write(&buf); err != nil {
+		return nil, err
 	}
 
-	return filePath, nil
+	return &buf, nil
 }
