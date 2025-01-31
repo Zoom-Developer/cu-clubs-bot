@@ -302,12 +302,12 @@ func (h Handler) editName(c tele.Context) error {
 		done     bool
 	)
 	for {
-		message, canceled, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
-		if message != nil {
-			inputCollector.Collect(message)
+		response, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
+		if response.Message != nil {
+			inputCollector.Collect(response.Message)
 		}
 		switch {
-		case canceled:
+		case response.Canceled:
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 			return nil
 		case errGet != nil:
@@ -320,7 +320,7 @@ func (h Handler) editName(c tele.Context) error {
 					ID: club.ID,
 				}),
 			)
-		case message == nil:
+		case response.Message == nil:
 			_ = inputCollector.Send(c,
 				banner.ClubOwner.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "input_club_description"))),
 				h.layout.Markup(c, "clubOwner:club:settings:back", struct {
@@ -329,7 +329,7 @@ func (h Handler) editName(c tele.Context) error {
 					ID: club.ID,
 				}),
 			)
-		case !validator.ClubName(message.Text, nil):
+		case !validator.ClubName(response.Message.Text, nil):
 			_ = inputCollector.Send(c,
 				banner.ClubOwner.Caption(h.layout.Text(c, "invalid_club_name")),
 				h.layout.Markup(c, "clubOwner:club:settings:back", struct {
@@ -338,8 +338,8 @@ func (h Handler) editName(c tele.Context) error {
 					ID: club.ID,
 				}),
 			)
-		case validator.ClubName(message.Text, nil):
-			clubName = message.Text
+		case validator.ClubName(response.Message.Text, nil):
+			clubName = response.Message.Text
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
 			done = true
 		}
@@ -411,12 +411,12 @@ func (h Handler) editDescription(c tele.Context) error {
 		done            bool
 	)
 	for {
-		message, canceled, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
-		if message != nil {
-			inputCollector.Collect(message)
+		response, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
+		if response.Message != nil {
+			inputCollector.Collect(response.Message)
 		}
 		switch {
-		case canceled:
+		case response.Canceled:
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 			return nil
 		case errGet != nil:
@@ -429,7 +429,7 @@ func (h Handler) editDescription(c tele.Context) error {
 					ID: club.ID,
 				}),
 			)
-		case message == nil:
+		case response.Message == nil:
 			_ = inputCollector.Send(c,
 				banner.ClubOwner.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "input_club_description"))),
 				h.layout.Markup(c, "clubOwner:club:settings:back", struct {
@@ -438,7 +438,7 @@ func (h Handler) editDescription(c tele.Context) error {
 					ID: club.ID,
 				}),
 			)
-		case !validator.ClubDescription(message.Text, nil):
+		case !validator.ClubDescription(response.Message.Text, nil):
 			_ = inputCollector.Send(c,
 				banner.ClubOwner.Caption(h.layout.Text(c, "invalid_club_description")),
 				h.layout.Markup(c, "clubOwner:club:settings:back", struct {
@@ -447,8 +447,8 @@ func (h Handler) editDescription(c tele.Context) error {
 					ID: club.ID,
 				}),
 			)
-		case validator.ClubDescription(message.Text, nil):
-			clubDescription = message.Text
+		case validator.ClubDescription(response.Message.Text, nil):
+			clubDescription = response.Message.Text
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
 			done = true
 		}
@@ -514,12 +514,12 @@ func (h Handler) addOwner(c tele.Context) error {
 		done bool
 	)
 	for {
-		message, canceled, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
-		if message != nil {
-			inputCollector.Collect(message)
+		response, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
+		if response.Message != nil {
+			inputCollector.Collect(response.Message)
 		}
 		switch {
-		case canceled:
+		case response.Canceled:
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 			return nil
 		case errGet != nil:
@@ -531,7 +531,7 @@ func (h Handler) addOwner(c tele.Context) error {
 					ID: club.ID,
 				}),
 			)
-		case message == nil:
+		case response.Message == nil:
 			_ = inputCollector.Send(c,
 				banner.Menu.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "input_user_id"))),
 				h.layout.Markup(c, "clubOwner:club:settings:back", struct {
@@ -541,7 +541,7 @@ func (h Handler) addOwner(c tele.Context) error {
 				}),
 			)
 		default:
-			userID, err := strconv.ParseInt(message.Text, 10, 64)
+			userID, err := strconv.ParseInt(response.Message.Text, 10, 64)
 			if err != nil {
 				_ = inputCollector.Send(c,
 					banner.Menu.Caption(h.layout.Text(c, "input_user_id")),
@@ -865,12 +865,12 @@ func (h Handler) createEvent(c tele.Context) error {
 		isFirst = false
 
 		for !done {
-			message, canceled, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
-			if message != nil {
-				inputCollector.Collect(message)
+			response, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
+			if response.Message != nil {
+				inputCollector.Collect(response.Message)
 			}
 			switch {
-			case canceled:
+			case response.Canceled:
 				_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 				return nil
 			case errGet != nil:
@@ -883,7 +883,7 @@ func (h Handler) createEvent(c tele.Context) error {
 						ID: club.ID,
 					}),
 				)
-			case message == nil:
+			case response.Message == nil:
 				h.logger.Errorf("(user: %d) error while input step (%s): %v", c.Sender().ID, step.promptKey, errGet)
 				_ = inputCollector.Send(c,
 					banner.ClubOwner.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, step.promptKey))),
@@ -893,7 +893,7 @@ func (h Handler) createEvent(c tele.Context) error {
 						ID: club.ID,
 					}),
 				)
-			case !step.validator(message.Text, params):
+			case !step.validator(response.Message.Text, params):
 				_ = inputCollector.Send(c,
 					banner.ClubOwner.Caption(h.layout.Text(c, step.errorKey)),
 					h.layout.Markup(c, "clubOwner:club:back", struct {
@@ -902,8 +902,8 @@ func (h Handler) createEvent(c tele.Context) error {
 						ID: club.ID,
 					}),
 				)
-			case step.validator(message.Text, params):
-				*step.result = message.Text
+			case step.validator(response.Message.Text, params):
+				*step.result = response.Message.Text
 				_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
 				done = true
 			}
@@ -1591,12 +1591,12 @@ func (h Handler) editEventName(c tele.Context) error {
 	oldName := event.Name
 
 	for {
-		message, canceled, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
-		if message != nil {
-			inputCollector.Collect(message)
+		response, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
+		if response.Message != nil {
+			inputCollector.Collect(response.Message)
 		}
 		switch {
-		case canceled:
+		case response.Canceled:
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 			return nil
 		case errGet != nil:
@@ -1611,7 +1611,7 @@ func (h Handler) editEventName(c tele.Context) error {
 					Page: page,
 				}),
 			)
-		case message == nil:
+		case response.Message == nil:
 			_ = inputCollector.Send(c,
 				banner.ClubOwner.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "input_event_name"))),
 				h.layout.Markup(c, "clubOwner:event:settings:back", struct {
@@ -1622,7 +1622,7 @@ func (h Handler) editEventName(c tele.Context) error {
 					Page: page,
 				}),
 			)
-		case !validator.EventName(message.Text, nil):
+		case !validator.EventName(response.Message.Text, nil):
 			_ = inputCollector.Send(c,
 				banner.ClubOwner.Caption(h.layout.Text(c, "invalid_event_name")),
 				h.layout.Markup(c, "clubOwner:event:settings:back", struct {
@@ -1633,8 +1633,8 @@ func (h Handler) editEventName(c tele.Context) error {
 					Page: page,
 				}),
 			)
-		case validator.EventName(message.Text, nil):
-			eventName = message.Text
+		case validator.EventName(response.Message.Text, nil):
+			eventName = response.Message.Text
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
 			done = true
 		}
@@ -1731,12 +1731,12 @@ func (h Handler) editEventDescription(c tele.Context) error {
 		done             bool
 	)
 	for {
-		message, canceled, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
-		if message != nil {
-			inputCollector.Collect(message)
+		response, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
+		if response.Message != nil {
+			inputCollector.Collect(response.Message)
 		}
 		switch {
-		case canceled:
+		case response.Canceled:
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 			return nil
 		case errGet != nil:
@@ -1751,7 +1751,7 @@ func (h Handler) editEventDescription(c tele.Context) error {
 					Page: page,
 				}),
 			)
-		case message == nil:
+		case response.Message == nil:
 			_ = inputCollector.Send(c,
 				banner.ClubOwner.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "input_event_description"))),
 				h.layout.Markup(c, "clubOwner:event:settings:back", struct {
@@ -1762,7 +1762,7 @@ func (h Handler) editEventDescription(c tele.Context) error {
 					Page: page,
 				}),
 			)
-		case !validator.EventDescription(message.Text, nil):
+		case !validator.EventDescription(response.Message.Text, nil):
 			_ = inputCollector.Send(c,
 				banner.ClubOwner.Caption(h.layout.Text(c, "invalid_event_description")),
 				h.layout.Markup(c, "clubOwner:event:settings:back", struct {
@@ -1773,8 +1773,8 @@ func (h Handler) editEventDescription(c tele.Context) error {
 					Page: page,
 				}),
 			)
-		case validator.EventDescription(message.Text, nil):
-			eventDescription = message.Text
+		case validator.EventDescription(response.Message.Text, nil):
+			eventDescription = response.Message.Text
 			if eventDescription == "skip" {
 				eventDescription = ""
 			}
@@ -1874,12 +1874,12 @@ func (h Handler) editEventAfterRegistrationText(c tele.Context) error {
 		done                       bool
 	)
 	for {
-		message, canceled, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
-		if message != nil {
-			inputCollector.Collect(message)
+		response, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
+		if response.Message != nil {
+			inputCollector.Collect(response.Message)
 		}
 		switch {
-		case canceled:
+		case response.Canceled:
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 			return nil
 		case errGet != nil:
@@ -1894,7 +1894,7 @@ func (h Handler) editEventAfterRegistrationText(c tele.Context) error {
 					Page: page,
 				}),
 			)
-		case message == nil:
+		case response.Message == nil:
 			h.logger.Errorf("(user: %d) error while input event after registration text: %v", c.Sender().ID, errGet)
 			_ = inputCollector.Send(c,
 				banner.ClubOwner.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "input_after_registration_text"))),
@@ -1906,7 +1906,7 @@ func (h Handler) editEventAfterRegistrationText(c tele.Context) error {
 					Page: page,
 				}),
 			)
-		case !validator.EventAfterRegistrationText(message.Text, nil):
+		case !validator.EventAfterRegistrationText(response.Message.Text, nil):
 			_ = inputCollector.Send(c,
 				banner.ClubOwner.Caption(h.layout.Text(c, "invalid_after_registration_text")),
 				h.layout.Markup(c, "clubOwner:event:settings:back", struct {
@@ -1917,8 +1917,8 @@ func (h Handler) editEventAfterRegistrationText(c tele.Context) error {
 					Page: page,
 				}),
 			)
-		case validator.EventAfterRegistrationText(message.Text, nil):
-			eventAfterRegistrationText = message.Text
+		case validator.EventAfterRegistrationText(response.Message.Text, nil):
+			eventAfterRegistrationText = response.Message.Text
 			if eventAfterRegistrationText == "skip" {
 				eventAfterRegistrationText = ""
 			}
@@ -2039,12 +2039,12 @@ func (h Handler) editEventMaxParticipants(c tele.Context) error {
 	}
 
 	for {
-		message, canceled, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
-		if message != nil {
-			inputCollector.Collect(message)
+		response, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
+		if response.Message != nil {
+			inputCollector.Collect(response.Message)
 		}
 		switch {
-		case canceled:
+		case response.Canceled:
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 			return nil
 		case errGet != nil:
@@ -2059,7 +2059,7 @@ func (h Handler) editEventMaxParticipants(c tele.Context) error {
 					Page: page,
 				}),
 			)
-		case message == nil:
+		case response.Message == nil:
 			h.logger.Errorf("(user: %d) error while input event after registration text: %v", c.Sender().ID, errGet)
 			_ = inputCollector.Send(c,
 				banner.ClubOwner.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "input_edit_max_participants"))),
@@ -2071,7 +2071,7 @@ func (h Handler) editEventMaxParticipants(c tele.Context) error {
 					Page: page,
 				}),
 			)
-		case !validator.EventEditMaxParticipants(message.Text, params):
+		case !validator.EventEditMaxParticipants(response.Message.Text, params):
 			_ = inputCollector.Send(c,
 				banner.ClubOwner.Caption(h.layout.Text(c, "invalid_edit_max_participants")),
 				h.layout.Markup(c, "clubOwner:event:settings:back", struct {
@@ -2082,8 +2082,8 @@ func (h Handler) editEventMaxParticipants(c tele.Context) error {
 					Page: page,
 				}),
 			)
-		case validator.EventEditMaxParticipants(message.Text, params):
-			maxParticipants, _ = strconv.Atoi(message.Text)
+		case validator.EventEditMaxParticipants(response.Message.Text, params):
+			maxParticipants, _ = strconv.Atoi(response.Message.Text)
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
 			done = true
 		}
