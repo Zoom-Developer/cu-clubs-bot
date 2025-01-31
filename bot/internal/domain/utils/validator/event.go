@@ -39,10 +39,6 @@ func EventStartTime(start string, _ map[string]interface{}) bool {
 func EventEndTime(end string, params map[string]interface{}) bool {
 	const layout = "02.01.2006 15:04"
 
-	if end == "skip" {
-		return true
-	}
-
 	startTimeStr, ok := params["startTime"].(string)
 	if !ok {
 		return false
@@ -78,9 +74,6 @@ func EventRegisteredEndTime(registeredEnd string, params map[string]interface{})
 }
 
 func EventAfterRegistrationText(afterRegistrationText string, _ map[string]interface{}) bool {
-	if afterRegistrationText == "skip" {
-		return true
-	}
 	return utf8.RuneCountInString(afterRegistrationText) >= 10 && utf8.RuneCountInString(afterRegistrationText) <= 200
 }
 

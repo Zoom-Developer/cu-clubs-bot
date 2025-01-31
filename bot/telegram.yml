@@ -208,6 +208,21 @@ buttons:
     callback_data: '{{.ID}}'
     text: '{{ text `create_event` }}'
 
+  clubOwner:create_event:description_skip:
+    unique: cOwner_createEvent_descSkip
+    callback_data: "cOwner"
+    text: '{{ text `skip` }}'
+
+  clubOwner:create_event:end_time_skip:
+    unique: cOwner_createEvent_eTimeSkip
+    callback_data: "cOwner"
+    text: '{{ text `skip` }}'
+
+  clubOwner:create_event:after_registration_text_skip:
+    unique: cOwner_createEvent_AfterRegTextSkip
+    callback_data: "cOwner"
+    text: '{{ text `skip` }}'
+
   clubOwner:create_event:confirm:
     unique: clubOwner_event_confirm
     callback_data: '{{.ID}}'
