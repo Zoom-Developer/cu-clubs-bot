@@ -28,11 +28,11 @@ bot:
     ttl: 45m
     auth-ttl: 10m
     email-ttl: 120m
-    banner:
-      auth: "file-id"
-      menu: "file-id"
-      club-owner: "file-id"
-      events: "file-id"
+  banner:
+    auth: "AgACAgIAAxkDAAIG0GecwhuUMGxxQCdLGRCEvxyWPrrEAAJf4TEb9FjoSDBFSB6RAkkuAQADAgADdwADNgQ"
+    menu: "AgACAgIAAxkDAAIG6GecygZ4mVCW3BGIRNTe7KC0stZEAAIu6DEbr4zoSOpDMp0EL5pBAQADAgADeQADNgQ"
+    club-owner: "AgACAgIAAxkDAAIG0mecwh1jJ4DX6TIEB5r_dsHtLe6yAAJh4TEb9FjoSN6BMhVZkF-aAQADAgADdwADNgQ"
+    events: "AgACAgIAAxkDAAIG02ecwh8tOyQGg_bQD9cQZuTO5knbAAJi4TEb9FjoSBdk7k6BzR_OAQADAgADdwADNgQ"
   auth:
     grant-chat-id: -40000000
     valid-email-domains:
