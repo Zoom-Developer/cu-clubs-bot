@@ -37,8 +37,8 @@ func (h Handler) eventMenu(c tele.Context, eventID string) error {
 		registered = true
 	}
 
-	endTime := event.EndTime.Format("02.01.2006 15:04")
-	if event.EndTime.IsZero() {
+	endTime := event.EndTime.In(location.Location()).Format("02.01.2006 15:04")
+	if event.EndTime.Year() == 1 {
 		endTime = ""
 	}
 
@@ -57,9 +57,9 @@ func (h Handler) eventMenu(c tele.Context, eventID string) error {
 			Name:                  event.Name,
 			Description:           event.Description,
 			Location:              event.Location,
-			StartTime:             event.StartTime.Format("02.01.2006 15:04"),
+			StartTime:             event.StartTime.In(location.Location()).Format("02.01.2006 15:04"),
 			EndTime:               endTime,
-			RegistrationEnd:       event.RegistrationEnd.Format("02.01.2006 15:04"),
+			RegistrationEnd:       event.RegistrationEnd.In(location.Location()).Format("02.01.2006 15:04"),
 			MaxParticipants:       event.MaxParticipants,
 			AfterRegistrationText: event.AfterRegistrationText,
 			IsRegistered:          registered,
@@ -142,8 +142,8 @@ func (h Handler) eventRegister(c tele.Context) error {
 		}
 	}
 
-	endTime := event.EndTime.Format("02.01.2006 15:04")
-	if event.EndTime.IsZero() {
+	endTime := event.EndTime.In(location.Location()).Format("02.01.2006 15:04")
+	if event.EndTime.Year() == 1 {
 		endTime = ""
 	}
 
@@ -162,9 +162,9 @@ func (h Handler) eventRegister(c tele.Context) error {
 			Name:                  event.Name,
 			Description:           event.Description,
 			Location:              event.Location,
-			StartTime:             event.StartTime.Format("02.01.2006 15:04"),
+			StartTime:             event.StartTime.In(location.Location()).Format("02.01.2006 15:04"),
 			EndTime:               endTime,
-			RegistrationEnd:       event.RegistrationEnd.Format("02.01.2006 15:04"),
+			RegistrationEnd:       event.RegistrationEnd.In(location.Location()).Format("02.01.2006 15:04"),
 			MaxParticipants:       event.MaxParticipants,
 			AfterRegistrationText: event.AfterRegistrationText,
 			IsRegistered:          registered,
