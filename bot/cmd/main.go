@@ -2,11 +2,11 @@ package main
 
 import (
 	"github.com/Badsnus/cu-clubs-bot/bot/cmd/bot"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/config"
 	setupBot "github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/setup"
-
 	"log"
 
-	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/config"
+	_ "time/tzdata"
 )
 
 func main() {

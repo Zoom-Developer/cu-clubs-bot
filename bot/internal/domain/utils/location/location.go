@@ -4,8 +4,6 @@ import (
 	"github.com/spf13/viper"
 	"log"
 	"time"
-
-	_ "time/tzdata"
 )
 
 var location *time.Location
