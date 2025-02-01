@@ -31,7 +31,7 @@ type eventParticipantEventStorage interface {
 }
 
 type userStorage interface {
-	GetUsersByEventID(ctx context.Context, eventID string) ([]entity.User, error)
+	GetManyUsersByEventIDs(ctx context.Context, eventIDs []string) ([]entity.User, error)
 }
 
 type eventParticipantSMTPClient interface {
@@ -133,39 +133,44 @@ func (s *EventParticipantService) checkAndSend(ctx context.Context) {
 		return
 	}
 
+	var eventIDs []string
+
 	for _, event := range events {
 		eventStartTime := event.StartTime.In(location.Location())
 		weekday := eventStartTime.Weekday()
 
 		// Determine notification time
 		var notificationTime time.Time
-		if weekday == time.Sunday || weekday == time.Monday {
-			notificationTime = time.Date(eventStartTime.Year(), eventStartTime.Month(), eventStartTime.Day(), 12, 0, 0, 0, location.Location())
+		if weekday == time.Sunday {
+			notificationTime = time.Date(eventStartTime.Year(), eventStartTime.Month(), eventStartTime.Day()-1, 12, 0, 0, 0, location.Location())
+		} else if weekday == time.Monday {
+			notificationTime = time.Date(eventStartTime.Year(), eventStartTime.Month(), eventStartTime.Day()-2, 12, 0, 0, 0, location.Location())
 		} else {
 			notificationTime = time.Date(eventStartTime.Year(), eventStartTime.Month(), eventStartTime.Day(), 0, 0, 0, 0, eventStartTime.Location()).Add(-24 * time.Hour).Add(16 * time.Hour)
 		}
 
+		_ = notificationTime
 		// Check if it's time to send the notification
-		if now.Before(notificationTime) || now.After(notificationTime.Add(1*time.Hour)) {
-			continue
+		if !(now.Before(notificationTime) || now.After(notificationTime.Add(1*time.Hour))) {
+			eventIDs = append(eventIDs, event.ID)
 		}
-
-		var participants []entity.User
-		participants, err = s.userStorage.GetUsersByEventID(ctx, event.ID)
-		if err != nil {
-			s.logger.Errorf("failed to get participants for event %s: %v", event.ID, err)
-			continue
-		}
-
-		var buf *bytes.Buffer
-		buf, err = participantsToXLSX(participants)
-		if err != nil {
-			s.logger.Errorf("failed to form xlsx with participants %s: %v", event.ID, err)
-			continue
-		}
-
-		s.eventParticipantSMTPClient.Send(s.passEmail, "Event passes", "Event passes", "Event passes", buf)
 	}
+
+	var participants []entity.User
+	participants, err = s.userStorage.GetManyUsersByEventIDs(ctx, eventIDs)
+	if err != nil {
+		s.logger.Errorf("failed to get participants for events %s: %v", eventIDs, err)
+		return
+	}
+
+	var buf *bytes.Buffer
+	buf, err = participantsToXLSX(participants)
+	if err != nil {
+		s.logger.Errorf("failed to form xlsx with participants %s: %v", eventIDs, err)
+		return
+	}
+
+	s.eventParticipantSMTPClient.Send(s.passEmail, "Event passes", "Event passes", "Event passes", buf)
 }
 
 func participantsToXLSX(users []entity.User) (*bytes.Buffer, error) {

@@ -50,6 +50,7 @@ func (s *UserStorage) GetAll(ctx context.Context) ([]entity.User, error) {
 	return users, err
 }
 
+// GetEventUsers is a function that get users with visit field by event id.
 func (s *UserStorage) GetEventUsers(ctx context.Context, eventID string) ([]dto.EventUser, error) {
 	type userWithQR struct {
 		entity.User
@@ -78,6 +79,7 @@ func (s *UserStorage) GetEventUsers(ctx context.Context, eventID string) ([]dto.
 	return result, nil
 }
 
+// GetUsersByEventID is a function that get users that registered on event by event id.
 func (s *UserStorage) GetUsersByEventID(ctx context.Context, eventID string) ([]entity.User, error) {
 	var users []entity.User
 
@@ -87,6 +89,20 @@ func (s *UserStorage) GetUsersByEventID(ctx context.Context, eventID string) ([]
 		Select("users.*").
 		Joins("inner join users on event_participants.user_id = users.id").
 		Where("event_participants.event_id = ?", eventID).
+		Find(&users).Error
+	return users, err
+}
+
+// GetManyUsersByEventIDs is a function that get users that registered on event by event ids without duplicates.
+func (s *UserStorage) GetManyUsersByEventIDs(ctx context.Context, eventIDs []string) ([]entity.User, error) {
+	var users []entity.User
+
+	err := s.db.
+		WithContext(ctx).
+		Table("event_participants").
+		Select("DISTINCT ON (users.id) users.*").
+		Joins("inner join users on event_participants.user_id = users.id").
+		Where("event_participants.event_id IN ?", eventIDs).
 		Find(&users).Error
 	return users, err
 }
