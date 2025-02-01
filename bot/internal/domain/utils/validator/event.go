@@ -29,7 +29,7 @@ func EventStartTime(start string, _ map[string]interface{}) bool {
 
 	currentTime := time.Now()
 
-	moscowTime := currentTime.In(location.Location)
+	moscowTime := currentTime.In(location.Location())
 
 	tomorrow := moscowTime.Add(time.Hour * time.Duration(24))
 
@@ -38,10 +38,6 @@ func EventStartTime(start string, _ map[string]interface{}) bool {
 
 func EventEndTime(end string, params map[string]interface{}) bool {
 	const layout = "02.01.2006 15:04"
-
-	if end == "skip" {
-		return true
-	}
 
 	startTimeStr, ok := params["startTime"].(string)
 	if !ok {
@@ -54,7 +50,7 @@ func EventEndTime(end string, params map[string]interface{}) bool {
 		return false
 	}
 
-	if !endTime.In(location.Location).After(startTime) {
+	if !endTime.In(location.Location()).After(startTime) {
 		return false
 	}
 
@@ -74,19 +70,37 @@ func EventRegisteredEndTime(registeredEnd string, params map[string]interface{})
 		return false
 	}
 
-	return registeredEndTime.In(location.Location).Add(22 * time.Hour).Before(startTime)
+	return registeredEndTime.In(location.Location()).Add(22 * time.Hour).Before(startTime)
 }
 
 func EventAfterRegistrationText(afterRegistrationText string, _ map[string]interface{}) bool {
 	return utf8.RuneCountInString(afterRegistrationText) >= 10 && utf8.RuneCountInString(afterRegistrationText) <= 200
 }
 
-func MaxParticipants(maxParticipants string, _ map[string]interface{}) bool {
-	_, err := strconv.Atoi(maxParticipants)
+func EventMaxParticipants(maxParticipantsStr string, _ map[string]interface{}) bool {
+	maxParticipants, err := strconv.Atoi(maxParticipantsStr)
+	if err != nil {
+		return false
+	}
+	return maxParticipants >= 0
+}
+
+func EventExpectedParticipants(expectedParticipants string, _ map[string]interface{}) bool {
+	_, err := strconv.Atoi(expectedParticipants)
 	return err == nil
 }
 
-func ExpectedParticipants(expectedParticipants string, _ map[string]interface{}) bool {
-	_, err := strconv.Atoi(expectedParticipants)
-	return err == nil
+func EventEditMaxParticipants(maxParticipantsStr string, params map[string]interface{}) bool {
+	previousMaxParticipants, ok := params["previousMaxParticipants"].(int)
+	if !ok {
+		return false
+	}
+	maxParticipants, err := strconv.Atoi(maxParticipantsStr)
+	if err != nil {
+		return false
+	}
+	if maxParticipants == 0 {
+		return true
+	}
+	return maxParticipants > 0 && maxParticipants > previousMaxParticipants
 }

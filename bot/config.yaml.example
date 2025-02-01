@@ -20,20 +20,19 @@ service:
     email: email@domain.ru
 
 bot:
-  name: "your_bot_name"
+  name: "bot_name"
   token: "BOT_TOKEN"
-  grant-chat-id: -500000
   admin-ids:
     - 500000000
   session:
     ttl: 45m
     auth-ttl: 10m
     email-ttl: 120m
-    banner:
-      auth: "file-id"
-      menu: "file-id"
-      club-owner: "file-id"
-      events: "file-id"
+  banner:
+    auth: "AgACAgIAAxkDAAIG0GecwhuUMGxxQCdLGRCEvxyWPrrEAAJf4TEb9FjoSDBFSB6RAkkuAQADAgADdwADNgQ"
+    menu: "AgACAgIAAxkDAAIG6GecygZ4mVCW3BGIRNTe7KC0stZEAAIu6DEbr4zoSOpDMp0EL5pBAQADAgADeQADNgQ"
+    club-owner: "AgACAgIAAxkDAAIG0mecwh1jJ4DX6TIEB5r_dsHtLe6yAAJh4TEb9FjoSN6BMhVZkF-aAQADAgADdwADNgQ"
+    events: "AgACAgIAAxkDAAIG02ecwh8tOyQGg_bQD9cQZuTO5knbAAJi4TEb9FjoSBdk7k6BzR_OAQADAgADdwADNgQ"
   auth:
     grant-chat-id: -40000000
     valid-email-domains:
@@ -43,14 +42,18 @@ bot:
     chat-id: -400000000
 
 settings:
+    pass-email: email@domain.ru # Почта, куда будут отправляться списки на пропуска
+
     qr:
-      output-dir: "./qrs"
       logo-path: "./logo.png"
 
+    html:
+      email-confirmation: "./mail.html"
+
+    timezone: "Europe/Moscow"
     logging:
       log-to-file: true # логирование в файл
       logs-dir: "./logs"
-      timezone: "GMT+3" # часовой пояс для логирования
       debug: true # дебаг мод
       log-to-channel: true # логирование в канал
       channel-id: -10000000000 # канал для логов

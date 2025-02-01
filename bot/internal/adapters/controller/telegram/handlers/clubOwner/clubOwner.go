@@ -1,8 +1,14 @@
 package clubowner
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/handlers/middlewares"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/location"
+	qr "github.com/Badsnus/cu-clubs-bot/bot/pkg/qrcode"
+	"github.com/spf13/viper"
+	"github.com/xuri/excelize/v2"
 	"slices"
 	"strconv"
 	"strings"
@@ -40,19 +46,29 @@ type clubOwnerService interface {
 
 type userService interface {
 	Get(ctx context.Context, userID int64) (*entity.User, error)
+	GetUsersByEventID(ctx context.Context, eventID string) ([]entity.User, error)
 }
 
 type eventService interface {
 	Create(ctx context.Context, event *entity.Event) (*entity.Event, error)
 	Update(ctx context.Context, event *entity.Event) (*entity.Event, error)
 	Get(ctx context.Context, id string) (*entity.Event, error)
-	GetByClubIDWithPagination(ctx context.Context, limit, offset int, order string, clubID string) ([]entity.Event, error)
+	GetByClubID(ctx context.Context, limit, offset int, order string, clubID string) ([]entity.Event, error)
 	CountByClubID(ctx context.Context, clubID string) (int64, error)
 	Delete(ctx context.Context, id string) error
 }
 
 type eventParticipantService interface {
 	CountByEventID(ctx context.Context, eventID string) (int, error)
+	CountVisitedByEventID(ctx context.Context, eventID string) (int, error)
+}
+
+type qrService interface {
+	GetEventQR(ctx context.Context, eventID string) (qr tele.File, err error)
+}
+
+type notificationService interface {
+	SendEventUpdate(eventID string, what interface{}, opts ...interface{}) error
 }
 
 type Handler struct {
@@ -67,6 +83,8 @@ type Handler struct {
 	userService             userService
 	eventService            eventService
 	eventParticipantService eventParticipantService
+	qrService               qrService
+	notificationService     notificationService
 }
 
 func NewHandler(b *bot.Bot) *Handler {
@@ -75,6 +93,20 @@ func NewHandler(b *bot.Bot) *Handler {
 	userStorage := postgres.NewUserStorage(b.DB)
 	eventStorage := postgres.NewEventStorage(b.DB)
 	eventParticipantStorage := postgres.NewEventParticipantStorage(b.DB)
+
+	eventSrvc := service.NewEventService(eventStorage)
+
+	qrSrvc, err := service.NewQrService(
+		b.Bot,
+		qr.CU,
+		nil,
+		eventSrvc,
+		viper.GetInt64("bot.qr.chat-id"),
+		viper.GetString("settings.qr.logo-path"),
+	)
+	if err != nil {
+		b.Logger.Fatalf("failed to create qr service: %v", err)
+	}
 
 	return &Handler{
 		layout: b.Layout,
@@ -85,9 +117,19 @@ func NewHandler(b *bot.Bot) *Handler {
 
 		clubService:             service.NewClubService(clubStorage),
 		clubOwnerService:        service.NewClubOwnerService(clubOwnerStorage, userStorage),
-		userService:             service.NewUserService(userStorage, nil, nil, nil),
-		eventService:            service.NewEventService(eventStorage),
-		eventParticipantService: service.NewEventParticipantService(eventParticipantStorage),
+		userService:             service.NewUserService(userStorage, nil, nil, nil, ""),
+		eventService:            eventSrvc,
+		eventParticipantService: service.NewEventParticipantService(nil, eventParticipantStorage, nil, nil, nil, ""),
+		qrService:               qrSrvc,
+		notificationService: service.NewNotifyService(
+			b.Bot,
+			b.Layout,
+			b.Logger,
+			service.NewClubOwnerService(clubOwnerStorage, userStorage),
+			nil,
+			nil,
+			eventParticipantStorage,
+		),
 	}
 }
 
@@ -260,12 +302,12 @@ func (h Handler) editName(c tele.Context) error {
 		done     bool
 	)
 	for {
-		message, canceled, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
-		if message != nil {
-			inputCollector.Collect(message)
+		response, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
+		if response.Message != nil {
+			inputCollector.Collect(response.Message)
 		}
 		switch {
-		case canceled:
+		case response.Canceled:
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 			return nil
 		case errGet != nil:
@@ -278,7 +320,7 @@ func (h Handler) editName(c tele.Context) error {
 					ID: club.ID,
 				}),
 			)
-		case message == nil:
+		case response.Message == nil:
 			_ = inputCollector.Send(c,
 				banner.ClubOwner.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "input_club_description"))),
 				h.layout.Markup(c, "clubOwner:club:settings:back", struct {
@@ -287,7 +329,7 @@ func (h Handler) editName(c tele.Context) error {
 					ID: club.ID,
 				}),
 			)
-		case !validator.ClubName(message.Text, nil):
+		case !validator.ClubName(response.Message.Text, nil):
 			_ = inputCollector.Send(c,
 				banner.ClubOwner.Caption(h.layout.Text(c, "invalid_club_name")),
 				h.layout.Markup(c, "clubOwner:club:settings:back", struct {
@@ -296,8 +338,8 @@ func (h Handler) editName(c tele.Context) error {
 					ID: club.ID,
 				}),
 			)
-		case validator.ClubName(message.Text, nil):
-			clubName = message.Text
+		case validator.ClubName(response.Message.Text, nil):
+			clubName = response.Message.Text
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
 			done = true
 		}
@@ -369,12 +411,12 @@ func (h Handler) editDescription(c tele.Context) error {
 		done            bool
 	)
 	for {
-		message, canceled, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
-		if message != nil {
-			inputCollector.Collect(message)
+		response, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
+		if response.Message != nil {
+			inputCollector.Collect(response.Message)
 		}
 		switch {
-		case canceled:
+		case response.Canceled:
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 			return nil
 		case errGet != nil:
@@ -387,7 +429,7 @@ func (h Handler) editDescription(c tele.Context) error {
 					ID: club.ID,
 				}),
 			)
-		case message == nil:
+		case response.Message == nil:
 			_ = inputCollector.Send(c,
 				banner.ClubOwner.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "input_club_description"))),
 				h.layout.Markup(c, "clubOwner:club:settings:back", struct {
@@ -396,7 +438,7 @@ func (h Handler) editDescription(c tele.Context) error {
 					ID: club.ID,
 				}),
 			)
-		case !validator.ClubDescription(message.Text, nil):
+		case !validator.ClubDescription(response.Message.Text, nil):
 			_ = inputCollector.Send(c,
 				banner.ClubOwner.Caption(h.layout.Text(c, "invalid_club_description")),
 				h.layout.Markup(c, "clubOwner:club:settings:back", struct {
@@ -405,8 +447,8 @@ func (h Handler) editDescription(c tele.Context) error {
 					ID: club.ID,
 				}),
 			)
-		case validator.ClubDescription(message.Text, nil):
-			clubDescription = message.Text
+		case validator.ClubDescription(response.Message.Text, nil):
+			clubDescription = response.Message.Text
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
 			done = true
 		}
@@ -472,12 +514,12 @@ func (h Handler) addOwner(c tele.Context) error {
 		done bool
 	)
 	for {
-		message, canceled, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
-		if message != nil {
-			inputCollector.Collect(message)
+		response, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
+		if response.Message != nil {
+			inputCollector.Collect(response.Message)
 		}
 		switch {
-		case canceled:
+		case response.Canceled:
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 			return nil
 		case errGet != nil:
@@ -489,7 +531,7 @@ func (h Handler) addOwner(c tele.Context) error {
 					ID: club.ID,
 				}),
 			)
-		case message == nil:
+		case response.Message == nil:
 			_ = inputCollector.Send(c,
 				banner.Menu.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "input_user_id"))),
 				h.layout.Markup(c, "clubOwner:club:settings:back", struct {
@@ -499,7 +541,7 @@ func (h Handler) addOwner(c tele.Context) error {
 				}),
 			)
 		default:
-			userID, err := strconv.ParseInt(message.Text, 10, 64)
+			userID, err := strconv.ParseInt(response.Message.Text, 10, 64)
 			if err != nil {
 				_ = inputCollector.Send(c,
 					banner.Menu.Caption(h.layout.Text(c, "input_user_id")),
@@ -677,6 +719,8 @@ func (h Handler) createEvent(c tele.Context) error {
 
 	h.logger.Infof("(user: %d) create new event request(club=%s)", c.Sender().ID, clubID)
 
+	h.eventsStorage.Clear(c.Sender().ID)
+
 	club, err := h.clubService.Get(context.Background(), clubID)
 	if err != nil {
 		h.logger.Errorf("(user: %d) error while get clubs: %v", c.Sender().ID, err)
@@ -696,52 +740,56 @@ func (h Handler) createEvent(c tele.Context) error {
 	isFirst := true
 
 	var steps []struct {
-		promptKey  string
-		errorKey   string
-		result     *string
-		validator  func(string, map[string]interface{}) bool
-		paramsFunc func(map[string]interface{}) map[string]interface{}
+		promptKey   string
+		errorKey    string
+		result      *string
+		validator   func(string, map[string]interface{}) bool
+		paramsFunc  func(map[string]interface{}) map[string]interface{}
+		callbackBtn *tele.Btn
 	}
 
 	steps = []struct {
-		promptKey  string
-		errorKey   string
-		result     *string
-		validator  func(string, map[string]interface{}) bool
-		paramsFunc func(map[string]interface{}) map[string]interface{}
+		promptKey   string
+		errorKey    string
+		result      *string
+		validator   func(string, map[string]interface{}) bool
+		paramsFunc  func(map[string]interface{}) map[string]interface{}
+		callbackBtn *tele.Btn
 	}{
 		{
-			promptKey:  "input_event_name",
-			errorKey:   "invalid_event_name",
-			result:     new(string),
-			validator:  validator.EventName,
-			paramsFunc: nil,
+			promptKey:   "input_event_name",
+			errorKey:    "invalid_event_name",
+			result:      new(string),
+			validator:   validator.EventName,
+			paramsFunc:  nil,
+			callbackBtn: nil,
 		},
 
 		{
-			promptKey:  "input_event_description",
-			errorKey:   "invalid_event_description",
-			result:     new(string),
-			validator:  validator.EventDescription,
-			paramsFunc: nil,
+			promptKey:   "input_event_description",
+			errorKey:    "invalid_event_description",
+			result:      new(string),
+			validator:   validator.EventDescription,
+			paramsFunc:  nil,
+			callbackBtn: h.layout.Button(c, "clubOwner:create_event:description_skip"),
 		},
 
 		{
-			promptKey:  "input_event_location",
-			errorKey:   "invalid_event_location",
-			result:     new(string),
-			validator:  validator.EventLocation,
-			paramsFunc: nil,
+			promptKey:   "input_event_location",
+			errorKey:    "invalid_event_location",
+			result:      new(string),
+			validator:   validator.EventLocation,
+			paramsFunc:  nil,
+			callbackBtn: nil,
 		},
-
 		{
-			promptKey:  "input_event_start_time",
-			errorKey:   "invalid_event_start_time",
-			result:     new(string),
-			validator:  validator.EventStartTime,
-			paramsFunc: nil,
+			promptKey:   "input_event_start_time",
+			errorKey:    "invalid_event_start_time",
+			result:      new(string),
+			validator:   validator.EventStartTime,
+			paramsFunc:  nil,
+			callbackBtn: nil,
 		},
-
 		{
 			promptKey: "input_event_end_time",
 			errorKey:  "invalid_event_end_time",
@@ -754,6 +802,7 @@ func (h Handler) createEvent(c tele.Context) error {
 				params["startTime"] = *steps[3].result
 				return params
 			},
+			callbackBtn: h.layout.Button(c, "clubOwner:create_event:end_time_skip"),
 		},
 		{
 			promptKey: "input_event_registered_end_time",
@@ -767,27 +816,31 @@ func (h Handler) createEvent(c tele.Context) error {
 				params["startTime"] = *steps[3].result
 				return params
 			},
+			callbackBtn: nil,
 		},
 		{
-			promptKey:  "input_after_registration_text",
-			errorKey:   "invalid_after_registration_text",
-			result:     new(string),
-			validator:  validator.EventAfterRegistrationText,
-			paramsFunc: nil,
+			promptKey:   "input_after_registration_text",
+			errorKey:    "invalid_after_registration_text",
+			result:      new(string),
+			validator:   validator.EventAfterRegistrationText,
+			paramsFunc:  nil,
+			callbackBtn: h.layout.Button(c, "clubOwner:create_event:after_registration_text_skip"),
 		},
 		{
-			promptKey:  "input_max_participants",
-			errorKey:   "invalid_max_participants",
-			result:     new(string),
-			validator:  validator.MaxParticipants,
-			paramsFunc: nil,
+			promptKey:   "input_max_participants",
+			errorKey:    "invalid_max_participants",
+			result:      new(string),
+			validator:   validator.EventMaxParticipants,
+			paramsFunc:  nil,
+			callbackBtn: nil,
 		},
 		{
-			promptKey:  "input_expected_participants",
-			errorKey:   "invalid_expected_participants",
-			result:     new(string),
-			validator:  validator.ExpectedParticipants,
-			paramsFunc: nil,
+			promptKey:   "input_expected_participants",
+			errorKey:    "invalid_expected_participants",
+			result:      new(string),
+			validator:   validator.EventExpectedParticipants,
+			paramsFunc:  nil,
+			callbackBtn: nil,
 		},
 	}
 
@@ -799,34 +852,38 @@ func (h Handler) createEvent(c tele.Context) error {
 			params = step.paramsFunc(params)
 		}
 
+		markup := h.layout.Markup(c, "clubOwner:club:back", struct {
+			ID string
+		}{
+			ID: club.ID,
+		})
+		if step.callbackBtn != nil {
+			markup.InlineKeyboard = append(
+				[][]tele.InlineButton{{*step.callbackBtn.Inline()}},
+				markup.InlineKeyboard...,
+			)
+		}
+
 		if isFirst {
 			_ = c.Edit(
 				banner.ClubOwner.Caption(h.layout.Text(c, step.promptKey)),
-				h.layout.Markup(c, "clubOwner:club:back", struct {
-					ID string
-				}{
-					ID: club.ID,
-				}),
+				markup,
 			)
 		} else {
 			_ = inputCollector.Send(c,
 				banner.ClubOwner.Caption(h.layout.Text(c, step.promptKey)),
-				h.layout.Markup(c, "clubOwner:club:back", struct {
-					ID string
-				}{
-					ID: club.ID,
-				}),
+				markup,
 			)
 		}
 		isFirst = false
 
 		for !done {
-			message, canceled, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
-			if message != nil {
-				inputCollector.Collect(message)
+			response, errGet := h.input.Get(context.Background(), c.Sender().ID, 0, step.callbackBtn)
+			if response.Message != nil {
+				inputCollector.Collect(response.Message)
 			}
 			switch {
-			case canceled:
+			case response.Canceled:
 				_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 				return nil
 			case errGet != nil:
@@ -839,17 +896,11 @@ func (h Handler) createEvent(c tele.Context) error {
 						ID: club.ID,
 					}),
 				)
-			case message == nil:
-				h.logger.Errorf("(user: %d) error while input step (%s): %v", c.Sender().ID, step.promptKey, errGet)
-				_ = inputCollector.Send(c,
-					banner.ClubOwner.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, step.promptKey))),
-					h.layout.Markup(c, "clubOwner:club:back", struct {
-						ID string
-					}{
-						ID: club.ID,
-					}),
-				)
-			case !step.validator(message.Text, params):
+			case response.Callback != nil:
+				*step.result = ""
+				_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
+				done = true
+			case !step.validator(response.Message.Text, params):
 				_ = inputCollector.Send(c,
 					banner.ClubOwner.Caption(h.layout.Text(c, step.errorKey)),
 					h.layout.Markup(c, "clubOwner:club:back", struct {
@@ -858,8 +909,8 @@ func (h Handler) createEvent(c tele.Context) error {
 						ID: club.ID,
 					}),
 				)
-			case step.validator(message.Text, params):
-				*step.result = message.Text
+			case step.validator(response.Message.Text, params):
+				*step.result = response.Message.Text
 				_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
 				done = true
 			}
@@ -877,28 +928,26 @@ func (h Handler) createEvent(c tele.Context) error {
 		eventEndTimeStr              string
 		eventRegistrationEndTime     time.Time
 		eventRegistrationEndTimeStr  string
+		eventAfterRegistrationText   string
 		eventMaxParticipants         int
 		eventMaxExpectedParticipants int
 	)
 
 	eventDescription = *steps[1].result
-	if *steps[1].result == "skip" {
-		eventDescription = ""
-	}
-
 	eventStartTime, _ = time.Parse(timeLayout, *steps[3].result)
-	eventStartTimeStr = *steps[3].result
+	eventStartTimeStr = time.Date(eventStartTime.Year(), eventStartTime.Month(), eventStartTime.Day(), eventStartTime.Hour(), eventStartTime.Minute(), eventStartTime.Second(), eventStartTime.Nanosecond(), location.Location()).Format(timeLayout)
 
-	eventEndTime, _ = time.Parse(timeLayout, *steps[4].result)
-	eventEndTimeStr = *steps[4].result
-	if *steps[4].result == "skip" {
+	eventEndTime, err = time.Parse(timeLayout, *steps[4].result)
+	eventEndTimeStr = time.Date(eventEndTime.Year(), eventEndTime.Month(), eventEndTime.Day(), eventEndTime.Hour(), eventEndTime.Minute(), eventEndTime.Second(), eventEndTime.Nanosecond(), location.Location()).Format(timeLayout)
+	if err != nil {
 		eventEndTime = time.Time{}
 		eventEndTimeStr = ""
 	}
 
 	eventRegistrationEndTime, _ = time.Parse(timeLayout, *steps[5].result)
-	eventRegistrationEndTimeStr = *steps[5].result
+	eventRegistrationEndTimeStr = time.Date(eventRegistrationEndTime.Year(), eventRegistrationEndTime.Month(), eventRegistrationEndTime.Day(), eventRegistrationEndTime.Hour(), eventRegistrationEndTime.Minute(), eventRegistrationEndTime.Second(), eventRegistrationEndTime.Nanosecond(), location.Location()).Format(timeLayout)
 
+	eventAfterRegistrationText = *steps[6].result
 	eventMaxParticipants, _ = strconv.Atoi(*steps[7].result)
 	eventMaxExpectedParticipants, _ = strconv.Atoi(*steps[8].result)
 
@@ -907,14 +956,13 @@ func (h Handler) createEvent(c tele.Context) error {
 		Name:                  *steps[0].result,
 		Description:           eventDescription,
 		Location:              *steps[2].result,
-		StartTime:             eventStartTime,
-		EndTime:               eventEndTime,
-		RegistrationEnd:       eventRegistrationEndTime,
-		AfterRegistrationText: *steps[6].result,
+		StartTime:             time.Date(eventStartTime.Year(), eventStartTime.Month(), eventStartTime.Day(), eventStartTime.Hour(), eventStartTime.Minute(), eventStartTime.Second(), eventStartTime.Nanosecond(), location.Location()),
+		EndTime:               time.Date(eventEndTime.Year(), eventEndTime.Month(), eventEndTime.Day(), eventEndTime.Hour(), eventEndTime.Minute(), eventEndTime.Second(), eventEndTime.Nanosecond(), location.Location()),
+		RegistrationEnd:       time.Date(eventRegistrationEndTime.Year(), eventRegistrationEndTime.Month(), eventRegistrationEndTime.Day(), eventRegistrationEndTime.Hour(), eventRegistrationEndTime.Minute(), eventRegistrationEndTime.Second(), eventRegistrationEndTime.Nanosecond(), location.Location()),
+		AfterRegistrationText: eventAfterRegistrationText,
 		MaxParticipants:       eventMaxParticipants,
 		ExpectedParticipants:  eventMaxExpectedParticipants,
 	}
-
 	h.eventsStorage.Set(c.Sender().ID, event, 0)
 
 	markup := h.layout.Markup(c, "clubOwner:createClub:confirm", struct {
@@ -922,22 +970,26 @@ func (h Handler) createEvent(c tele.Context) error {
 	}{
 		ID: clubID,
 	})
+
+	var row []tele.InlineButton
 	for _, role := range club.AllowedRoles {
-		markup.InlineKeyboard = append(
-			[][]tele.InlineButton{{*h.layout.Button(c, "clubOwner:create_event:role", struct {
-				Role     entity.Role
-				ID       string
-				RoleName string
-				Allowed  bool
-			}{
-				Role:     entity.Role(role),
-				ID:       club.ID,
-				RoleName: h.layout.Text(c, role),
-				Allowed:  slices.Contains(event.AllowedRoles, role),
-			}).Inline()}},
-			markup.InlineKeyboard...,
-		)
+		row = append(row, []tele.InlineButton{*h.layout.Button(c, "clubOwner:create_event:role", struct {
+			Role     entity.Role
+			ID       string
+			RoleName string
+			Allowed  bool
+		}{
+			Role:     entity.Role(role),
+			ID:       club.ID,
+			RoleName: h.layout.Text(c, role),
+			Allowed:  slices.Contains(event.AllowedRoles, role),
+		}).Inline()}...)
 	}
+
+	markup.InlineKeyboard = append(
+		[][]tele.InlineButton{row},
+		markup.InlineKeyboard...,
+	)
 
 	confirmationPayload := struct {
 		Name                  string
@@ -1024,26 +1076,30 @@ func (h Handler) eventAllowedRoles(c tele.Context) error {
 		ID: club.ID,
 	})
 
+	var row []tele.InlineButton
 	for _, role = range club.AllowedRoles {
-		markup.InlineKeyboard = append(
-			[][]tele.InlineButton{{*h.layout.Button(c, "clubOwner:create_event:role", struct {
-				Role     entity.Role
-				ID       string
-				RoleName string
-				Allowed  bool
-			}{
-				Role:     entity.Role(role),
-				ID:       club.ID,
-				RoleName: h.layout.Text(c, role),
-				Allowed:  slices.Contains(event.AllowedRoles, role),
-			}).Inline()}},
-			markup.InlineKeyboard...,
-		)
+		row = append(row, []tele.InlineButton{*h.layout.Button(c, "clubOwner:create_event:role", struct {
+			Role     entity.Role
+			ID       string
+			RoleName string
+			Allowed  bool
+		}{
+			Role:     entity.Role(role),
+			ID:       club.ID,
+			RoleName: h.layout.Text(c, role),
+			Allowed:  slices.Contains(event.AllowedRoles, role),
+		}).Inline()}...)
 	}
+
+	markup.InlineKeyboard = append(
+		[][]tele.InlineButton{row},
+		markup.InlineKeyboard...,
+	)
+
 	const timeLayout = "02.01.2006 15:04"
 
 	eventTimeStr := event.EndTime.Format(timeLayout)
-	if event.EndTime.IsZero() {
+	if event.EndTime.Year() == 1 {
 		eventTimeStr = ""
 	}
 
@@ -1093,6 +1149,17 @@ func (h Handler) confirmEventCreation(c tele.Context) error {
 		)
 	}
 
+	if len(event.AllowedRoles) == 0 {
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "event_without_allowed_roles")),
+			h.layout.Markup(c, "core:hide"),
+		)
+	}
+
+	event.StartTime = event.StartTime.UTC()
+	event.EndTime = event.EndTime.UTC()
+	event.RegistrationEnd = event.RegistrationEnd.UTC()
+
 	_, err = h.eventService.Create(context.Background(), &event)
 	if err != nil {
 		return c.Edit(
@@ -1104,6 +1171,8 @@ func (h Handler) confirmEventCreation(c tele.Context) error {
 			}),
 		)
 	}
+
+	h.eventsStorage.Clear(c.Sender().ID)
 
 	return c.Edit(
 		banner.ClubOwner.Caption(h.layout.Text(c, "event_created", struct {
@@ -1119,7 +1188,7 @@ func (h Handler) confirmEventCreation(c tele.Context) error {
 }
 
 func (h Handler) eventsList(c tele.Context) error {
-	const eventsOnPage = 10
+	const eventsOnPage = 5
 	h.logger.Infof("(user: %d) edit events list", c.Sender().ID)
 
 	var (
@@ -1151,7 +1220,7 @@ func (h Handler) eventsList(c tele.Context) error {
 		)
 	}
 
-	events, err = h.eventService.GetByClubIDWithPagination(
+	events, err = h.eventService.GetByClubID(
 		context.Background(),
 		eventsOnPage,
 		p*eventsOnPage,
@@ -1173,13 +1242,15 @@ func (h Handler) eventsList(c tele.Context) error {
 	markup := c.Bot().NewMarkup()
 	for _, event := range events {
 		rows = append(rows, markup.Row(*h.layout.Button(c, "clubOwner:events:event", struct {
-			ID   string
-			Page int
-			Name string
+			ID     string
+			Page   int
+			Name   string
+			IsOver bool
 		}{
-			ID:   event.ID,
-			Page: p,
-			Name: event.Name,
+			ID:     event.ID,
+			Page:   p,
+			Name:   event.Name,
+			IsOver: event.IsOver(0),
 		})))
 	}
 	pagesCount := (int(eventsCount) - 1) / eventsOnPage
@@ -1272,8 +1343,76 @@ func (h Handler) event(c tele.Context) error {
 		)
 	}
 
-	endTime := event.EndTime.Format("02.01.2006 15:04")
-	if event.EndTime.IsZero() {
+	club, err := h.clubService.Get(context.Background(), event.ClubID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get club: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:events:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   event.ClubID,
+				Page: page,
+			}),
+		)
+	}
+
+	registeredUsersCount, err := h.eventParticipantService.CountByEventID(context.Background(), event.ID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get registered users count: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:events:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   event.ClubID,
+				Page: page,
+			}),
+		)
+	}
+
+	visitedUsersCount, err := h.eventParticipantService.CountVisitedByEventID(context.Background(), event.ID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get visited users count: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:events:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   event.ClubID,
+				Page: page,
+			}),
+		)
+	}
+
+	eventMarkup := h.layout.Markup(c, "clubOwner:event:menu", struct {
+		ID     string
+		ClubID string
+		Page   string
+	}{
+		ID:     eventID,
+		ClubID: event.ClubID,
+		Page:   page,
+	})
+
+	if club.QrAllowed {
+		eventMarkup.InlineKeyboard = append(
+			[][]tele.InlineButton{{*h.layout.Button(c, "clubOwner:event:qr", struct {
+				ID   string
+				Page string
+			}{
+				ID:   eventID,
+				Page: page,
+			}).Inline()}},
+			eventMarkup.InlineKeyboard...,
+		)
+	}
+
+	endTime := event.EndTime.In(location.Location()).Format("02.01.2006 15:04")
+	if event.EndTime.Year() == 1 {
 		endTime = ""
 	}
 
@@ -1286,27 +1425,27 @@ func (h Handler) event(c tele.Context) error {
 			EndTime               string
 			RegistrationEnd       string
 			MaxParticipants       int
+			VisitedCount          int
+			ParticipantsCount     int
 			AfterRegistrationText string
 			IsRegistered          bool
+			Link                  string
 		}{
 			Name:                  event.Name,
 			Description:           event.Description,
 			Location:              event.Location,
-			StartTime:             event.StartTime.Format("02.01.2006 15:04"),
+			StartTime:             event.StartTime.In(location.Location()).Format("02.01.2006 15:04"),
 			EndTime:               endTime,
-			RegistrationEnd:       event.RegistrationEnd.Format("02.01.2006 15:04"),
+			RegistrationEnd:       event.RegistrationEnd.In(location.Location()).Format("02.01.2006 15:04"),
 			MaxParticipants:       event.MaxParticipants,
+			ParticipantsCount:     registeredUsersCount,
+			VisitedCount:          visitedUsersCount,
 			AfterRegistrationText: event.AfterRegistrationText,
+			Link:                  event.Link(c.Bot().Me.Username),
 		})),
-		h.layout.Markup(c, "clubOwner:event:menu", struct {
-			ID     string
-			ClubID string
-			Page   string
-		}{
-			ID:     eventID,
-			ClubID: event.ClubID,
-			Page:   page,
-		}))
+		eventMarkup,
+	)
+
 }
 
 func (h Handler) eventSettings(c tele.Context) error {
@@ -1334,8 +1473,38 @@ func (h Handler) eventSettings(c tele.Context) error {
 		)
 	}
 
-	endTime := event.EndTime.Format("02.01.2006 15:04")
-	if event.EndTime.IsZero() {
+	registeredUsersCount, err := h.eventParticipantService.CountByEventID(context.Background(), event.ID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get registered users count: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:events:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   event.ClubID,
+				Page: page,
+			}),
+		)
+	}
+
+	visitedUsersCount, err := h.eventParticipantService.CountVisitedByEventID(context.Background(), event.ID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get visited users count: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:events:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   event.ClubID,
+				Page: page,
+			}),
+		)
+	}
+
+	endTime := event.EndTime.In(location.Location()).Format("02.01.2006 15:04")
+	if event.EndTime.Year() == 1 {
 		endTime = ""
 	}
 
@@ -1348,17 +1517,23 @@ func (h Handler) eventSettings(c tele.Context) error {
 			EndTime               string
 			RegistrationEnd       string
 			MaxParticipants       int
+			ParticipantsCount     int
+			VisitedCount          int
 			AfterRegistrationText string
 			IsRegistered          bool
+			Link                  string
 		}{
 			Name:                  event.Name,
 			Description:           event.Description,
 			Location:              event.Location,
-			StartTime:             event.StartTime.Format("02.01.2006 15:04"),
+			StartTime:             event.StartTime.In(location.Location()).Format("02.01.2006 15:04"),
 			EndTime:               endTime,
-			RegistrationEnd:       event.RegistrationEnd.Format("02.01.2006 15:04"),
+			RegistrationEnd:       event.RegistrationEnd.In(location.Location()).Format("02.01.2006 15:04"),
 			MaxParticipants:       event.MaxParticipants,
+			ParticipantsCount:     registeredUsersCount,
+			VisitedCount:          visitedUsersCount,
 			AfterRegistrationText: event.AfterRegistrationText,
+			Link:                  event.Link(c.Bot().Me.Username),
 		})),
 		h.layout.Markup(c, "clubOwner:event:settings", struct {
 			ID   string
@@ -1411,13 +1586,16 @@ func (h Handler) editEventName(c tele.Context) error {
 		eventName string
 		done      bool
 	)
+
+	oldName := event.Name
+
 	for {
-		message, canceled, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
-		if message != nil {
-			inputCollector.Collect(message)
+		response, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
+		if response.Message != nil {
+			inputCollector.Collect(response.Message)
 		}
 		switch {
-		case canceled:
+		case response.Canceled:
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 			return nil
 		case errGet != nil:
@@ -1432,7 +1610,7 @@ func (h Handler) editEventName(c tele.Context) error {
 					Page: page,
 				}),
 			)
-		case message == nil:
+		case response.Message == nil:
 			_ = inputCollector.Send(c,
 				banner.ClubOwner.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "input_event_name"))),
 				h.layout.Markup(c, "clubOwner:event:settings:back", struct {
@@ -1443,7 +1621,7 @@ func (h Handler) editEventName(c tele.Context) error {
 					Page: page,
 				}),
 			)
-		case !validator.EventName(message.Text, nil):
+		case !validator.EventName(response.Message.Text, nil):
 			_ = inputCollector.Send(c,
 				banner.ClubOwner.Caption(h.layout.Text(c, "invalid_event_name")),
 				h.layout.Markup(c, "clubOwner:event:settings:back", struct {
@@ -1454,8 +1632,8 @@ func (h Handler) editEventName(c tele.Context) error {
 					Page: page,
 				}),
 			)
-		case validator.EventName(message.Text, nil):
-			eventName = message.Text
+		case validator.EventName(response.Message.Text, nil):
+			eventName = response.Message.Text
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
 			done = true
 		}
@@ -1478,6 +1656,23 @@ func (h Handler) editEventName(c tele.Context) error {
 				Page: page,
 			}),
 		)
+	}
+
+	err = h.notificationService.SendEventUpdate(eventID,
+		h.layout.Text(c, "event_notification_update", struct {
+			Name                  string
+			OldName               string
+			Description           string
+			AfterRegistrationText string
+			MaxParticipants       int
+		}{
+			Name:    event.Name,
+			OldName: oldName,
+		}),
+		h.layout.Markup(c, "core:hide"),
+	)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while send event update notification: %v", c.Sender().ID, err)
 	}
 
 	return c.Send(
@@ -1517,16 +1712,23 @@ func (h Handler) editEventDescription(c tele.Context) error {
 		)
 	}
 
+	callbackBtn := h.layout.Button(c, "clubOwner:create_event:description_skip")
+	markup := h.layout.Markup(c, "clubOwner:event:settings:back", struct {
+		ID   string
+		Page string
+	}{
+		ID:   eventID,
+		Page: page,
+	})
+	markup.InlineKeyboard = append(
+		[][]tele.InlineButton{{*callbackBtn.Inline()}},
+		markup.InlineKeyboard...,
+	)
+
 	inputCollector := collector.New()
 	_ = c.Edit(
 		banner.ClubOwner.Caption(h.layout.Text(c, "input_event_description")),
-		h.layout.Markup(c, "clubOwner:event:settings:back", struct {
-			ID   string
-			Page string
-		}{
-			ID:   eventID,
-			Page: page,
-		}),
+		markup,
 	)
 	inputCollector.Collect(c.Message())
 
@@ -1535,12 +1737,12 @@ func (h Handler) editEventDescription(c tele.Context) error {
 		done             bool
 	)
 	for {
-		message, canceled, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
-		if message != nil {
-			inputCollector.Collect(message)
+		response, errGet := h.input.Get(context.Background(), c.Sender().ID, 0, callbackBtn)
+		if response.Message != nil {
+			inputCollector.Collect(response.Message)
 		}
 		switch {
-		case canceled:
+		case response.Canceled:
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 			return nil
 		case errGet != nil:
@@ -1555,18 +1757,11 @@ func (h Handler) editEventDescription(c tele.Context) error {
 					Page: page,
 				}),
 			)
-		case message == nil:
-			_ = inputCollector.Send(c,
-				banner.ClubOwner.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "input_event_description"))),
-				h.layout.Markup(c, "clubOwner:event:settings:back", struct {
-					ID   string
-					Page string
-				}{
-					ID:   eventID,
-					Page: page,
-				}),
-			)
-		case !validator.EventDescription(message.Text, nil):
+		case response.Callback != nil:
+			eventDescription = ""
+			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
+			done = true
+		case !validator.EventDescription(response.Message.Text, nil):
 			_ = inputCollector.Send(c,
 				banner.ClubOwner.Caption(h.layout.Text(c, "invalid_event_description")),
 				h.layout.Markup(c, "clubOwner:event:settings:back", struct {
@@ -1577,8 +1772,8 @@ func (h Handler) editEventDescription(c tele.Context) error {
 					Page: page,
 				}),
 			)
-		case validator.EventDescription(message.Text, nil):
-			eventDescription = message.Text
+		case validator.EventDescription(response.Message.Text, nil):
+			eventDescription = response.Message.Text
 			if eventDescription == "skip" {
 				eventDescription = ""
 			}
@@ -1604,6 +1799,23 @@ func (h Handler) editEventDescription(c tele.Context) error {
 				Page: page,
 			}),
 		)
+	}
+
+	err = h.notificationService.SendEventUpdate(eventID,
+		h.layout.Text(c, "event_notification_update", struct {
+			Name                  string
+			OldName               string
+			Description           string
+			AfterRegistrationText string
+			MaxParticipants       int
+		}{
+			Name:        event.Name,
+			Description: event.Description,
+		}),
+		h.layout.Markup(c, "core:hide"),
+	)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while send event update notification: %v", c.Sender().ID, err)
 	}
 
 	return c.Send(
@@ -1643,16 +1855,23 @@ func (h Handler) editEventAfterRegistrationText(c tele.Context) error {
 		)
 	}
 
+	callbackBtn := h.layout.Button(c, "clubOwner:create_event:after_registration_text_skip")
+	markup := h.layout.Markup(c, "clubOwner:event:settings:back", struct {
+		ID   string
+		Page string
+	}{
+		ID:   eventID,
+		Page: page,
+	})
+	markup.InlineKeyboard = append(
+		[][]tele.InlineButton{{*callbackBtn.Inline()}},
+		markup.InlineKeyboard...,
+	)
+
 	inputCollector := collector.New()
 	_ = c.Edit(
 		banner.ClubOwner.Caption(h.layout.Text(c, "input_after_registration_text")),
-		h.layout.Markup(c, "clubOwner:event:settings:back", struct {
-			ID   string
-			Page string
-		}{
-			ID:   eventID,
-			Page: page,
-		}),
+		markup,
 	)
 	inputCollector.Collect(c.Message())
 
@@ -1661,12 +1880,12 @@ func (h Handler) editEventAfterRegistrationText(c tele.Context) error {
 		done                       bool
 	)
 	for {
-		message, canceled, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
-		if message != nil {
-			inputCollector.Collect(message)
+		response, errGet := h.input.Get(context.Background(), c.Sender().ID, 0, callbackBtn)
+		if response.Message != nil {
+			inputCollector.Collect(response.Message)
 		}
 		switch {
-		case canceled:
+		case response.Canceled:
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 			return nil
 		case errGet != nil:
@@ -1681,19 +1900,11 @@ func (h Handler) editEventAfterRegistrationText(c tele.Context) error {
 					Page: page,
 				}),
 			)
-		case message == nil:
-			h.logger.Errorf("(user: %d) error while input event after registration text: %v", c.Sender().ID, errGet)
-			_ = inputCollector.Send(c,
-				banner.ClubOwner.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "input_after_registration_text"))),
-				h.layout.Markup(c, "clubOwner:event:settings:back", struct {
-					ID   string
-					Page string
-				}{
-					ID:   eventID,
-					Page: page,
-				}),
-			)
-		case !validator.EventAfterRegistrationText(message.Text, nil):
+		case response.Callback != nil:
+			eventAfterRegistrationText = ""
+			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
+			done = true
+		case !validator.EventAfterRegistrationText(response.Message.Text, nil):
 			_ = inputCollector.Send(c,
 				banner.ClubOwner.Caption(h.layout.Text(c, "invalid_after_registration_text")),
 				h.layout.Markup(c, "clubOwner:event:settings:back", struct {
@@ -1704,8 +1915,11 @@ func (h Handler) editEventAfterRegistrationText(c tele.Context) error {
 					Page: page,
 				}),
 			)
-		case validator.EventAfterRegistrationText(message.Text, nil):
-			eventAfterRegistrationText = message.Text
+		case validator.EventAfterRegistrationText(response.Message.Text, nil):
+			eventAfterRegistrationText = response.Message.Text
+			if eventAfterRegistrationText == "skip" {
+				eventAfterRegistrationText = ""
+			}
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
 			done = true
 		}
@@ -1730,8 +1944,187 @@ func (h Handler) editEventAfterRegistrationText(c tele.Context) error {
 		)
 	}
 
+	err = h.notificationService.SendEventUpdate(eventID,
+		h.layout.Text(c, "event_notification_update", struct {
+			Name                  string
+			OldName               string
+			Description           string
+			AfterRegistrationText string
+			MaxParticipants       int
+		}{
+			Name:                  event.Name,
+			AfterRegistrationText: event.AfterRegistrationText,
+		}),
+		h.layout.Markup(c, "core:hide"),
+	)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while send event update notification: %v", c.Sender().ID, err)
+	}
+
 	return c.Send(
 		banner.ClubOwner.Caption(h.layout.Text(c, "event_after_registration_text_changed")),
+		h.layout.Markup(c, "clubOwner:event:settings:back", struct {
+			ID   string
+			Page string
+		}{
+			ID:   eventID,
+			Page: page,
+		}),
+	)
+}
+
+func (h Handler) editEventMaxParticipants(c tele.Context) error {
+	data := strings.Split(c.Callback().Data, " ")
+	if len(data) != 2 {
+		return errorz.ErrInvalidCallbackData
+	}
+
+	eventID := data[0]
+	page := data[1]
+	h.logger.Infof("(user: %d) edit event max count", c.Sender().ID)
+
+	event, err := h.eventService.Get(context.Background(), eventID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get event: %v", c.Sender().ID, err)
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:event:settings:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   eventID,
+				Page: page,
+			}),
+		)
+	}
+
+	registeredUsersCount, err := h.eventParticipantService.CountByEventID(context.Background(), event.ID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get registered users count: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:events:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   event.ClubID,
+				Page: page,
+			}),
+		)
+	}
+
+	inputCollector := collector.New()
+	_ = c.Edit(
+		banner.ClubOwner.Caption(h.layout.Text(c, "input_edit_max_participants")),
+		h.layout.Markup(c, "clubOwner:event:settings:back", struct {
+			ID   string
+			Page string
+		}{
+			ID:   eventID,
+			Page: page,
+		}),
+	)
+	inputCollector.Collect(c.Message())
+
+	var (
+		maxParticipants int
+		done            bool
+	)
+	params := make(map[string]interface{})
+	params["previousMaxParticipants"] = event.MaxParticipants
+	if event.MaxParticipants == 0 {
+		params["previousMaxParticipants"] = registeredUsersCount
+	}
+
+	for {
+		response, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
+		if response.Message != nil {
+			inputCollector.Collect(response.Message)
+		}
+		switch {
+		case response.Canceled:
+			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
+			return nil
+		case errGet != nil:
+			h.logger.Errorf("(user: %d) error while input event after registration text: %v", c.Sender().ID, errGet)
+			_ = inputCollector.Send(c,
+				banner.ClubOwner.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "input_edit_max_participants"))),
+				h.layout.Markup(c, "clubOwner:event:settings:back", struct {
+					ID   string
+					Page string
+				}{
+					ID:   eventID,
+					Page: page,
+				}),
+			)
+		case response.Message == nil:
+			h.logger.Errorf("(user: %d) error while input event after registration text: %v", c.Sender().ID, errGet)
+			_ = inputCollector.Send(c,
+				banner.ClubOwner.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "input_edit_max_participants"))),
+				h.layout.Markup(c, "clubOwner:event:settings:back", struct {
+					ID   string
+					Page string
+				}{
+					ID:   eventID,
+					Page: page,
+				}),
+			)
+		case !validator.EventEditMaxParticipants(response.Message.Text, params):
+			_ = inputCollector.Send(c,
+				banner.ClubOwner.Caption(h.layout.Text(c, "invalid_edit_max_participants")),
+				h.layout.Markup(c, "clubOwner:event:settings:back", struct {
+					ID   string
+					Page string
+				}{
+					ID:   eventID,
+					Page: page,
+				}),
+			)
+		case validator.EventEditMaxParticipants(response.Message.Text, params):
+			maxParticipants, _ = strconv.Atoi(response.Message.Text)
+			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
+			done = true
+		}
+		if done {
+			break
+		}
+	}
+
+	event.MaxParticipants = maxParticipants
+	_, err = h.eventService.Update(context.Background(), event)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while update event max participants: %v", c.Sender().ID, err)
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:event:settings:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   eventID,
+				Page: page,
+			}),
+		)
+	}
+
+	err = h.notificationService.SendEventUpdate(eventID,
+		h.layout.Text(c, "event_notification_update", struct {
+			Name                  string
+			OldName               string
+			Description           string
+			AfterRegistrationText string
+			MaxParticipants       int
+		}{
+			Name:            event.Name,
+			MaxParticipants: event.MaxParticipants,
+		}),
+		h.layout.Markup(c, "core:hide"),
+	)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while send event update notification: %v", c.Sender().ID, err)
+	}
+
+	return c.Send(
+		banner.ClubOwner.Caption(h.layout.Text(c, "event_max_participants_changed")),
 		h.layout.Markup(c, "clubOwner:event:settings:back", struct {
 			ID   string
 			Page string
@@ -1823,6 +2216,18 @@ func (h Handler) acceptEventDelete(c tele.Context) error {
 		)
 	}
 
+	err = h.notificationService.SendEventUpdate(eventID,
+		h.layout.Text(c, "event_notification_delete", struct {
+			Name string
+		}{
+			Name: event.Name,
+		}),
+		h.layout.Markup(c, "core:hide"),
+	)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while send event delete notification: %v", c.Sender().ID, err)
+	}
+
 	return c.Edit(
 		banner.ClubOwner.Caption(h.layout.Text(c, "event_deleted", struct {
 			Name string
@@ -1863,8 +2268,75 @@ func (h Handler) declineEventDelete(c tele.Context) error {
 		)
 	}
 
-	endTime := event.EndTime.Format("02.01.2006 15:04")
-	if event.EndTime.IsZero() {
+	club, err := h.clubService.Get(context.Background(), event.ClubID)
+	if err != nil {
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:event:delete:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   eventID,
+				Page: page,
+			}),
+		)
+	}
+
+	registeredUsersCount, err := h.eventParticipantService.CountByEventID(context.Background(), event.ID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get registered users count: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:events:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   event.ClubID,
+				Page: page,
+			}),
+		)
+	}
+
+	visitedUsersCount, err := h.eventParticipantService.CountVisitedByEventID(context.Background(), event.ID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get visited users count: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:events:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   event.ClubID,
+				Page: page,
+			}),
+		)
+	}
+
+	eventMarkup := h.layout.Markup(c, "clubOwner:event:menu", struct {
+		ID     string
+		ClubID string
+		Page   string
+	}{
+		ID:     eventID,
+		ClubID: event.ClubID,
+		Page:   page,
+	})
+
+	if club.QrAllowed {
+		eventMarkup.InlineKeyboard = append(
+			[][]tele.InlineButton{{*h.layout.Button(c, "clubOwner:event:qr", struct {
+				ID   string
+				Page string
+			}{
+				ID:   eventID,
+				Page: page,
+			}).Inline()}},
+			eventMarkup.InlineKeyboard...,
+		)
+	}
+
+	endTime := event.EndTime.In(location.Location()).Format("02.01.2006 15:04")
+	if event.EndTime.Year() == 1 {
 		endTime = ""
 	}
 
@@ -1877,31 +2349,256 @@ func (h Handler) declineEventDelete(c tele.Context) error {
 			EndTime               string
 			RegistrationEnd       string
 			MaxParticipants       int
+			ParticipantsCount     int
+			VisitedCount          int
 			AfterRegistrationText string
 			IsRegistered          bool
+			Link                  string
 		}{
 			Name:                  event.Name,
 			Description:           event.Description,
 			Location:              event.Location,
-			StartTime:             event.StartTime.Format("02.01.2006 15:04"),
+			StartTime:             event.StartTime.In(location.Location()).Format("02.01.2006 15:04"),
 			EndTime:               endTime,
-			RegistrationEnd:       event.RegistrationEnd.Format("02.01.2006 15:04"),
+			RegistrationEnd:       event.RegistrationEnd.In(location.Location()).Format("02.01.2006 15:04"),
 			MaxParticipants:       event.MaxParticipants,
+			ParticipantsCount:     registeredUsersCount,
+			VisitedCount:          visitedUsersCount,
 			AfterRegistrationText: event.AfterRegistrationText,
+			Link:                  event.Link(c.Bot().Me.Username),
 		})),
-		h.layout.Markup(c, "clubOwner:event:menu", struct {
-			ID     string
-			ClubID string
-			Page   string
+		eventMarkup,
+	)
+}
+
+func (h Handler) registeredUsers(c tele.Context) error {
+	data := strings.Split(c.Callback().Data, " ")
+	if len(data) != 2 {
+		return errorz.ErrInvalidCallbackData
+	}
+
+	eventID := data[0]
+	page := data[1]
+	h.logger.Infof("(user: %d) get registered users (eventID=%s)", c.Sender().ID, eventID)
+
+	event, err := h.eventService.Get(context.Background(), eventID)
+	if err != nil {
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "core:hide"),
+		)
+	}
+
+	club, err := h.clubService.Get(context.Background(), event.ClubID)
+	if err != nil {
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "core:hide"),
+		)
+	}
+
+	registeredUsersCount, err := h.eventParticipantService.CountByEventID(context.Background(), event.ID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get registered users count: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:events:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   event.ClubID,
+				Page: page,
+			}),
+		)
+	}
+
+	visitedUsersCount, err := h.eventParticipantService.CountVisitedByEventID(context.Background(), event.ID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get visited users count: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:events:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   event.ClubID,
+				Page: page,
+			}),
+		)
+	}
+
+	users, err := h.userService.GetUsersByEventID(context.Background(), eventID)
+	if err != nil {
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "core:hide"),
+		)
+	}
+
+	buffer, err := usersToXLSX(users)
+	if err != nil {
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "core:hide"),
+		)
+	}
+
+	file := &tele.Document{
+		File:     tele.FromReader(buffer),
+		Caption:  h.layout.Text(c, "registered_users_text"),
+		FileName: "users.xlsx",
+	}
+
+	_ = c.Send(file)
+	time.Sleep(1 * time.Second)
+	_ = c.Delete()
+
+	eventMarkup := h.layout.Markup(c, "clubOwner:event:menu", struct {
+		ID     string
+		ClubID string
+		Page   string
+	}{
+		ID:     eventID,
+		ClubID: event.ClubID,
+		Page:   page,
+	})
+
+	if club.QrAllowed {
+		eventMarkup.InlineKeyboard = append(
+			[][]tele.InlineButton{{*h.layout.Button(c, "clubOwner:event:qr", struct {
+				ID   string
+				Page string
+			}{
+				ID:   eventID,
+				Page: page,
+			}).Inline()}},
+			eventMarkup.InlineKeyboard...,
+		)
+	}
+
+	endTime := event.EndTime.In(location.Location()).Format("02.01.2006 15:04")
+	if event.EndTime.Year() == 1 {
+		endTime = ""
+	}
+
+	return c.Send(
+		banner.Events.Caption(h.layout.Text(c, "club_owner_event_text", struct {
+			Name                  string
+			Description           string
+			Location              string
+			StartTime             string
+			EndTime               string
+			RegistrationEnd       string
+			MaxParticipants       int
+			ParticipantsCount     int
+			VisitedCount          int
+			AfterRegistrationText string
+			IsRegistered          bool
+			Link                  string
 		}{
-			ID:     eventID,
-			ClubID: event.ClubID,
-			Page:   page,
+			Name:                  event.Name,
+			Description:           event.Description,
+			Location:              event.Location,
+			StartTime:             event.StartTime.In(location.Location()).Format("02.01.2006 15:04"),
+			EndTime:               endTime,
+			RegistrationEnd:       event.RegistrationEnd.In(location.Location()).Format("02.01.2006 15:04"),
+			MaxParticipants:       event.MaxParticipants,
+			ParticipantsCount:     registeredUsersCount,
+			VisitedCount:          visitedUsersCount,
+			AfterRegistrationText: event.AfterRegistrationText,
+			Link:                  event.Link(c.Bot().Me.Username),
+		})),
+		eventMarkup,
+	)
+}
+
+func (h Handler) eventQRCode(c tele.Context) error {
+	data := strings.Split(c.Callback().Data, " ")
+	if len(data) != 2 {
+		return errorz.ErrInvalidCallbackData
+	}
+
+	eventID := data[0]
+	page := data[1]
+	h.logger.Infof("(user: %d) getting user Event QR code", c.Sender().ID)
+
+	event, err := h.eventService.Get(context.Background(), eventID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get event: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:event:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   eventID,
+				Page: page,
+			}),
+		)
+	}
+
+	club, err := h.clubService.Get(context.Background(), event.ClubID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get club: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:event:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   eventID,
+				Page: page,
+			}),
+		)
+	}
+
+	if !club.QrAllowed {
+		return c.Edit(
+			h.layout.Text(c, "qr_not_allowed"),
+			h.layout.Markup(c, "clubOwner:event:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   eventID,
+				Page: page,
+			}),
+		)
+	}
+
+	loading, _ := c.Bot().Send(c.Chat(), h.layout.Text(c, "loading"))
+	file, err := h.qrService.GetEventQR(context.Background(), eventID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get event QR: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:event:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   eventID,
+				Page: page,
+			}),
+		)
+	}
+	_ = c.Bot().Delete(loading)
+
+	return c.Edit(
+		&tele.Photo{
+			File:    file,
+			Caption: h.layout.Text(c, "event_qr_text"),
+		},
+		h.layout.Markup(c, "clubOwner:event:back", struct {
+			ID   string
+			Page string
+		}{
+			ID:   eventID,
+			Page: page,
 		}),
 	)
 }
 
-func (h Handler) ClubOwnerSetup(group *tele.Group) {
+func (h Handler) ClubOwnerSetup(group *tele.Group, middle *middlewares.Handler) {
+	group.Use(middle.IsClubOwner)
 	group.Handle(h.layout.Callback("clubOwner:my_clubs"), h.clubsList)
 	group.Handle(h.layout.Callback("clubOwner:myClubs:back"), h.clubsList)
 	group.Handle(h.layout.Callback("clubOwner:myClubs:club"), h.clubMenu)
@@ -1924,9 +2621,12 @@ func (h Handler) ClubOwnerSetup(group *tele.Group) {
 	group.Handle(h.layout.Callback("clubOwner:event:settings:edit_name"), h.editEventName)
 	group.Handle(h.layout.Callback("clubOwner:event:settings:edit_description"), h.editEventDescription)
 	group.Handle(h.layout.Callback("clubOwner:event:settings:edit_after_reg_text"), h.editEventAfterRegistrationText)
+	group.Handle(h.layout.Callback("clubOwner:event:settings:edit:max_participants"), h.editEventMaxParticipants)
 	group.Handle(h.layout.Callback("clubOwner:event:delete"), h.deleteEvent)
 	group.Handle(h.layout.Callback("clubOwner:event:delete:accept"), h.acceptEventDelete)
 	group.Handle(h.layout.Callback("clubOwner:event:delete:decline"), h.declineEventDelete)
+	group.Handle(h.layout.Callback("clubOwner:event:users"), h.registeredUsers)
+	group.Handle(h.layout.Callback("clubOwner:event:qr"), h.eventQRCode)
 
 	group.Handle(h.layout.Callback("clubOwner:club:settings"), h.clubSettings)
 	group.Handle(h.layout.Callback("clubOwner:club:settings:back"), h.clubSettings)
@@ -1959,4 +2659,33 @@ func parseEventCallback(callbackData string) (string, int, error) {
 	}
 
 	return clubID, p, nil
+}
+
+func usersToXLSX(users []entity.User) (*bytes.Buffer, error) {
+	f := excelize.NewFile()
+
+	sheet := "Sheet1"
+	_ = f.SetCellValue(sheet, "A1", "ID")
+	_ = f.SetCellValue(sheet, "B1", "Фамилия")
+	_ = f.SetCellValue(sheet, "C1", "Имя")
+	_ = f.SetCellValue(sheet, "D1", "Отчество")
+	_ = f.SetCellValue(sheet, "E1", "Username")
+
+	for i, user := range users {
+		fio := strings.Split(user.FIO, " ")
+
+		row := i + 2
+		_ = f.SetCellValue(sheet, "A"+strconv.Itoa(row), user.ID)
+		_ = f.SetCellValue(sheet, "B"+strconv.Itoa(row), fio[0])
+		_ = f.SetCellValue(sheet, "C"+strconv.Itoa(row), fio[1])
+		_ = f.SetCellValue(sheet, "D"+strconv.Itoa(row), fio[2])
+		_ = f.SetCellValue(sheet, "E"+strconv.Itoa(row), user.Username)
+	}
+
+	var buf bytes.Buffer
+	if err := f.Write(&buf); err != nil {
+		return nil, err
+	}
+
+	return &buf, nil
 }

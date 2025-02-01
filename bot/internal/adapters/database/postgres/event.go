@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/location"
 	"time"
 
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/dto"
@@ -32,6 +33,12 @@ func (s *EventStorage) Get(ctx context.Context, id string) (*entity.Event, error
 	return &event, err
 }
 
+func (s *EventStorage) GetByQRCodeID(ctx context.Context, qrCodeID string) (*entity.Event, error) {
+	var event entity.Event
+	err := s.db.WithContext(ctx).Where("qr_code_id = ?", qrCodeID).First(&event).Error
+	return &event, err
+}
+
 func (s *EventStorage) GetMany(ctx context.Context, ids []string) ([]entity.Event, error) {
 	var events []entity.Event
 	err := s.db.WithContext(ctx).Where("id IN ?", ids).Find(&events).Error
@@ -45,12 +52,90 @@ func (s *EventStorage) GetAll(ctx context.Context) ([]entity.Event, error) {
 	return events, err
 }
 
-// GetByClubIDWithPagination is a function that gets events by club_id with pagination from the database.
-func (s *EventStorage) GetByClubIDWithPagination(ctx context.Context, limit, offset int, order string, clubID string) ([]entity.Event, error) {
+// GetByClubID is a function that gets events by club_id with pagination from the database.
+func (s *EventStorage) GetByClubID(ctx context.Context, limit, offset int, order string, clubID string) ([]entity.Event, error) {
 	var events []entity.Event
-	err := s.db.WithContext(ctx).Where("club_id = ?", clubID).Order(order).Limit(limit).Offset(offset).Find(&events).Error
+
+	currentTime := time.Now()
+
+	// Count total upcoming events for this club.
+	var upcomingCount int64
+	if err := s.db.WithContext(ctx).
+		Model(&entity.Event{}).
+		Where("club_id = ? AND start_time > ?", clubID, currentTime).
+		Count(&upcomingCount).Error; err != nil {
+		return nil, err
+	}
+
+	// If offset is within upcoming events, get upcoming events
+	if offset < int(upcomingCount) {
+		if err := s.db.WithContext(ctx).
+			Where("club_id = ? AND start_time > ?", clubID, currentTime).
+			Order(order).
+			Limit(limit).
+			Offset(offset).
+			Find(&events).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	// If we haven't filled the limit, and there might be past events to show
+	remainingLimit := limit - len(events)
+	if remainingLimit > 0 {
+		pastOffset := max(0, offset-int(upcomingCount)) // Adjust offset for past events
+		var pastEvents []entity.Event
+		if err := s.db.WithContext(ctx).
+			Where("club_id = ? AND start_time <= ?", clubID, currentTime).
+			Order(order).
+			Limit(remainingLimit).
+			Offset(pastOffset).
+			Find(&pastEvents).Error; err != nil {
+			return nil, err
+		}
+		events = append(events, pastEvents...)
+	}
+
+	return events, nil
+}
+
+// GetFutureByClubID is a function that gets future events by club_id with pagination from the database.
+//
+// NOTE:
+//
+// additionalTime time.Duration is a time, the time that will be subtracted from the current time when checking start_time > time.Now()
+func (s *EventStorage) GetFutureByClubID(
+	ctx context.Context,
+	limit, offset int,
+	order string,
+	clubID string,
+	additionalTime time.Duration,
+) ([]entity.Event, error) {
+	var events []entity.Event
+	err := s.db.WithContext(ctx).
+		Where("club_id = ? AND start_time > ?", clubID, time.Now().In(location.Location()).Add(-additionalTime)).
+		Order(order).
+		Limit(limit).
+		Offset(offset).
+		Find(&events).Error
 	return events, err
 }
+
+// GetUpcomingEvents returns all events that start before the given time
+func (s *EventStorage) GetUpcomingEvents(ctx context.Context, before time.Time) ([]entity.Event, error) {
+	var events []entity.Event
+	err := s.db.WithContext(ctx).
+		Where("start_time <= ? AND start_time > ?", before.In(location.Location()), time.Now().In(location.Location())).
+		Find(&events).Error
+	return events, err
+}
+
+//func (s *EventStorage) CountFutureByClubID(ctx context.Context, clubID string) (int64, error) {
+//	var count int64
+//	err := s.db.WithContext(ctx).
+//		Where("club_id = ? AND start_time > ?", clubID, time.Now().In(location.Location)).
+//		Count(&count).Error
+//	return count, err
+//}
 
 // Update is a function that updates an event in the database.
 func (s *EventStorage) Update(ctx context.Context, event *entity.Event) (*entity.Event, error) {
@@ -78,8 +163,9 @@ func (s *EventStorage) Count(ctx context.Context, role string) (int64, error) {
 func (s *EventStorage) CountByClubID(ctx context.Context, clubID string) (int64, error) {
 	var count int64
 
-	query := s.db.WithContext(ctx).Where("club_id = ?", clubID).Find(&entity.Event{})
-	err := query.Count(&count).Error
+	err := s.db.WithContext(ctx).Model(&entity.Event{}).
+		Where("club_id = ? AND deleted_at IS NULL", clubID).
+		Count(&count).Error
 	return count, err
 }
 

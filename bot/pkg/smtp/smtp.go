@@ -1,39 +1,55 @@
 package smtp
 
 import (
+	"bytes"
 	"fmt"
+	"html/template"
+	"io"
+	"os"
 	"time"
 
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger"
 	"github.com/google/uuid"
-	"github.com/spf13/viper"
 	"gopkg.in/gomail.v2"
 )
 
 // Client представляет почтовый клиент.
 type Client struct {
 	dialer *gomail.Dialer
+
+	domain string
+	from   string
 }
 
 // NewClient инициализирует Client.
-func NewClient(dialer *gomail.Dialer) *Client {
-	return &Client{dialer: dialer}
+func NewClient(dialer *gomail.Dialer, domain string, from string) *Client {
+	return &Client{
+		dialer: dialer,
+		domain: domain,
+		from:   from,
+	}
 }
 
-// SendConfirmationEmail отправляет письмо с подтверждением почты.
-func (c *Client) SendConfirmationEmail(to string, code string) {
+// Send отправляет письмо.
+func (c *Client) Send(to string, body, message string, subject string, file *bytes.Buffer) {
 	msg := gomail.NewMessage()
 
-	domain := viper.GetString("service.smtp.domain")
-	messageID := generateMessageID(domain)
-
-	msg.SetHeader("Message-ID", messageID)
+	msg.SetHeader("Message-ID", generateMessageID(c.domain))
 	msg.SetHeader("Date", time.Now().Format(time.RFC1123Z))
-	msg.SetHeader("From", viper.GetString("service.smtp.email"))
+	msg.SetHeader("From", c.from)
 	msg.SetHeader("To", to)
-	msg.SetHeader("Subject", "Email Confirmation")
-	msg.SetBody("text/plain", fmt.Sprintf("Перейдите по ссылке https://t.me/mega_bot_test_bot?start=auth_%s", code))
-	msg.AddAlternative("text/html", fmt.Sprintf("Перейдите по ссылке https://t.me/mega_bot_test_bot?start=auth_%s", code))
+	msg.SetHeader("Subject", subject)
+	msg.SetBody("text/plain", body)
+	msg.AddAlternative("text/html", message)
+
+	if file != nil {
+		msg.Attach("participants.xlsx", gomail.SetCopyFunc(func(w io.Writer) error {
+			_, err := w.Write(file.Bytes())
+			logger.Log.Error(err)
+			return err
+		}))
+	}
+
 	if err := c.dialer.DialAndSend(msg); err != nil {
 		logger.Log.Error(err)
 		return
@@ -45,4 +61,26 @@ func (c *Client) SendConfirmationEmail(to string, code string) {
 func generateMessageID(domain string) string {
 	uniqueID := uuid.New().String()
 	return fmt.Sprintf("<%s@%s>", uniqueID, domain)
+}
+
+// GenerateEmailConfirmationMessage загружает HTML-шаблон для отправки письма с подтверждением аккаунта и подставляет в него переменные.
+func GenerateEmailConfirmationMessage(filename string, data map[string]string) (string, error) {
+	templateBytes, err := os.ReadFile(filename)
+	if err != nil {
+		return "", err
+	}
+	templateContent := string(templateBytes)
+
+	tmpl, err := template.New("email").Parse(templateContent)
+	if err != nil {
+		return "", err
+	}
+
+	var body bytes.Buffer
+	err = tmpl.Execute(&body, data)
+	if err != nil {
+		return "", err
+	}
+
+	return body.String(), nil
 }

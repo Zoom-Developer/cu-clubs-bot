@@ -67,7 +67,7 @@ func New(b *bot.Bot) *Handler {
 		logger:           b.Logger,
 		bot:              b,
 		input:            b.Input,
-		adminUserService: service.NewUserService(userStorage, nil, nil, nil),
+		adminUserService: service.NewUserService(userStorage, nil, nil, nil, ""),
 		clubService:      service.NewClubService(clubStorage),
 		clubOwnerService: service.NewClubOwnerService(clubOwnerStorage, userStorage),
 	}
@@ -102,12 +102,12 @@ func (h Handler) createClub(c tele.Context) error {
 		done     bool
 	)
 	for {
-		message, canceled, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
-		if message != nil {
-			inputCollector.Collect(message)
+		response, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
+		if response.Message != nil {
+			inputCollector.Collect(response.Message)
 		}
 		switch {
-		case canceled:
+		case response.Canceled:
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 			return nil
 		case errGet != nil:
@@ -116,19 +116,19 @@ func (h Handler) createClub(c tele.Context) error {
 				banner.Menu.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "input_club_name"))),
 				h.layout.Markup(c, "admin:backToMenu"),
 			)
-		case message == nil:
+		case response.Message == nil:
 			h.logger.Errorf("(user: %d) error while input club name: %v", c.Sender().ID, errGet)
 			_ = inputCollector.Send(c,
 				banner.Menu.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "input_club_name"))),
 				h.layout.Markup(c, "admin:backToMenu"),
 			)
-		case !validator.ClubName(message.Text, nil):
+		case !validator.ClubName(response.Message.Text, nil):
 			_ = inputCollector.Send(c,
 				banner.Menu.Caption(h.layout.Text(c, "invalid_club_name")),
 				h.layout.Markup(c, "admin:backToMenu"),
 			)
-		case validator.ClubName(message.Text, nil):
-			clubName = message.Text
+		case validator.ClubName(response.Message.Text, nil):
+			clubName = response.Message.Text
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
 			done = true
 		}
@@ -163,7 +163,7 @@ func (h Handler) createClub(c tele.Context) error {
 }
 
 func (h Handler) clubsList(c tele.Context) error {
-	const clubsOnPage = 10
+	const clubsOnPage = 5
 	h.logger.Infof("(user: %d) edit clubs list", c.Sender().ID)
 
 	var (
@@ -299,6 +299,22 @@ func (h Handler) clubMenu(c tele.Context) error {
 		)
 	}
 
+	if c.Callback().Unique == "admin_club_qr" {
+		club.QrAllowed = !club.QrAllowed
+		club, err = h.clubService.Update(context.Background(), club)
+		if err != nil {
+			h.logger.Errorf("(user: %d) error while update club: %v", c.Sender().ID, err)
+			return c.Send(
+				banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+				h.layout.Markup(c, "admin:clubs:back", struct {
+					Page string
+				}{
+					Page: page,
+				}),
+			)
+		}
+	}
+
 	clubOwners, err := h.clubOwnerService.GetByClubID(context.Background(), clubID)
 	if err != nil {
 		h.logger.Errorf("(user: %d) error while get club owners: %v", c.Sender().ID, err)
@@ -321,11 +337,13 @@ func (h Handler) clubMenu(c tele.Context) error {
 			Owners: clubOwners,
 		})),
 		h.layout.Markup(c, "admin:club:menu", struct {
-			ID   string
-			Page string
+			ID        string
+			Page      string
+			QrAllowed bool
 		}{
-			ID:   clubID,
-			Page: page,
+			ID:        clubID,
+			Page:      page,
+			QrAllowed: club.QrAllowed,
 		}),
 	)
 }
@@ -374,12 +392,12 @@ func (h Handler) addClubOwner(c tele.Context) error {
 		done bool
 	)
 	for {
-		message, canceled, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
-		if message != nil {
-			inputCollector.Collect(message)
+		response, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
+		if response.Message != nil {
+			inputCollector.Collect(response.Message)
 		}
 		switch {
-		case canceled:
+		case response.Canceled:
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 			return nil
 		case errGet != nil:
@@ -393,7 +411,7 @@ func (h Handler) addClubOwner(c tele.Context) error {
 					Page: page,
 				}),
 			)
-		case message == nil:
+		case response.Message == nil:
 			_ = inputCollector.Send(c,
 				banner.Menu.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "input_user_id"))),
 				h.layout.Markup(c, "admin:club:back", struct {
@@ -405,7 +423,7 @@ func (h Handler) addClubOwner(c tele.Context) error {
 				}),
 			)
 		default:
-			userID, err := strconv.ParseInt(message.Text, 10, 64)
+			userID, err := strconv.ParseInt(response.Message.Text, 10, 64)
 			if err != nil {
 				_ = inputCollector.Send(c,
 					banner.Menu.Caption(h.layout.Text(c, "input_user_id")),
@@ -522,12 +540,12 @@ func (h Handler) removeClubOwner(c tele.Context) error {
 		done bool
 	)
 	for {
-		message, canceled, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
-		if message != nil {
-			inputCollector.Collect(message)
+		response, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
+		if response.Message != nil {
+			inputCollector.Collect(response.Message)
 		}
 		switch {
-		case canceled:
+		case response.Canceled:
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 			return nil
 		case errGet != nil:
@@ -542,7 +560,7 @@ func (h Handler) removeClubOwner(c tele.Context) error {
 				}),
 			)
 		default:
-			userID, err := strconv.ParseInt(message.Text, 10, 64)
+			userID, err := strconv.ParseInt(response.Message.Text, 10, 64)
 			if err != nil {
 				_ = inputCollector.Send(c,
 					banner.Menu.Caption(h.layout.Text(c, "input_user_id")),
@@ -879,6 +897,7 @@ func (h Handler) AdminSetup(group *tele.Group) {
 	group.Handle(h.layout.Callback("admin:clubs:next_page"), h.clubsList)
 	group.Handle(h.layout.Callback("admin:clubs:back"), h.clubsList)
 	group.Handle(h.layout.Callback("admin:clubs:club"), h.clubMenu)
+	group.Handle(h.layout.Callback("admin:club:qr_allowed"), h.clubMenu)
 	group.Handle(h.layout.Callback("admin:club:back"), h.clubMenu)
 	group.Handle(h.layout.Callback("admin:club:add_owner"), h.addClubOwner)
 	group.Handle(h.layout.Callback("admin:club:del_owner"), h.removeClubOwner)

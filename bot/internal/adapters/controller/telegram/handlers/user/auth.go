@@ -43,12 +43,12 @@ func (h Handler) externalUserAuth(c tele.Context) error {
 		done bool
 	)
 	for {
-		message, canceled, err := h.input.Get(context.Background(), c.Sender().ID, 0)
-		if message != nil {
-			inputCollector.Collect(message)
+		response, err := h.input.Get(context.Background(), c.Sender().ID, 0)
+		if response.Message != nil {
+			inputCollector.Collect(response.Message)
 		}
 		switch {
-		case canceled:
+		case response.Canceled:
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 			return nil
 		case err != nil:
@@ -57,19 +57,19 @@ func (h Handler) externalUserAuth(c tele.Context) error {
 				banner.Auth.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "fio_request"))),
 				h.layout.Markup(c, "auth:backToMenu"),
 			)
-		case message == nil:
+		case response.Message == nil:
 			h.logger.Errorf("(user: %d) error while input fio: %v", c.Sender().ID, err)
 			_ = inputCollector.Send(c,
 				banner.Auth.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "fio_request"))),
 				h.layout.Markup(c, "auth:backToMenu"),
 			)
-		case !validator.Fio(message.Text, nil):
+		case !validator.Fio(response.Message.Text, nil):
 			_ = inputCollector.Send(c,
 				banner.Auth.Caption(h.layout.Text(c, "invalid_user_fio")),
 				h.layout.Markup(c, "auth:backToMenu"),
 			)
-		case validator.Fio(message.Text, nil):
-			fio = message.Text
+		case validator.Fio(response.Message.Text, nil):
+			fio = response.Message.Text
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
 			done = true
 		}
@@ -99,7 +99,7 @@ func (h Handler) externalUserAuth(c tele.Context) error {
 func (h Handler) grantUserAuth(c tele.Context) error {
 	h.logger.Infof("(user: %d) grant user auth", c.Sender().ID)
 
-	grantChatID := int64(viper.GetInt("bot.grant-chat-id"))
+	grantChatID := int64(viper.GetInt("bot.auth.grant-chat-id"))
 	member, err := c.Bot().ChatMemberOf(&tele.Chat{ID: grantChatID}, &tele.User{ID: c.Sender().ID})
 	if err != nil {
 		h.logger.Errorf("(user: %d) error while verification user's membership in the grant chat: %v", c.Sender().ID, err)
@@ -128,12 +128,12 @@ func (h Handler) grantUserAuth(c tele.Context) error {
 		done bool
 	)
 	for {
-		message, canceled, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
-		if message != nil {
-			inputCollector.Collect(message)
+		response, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
+		if response.Message != nil {
+			inputCollector.Collect(response.Message)
 		}
 		switch {
-		case canceled:
+		case response.Canceled:
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 			return nil
 		case errGet != nil:
@@ -142,19 +142,19 @@ func (h Handler) grantUserAuth(c tele.Context) error {
 				banner.Auth.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "fio_request"))),
 				h.layout.Markup(c, "auth:backToMenu"),
 			)
-		case message == nil:
+		case response.Message == nil:
 			h.logger.Errorf("(user: %d) error while input fio: %v", c.Sender().ID, errGet)
 			_ = inputCollector.Send(c,
 				banner.Auth.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "fio_request"))),
 				h.layout.Markup(c, "auth:backToMenu"),
 			)
-		case !validator.Fio(message.Text, nil):
+		case !validator.Fio(response.Message.Text, nil):
 			_ = inputCollector.Send(c,
 				banner.Auth.Caption(h.layout.Text(c, "invalid_user_fio")),
 				h.layout.Markup(c, "auth:backToMenu"),
 			)
-		case validator.Fio(message.Text, nil):
-			fio = message.Text
+		case validator.Fio(response.Message.Text, nil):
+			fio = response.Message.Text
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
 			done = true
 		}
@@ -196,12 +196,12 @@ func (h Handler) studentAuth(c tele.Context) error {
 		done  bool
 	)
 	for {
-		message, canceled, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
-		if message != nil {
-			inputCollector.Collect(message)
+		response, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
+		if response.Message != nil {
+			inputCollector.Collect(response.Message)
 		}
 		switch {
-		case canceled:
+		case response.Canceled:
 			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
 			return nil
 		case errGet != nil:
@@ -210,19 +210,19 @@ func (h Handler) studentAuth(c tele.Context) error {
 				banner.Auth.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "email_request"))),
 				h.layout.Markup(c, "auth:backToMenu"),
 			)
-		case message == nil:
+		case response.Message == nil:
 			h.logger.Errorf("(user: %d) error while input email: %v", c.Sender().ID, errGet)
 			_ = inputCollector.Send(c,
 				banner.Auth.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "email_request"))),
 				h.layout.Markup(c, "auth:backToMenu"),
 			)
-		case !validator.Email(message.Text, nil):
+		case !validator.Email(response.Message.Text, nil):
 			_ = inputCollector.Send(c,
 				banner.Auth.Caption(h.layout.Text(c, "invalid_email")),
 				h.layout.Markup(c, "auth:backToMenu"),
 			)
-		case validator.Email(message.Text, nil):
-			email = message.Text
+		case validator.Email(response.Message.Text, nil):
+			email = response.Message.Text
 			done = true
 		}
 		if done {

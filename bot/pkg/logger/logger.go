@@ -18,10 +18,10 @@ var (
 
 // Config represents configuration options for logger initialization
 type Config struct {
-	Debug     bool   // Enable debug logging
-	TimeZone  string // Set the time zone (GMT+0, GMT+3, etc.)
-	LogToFile bool   // Enable logging to a file
-	LogsDir   string // Set the directory for logs (default: current working directory)
+	Debug        bool           // Enable debug logging
+	TimeLocation *time.Location // Set the time zone (GMT+0, GMT+3, etc.)
+	LogToFile    bool           // Enable logging to a file
+	LogsDir      string         // Set the directory for logs (default: current working directory)
 }
 
 // SetLogHook sets a hook function that will be called for each log entry
@@ -65,9 +65,9 @@ func Init(config Config) error {
 		EncodeDuration: zapcore.StringDurationEncoder,
 	}
 
-	if config.TimeZone != "" {
+	if config.TimeLocation != nil {
 		encoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
-			enc.AppendString(t.In(time.FixedZone(config.TimeZone, 3*60*60)).Format("2006-01-02 15:04:05"))
+			enc.AppendString(t.In(config.TimeLocation).Format("2006-01-02 15:04:05"))
 		}
 	}
 

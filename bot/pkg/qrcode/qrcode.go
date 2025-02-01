@@ -1,69 +1,60 @@
-package generator
+package qr
 
 import (
 	"bytes"
-	"fmt"
-	"github.com/fogleman/gg"
-	"github.com/google/uuid"
-	"github.com/nfnt/resize"
-	"github.com/skip2/go-qrcode"
 	"image"
 	"image/color"
 	"image/png"
 	"math"
-	"os"
-	"path/filepath"
+
+	"github.com/fogleman/gg"
+	"github.com/nfnt/resize"
+	"github.com/skip2/go-qrcode"
 )
 
-type QRCode struct {
-	Cfg       *QRCodeConfig
-	OutputDir string
-	LogoPath  string
-	BotName   string
+type Config struct {
+	Content         string
+	LogoPath        string
+	Size            int
+	LogoScale       float64
+	Smoothing       float64 // Controls the overall smoothness of the QR code
+	Background      color.Color
+	Foreground      color.Color
+	CornerRadius    float64 // Controls individual dot roundness
+	RecoveryLevel   int
+	QuietZone       int // Size of quiet zone around QR code
+	LogoBackground  color.Color
+	LogoBorderWidth float64 // Width of logo border
+	LogoFade        float64 // Logo fade effect
+
 }
 
-func NewQrCode(cfg *QRCodeConfig, outputDir, logoPath, botName string) *QRCode {
-	wd, _ := os.Getwd()
-	outputDir = filepath.Join(wd, outputDir)
-	logoPath = filepath.Join(wd, logoPath)
-
-	return &QRCode{
-		Cfg:       cfg,
-		OutputDir: outputDir,
-		LogoPath:  logoPath,
-		BotName:   botName,
-	}
-}
-
-func (q *QRCode) Generate() (string, string, error) {
-	qrCode := uuid.New().String()
-
-	link := fmt.Sprintf("https://t.me/%s?start=qr_%s", q.BotName, qrCode)
-
+// Generate creates a QR code with the given configuration and returns it as a byte slice
+func (c *Config) Generate() ([]byte, error) {
 	// Generate QR code with specified recovery level
-	qr, err := qrcode.New(link, qrcode.RecoveryLevel(q.Cfg.RecoveryLevel))
+	qr, err := qrcode.New(c.Content, qrcode.RecoveryLevel(c.RecoveryLevel))
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 
 	// Calculate total size including quiet zone (if enabled)
-	totalSize := q.Cfg.Size
+	totalSize := c.Size
 	quietZoneOffset := 0
-	if q.Cfg.QuietZone > 0 {
-		quietZoneOffset = q.Cfg.QuietZone
-		totalSize += 2 * q.Cfg.QuietZone
+	if c.QuietZone > 0 {
+		quietZoneOffset = c.QuietZone
+		totalSize += 2 * c.QuietZone
 	}
 
 	// Create QR image with extra size for smoothing
-	scaleFactor := 1 + q.Cfg.Smoothing
-	tempSize := int(float64(q.Cfg.Size) * scaleFactor)
+	scaleFactor := 1 + c.Smoothing
+	tempSize := int(float64(c.Size) * scaleFactor)
 	qrImage := qr.Image(tempSize)
 
 	// Create new context with total size including quiet zone
 	dc := gg.NewContext(totalSize, totalSize)
 
 	// Draw background
-	dc.SetColor(q.Cfg.Background)
+	dc.SetColor(c.Background)
 	dc.Clear()
 
 	// Create QR mask with fade effect if enabled
@@ -71,9 +62,9 @@ func (q *QRCode) Generate() (string, string, error) {
 	qrMask.SetColor(color.Black)
 
 	// Calculate the fade area
-	innerSize := float64(q.Cfg.Size)
-	if q.Cfg.QuietZone > 0 {
-		innerSize = float64(q.Cfg.Size) - float64(q.Cfg.QuietZone)*2
+	innerSize := float64(c.Size)
+	if c.QuietZone > 0 {
+		innerSize = float64(c.Size) - float64(c.QuietZone)*2
 	}
 
 	// Draw gradient from center to edges
@@ -110,12 +101,13 @@ func (q *QRCode) Generate() (string, string, error) {
 	var logo image.Image
 	var logoMask *gg.Context
 
-	if q.LogoPath != "" {
-		logo, err = gg.LoadImage(q.LogoPath)
+	if c.LogoPath != "" {
+		var err error
+		logo, err = gg.LoadImage(c.LogoPath)
 		if err != nil {
-			return "", "", err
+			return nil, err
 		}
-		logoSize = int(float64(q.Cfg.Size) * q.Cfg.LogoScale)
+		logoSize = int(float64(c.Size) * c.LogoScale)
 
 		// Create circular gradient mask for logo area
 		logoMask = gg.NewContext(totalSize, totalSize)
@@ -125,7 +117,7 @@ func (q *QRCode) Generate() (string, string, error) {
 		// Радиус области под лого
 		logoRadius := float64(logoSize) / 2
 		// Радиус области плавного перехода
-		fadeRadius := logoRadius * (1 + q.Cfg.LogoFade)
+		fadeRadius := logoRadius * (1 + c.LogoFade)
 
 		// Создаем градиент от центра
 		for y := 0; y < totalSize; y++ {
@@ -141,7 +133,7 @@ func (q *QRCode) Generate() (string, string, error) {
 					// Плавный переход
 					progress := (distance - logoRadius) / (fadeRadius - logoRadius)
 					alpha := math.Min(1, progress)
-					logoMask.SetRGBA(0, 0, 0, float64(alpha))
+					logoMask.SetRGBA(0, 0, 0, alpha)
 				} else {
 					// Полностью непрозрачная область
 					logoMask.SetRGBA(0, 0, 0, 1)
@@ -156,12 +148,12 @@ func (q *QRCode) Generate() (string, string, error) {
 	matrixSize := len(qrMatrix)
 
 	// Calculate scaling factors
-	scaleX := float64(q.Cfg.Size) / float64(tempSize)
-	scaleY := float64(q.Cfg.Size) / float64(tempSize)
+	scaleX := float64(c.Size) / float64(tempSize)
+	scaleY := float64(c.Size) / float64(tempSize)
 
 	// Draw smoothed QR code
 	bounds := qrImage.Bounds()
-	dotSize := float64(q.Cfg.Size) * q.Cfg.CornerRadius
+	dotSize := float64(c.Size) * c.CornerRadius
 
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
@@ -188,6 +180,9 @@ func (q *QRCode) Generate() (string, string, error) {
 					maskX := int(px)
 					maskY := int(py)
 					if maskX >= 0 && maskX < totalSize && maskY >= 0 && maskY < totalSize {
+						if logoMask == nil {
+							continue
+						}
 						_, _, _, a := logoMask.Image().At(maskX, maskY).RGBA()
 						alpha := float64(a) / 65535.0 // Нормализуем значение альфа-канала
 
@@ -198,25 +193,25 @@ func (q *QRCode) Generate() (string, string, error) {
 							}
 							alpha = math.Min(alpha, qrFade)
 							dc.SetRGBA(
-								float64(q.Cfg.Foreground.(color.RGBA).R)/255.0,
-								float64(q.Cfg.Foreground.(color.RGBA).G)/255.0,
-								float64(q.Cfg.Foreground.(color.RGBA).B)/255.0,
+								float64(c.Foreground.(color.RGBA).R)/255.0,
+								float64(c.Foreground.(color.RGBA).G)/255.0,
+								float64(c.Foreground.(color.RGBA).B)/255.0,
 								alpha,
 							)
 						} else {
 							dc.SetRGBA(
-								float64(q.Cfg.Foreground.(color.RGBA).R)/255.0,
-								float64(q.Cfg.Foreground.(color.RGBA).G)/255.0,
-								float64(q.Cfg.Foreground.(color.RGBA).B)/255.0,
+								float64(c.Foreground.(color.RGBA).R)/255.0,
+								float64(c.Foreground.(color.RGBA).G)/255.0,
+								float64(c.Foreground.(color.RGBA).B)/255.0,
 								qrFade,
 							)
 						}
 					}
 				} else {
 					dc.SetRGBA(
-						float64(q.Cfg.Foreground.(color.RGBA).R)/255.0,
-						float64(q.Cfg.Foreground.(color.RGBA).G)/255.0,
-						float64(q.Cfg.Foreground.(color.RGBA).B)/255.0,
+						float64(c.Foreground.(color.RGBA).R)/255.0,
+						float64(c.Foreground.(color.RGBA).G)/255.0,
+						float64(c.Foreground.(color.RGBA).B)/255.0,
 						qrFade,
 					)
 				}
@@ -236,18 +231,18 @@ func (q *QRCode) Generate() (string, string, error) {
 		logoCtx := gg.NewContext(logoSize, logoSize)
 
 		// Draw logo background circle with border
-		if q.Cfg.LogoBorderWidth > 0 {
+		if c.LogoBorderWidth > 0 {
 			// Draw outer circle (border)
-			logoCtx.SetColor(q.Cfg.LogoBackground)
+			logoCtx.SetColor(c.LogoBackground)
 			logoCtx.DrawCircle(float64(logoSize)/2, float64(logoSize)/2, float64(logoSize)/2)
 			logoCtx.Fill()
 
 			// Draw inner circle (actual logo background)
-			logoCtx.SetColor(q.Cfg.LogoBackground)
-			logoCtx.DrawCircle(float64(logoSize)/2, float64(logoSize)/2, float64(logoSize)/2-q.Cfg.LogoBorderWidth)
+			logoCtx.SetColor(c.LogoBackground)
+			logoCtx.DrawCircle(float64(logoSize)/2, float64(logoSize)/2, float64(logoSize)/2-c.LogoBorderWidth)
 			logoCtx.Fill()
 		} else {
-			logoCtx.SetColor(q.Cfg.LogoBackground)
+			logoCtx.SetColor(c.LogoBackground)
 			logoCtx.DrawCircle(float64(logoSize)/2, float64(logoSize)/2, float64(logoSize)/2)
 			logoCtx.Fill()
 		}
@@ -257,7 +252,7 @@ func (q *QRCode) Generate() (string, string, error) {
 
 		// Create circular mask
 		maskCtx := gg.NewContext(logoSize, logoSize)
-		maskCtx.SetColor(q.Cfg.Foreground)
+		maskCtx.SetColor(c.Foreground)
 		maskCtx.DrawCircle(float64(logoSize)/2, float64(logoSize)/2, float64(logoSize)/2)
 		maskCtx.Fill()
 
@@ -282,36 +277,8 @@ func (q *QRCode) Generate() (string, string, error) {
 	var buf bytes.Buffer
 	err = png.Encode(&buf, dc.Image())
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 
-	filePath := fmt.Sprintf("%s/%s.png", q.OutputDir, qrCode)
-
-	if err = q.ensureOutputDir(); err != nil {
-		return "", "", err
-	}
-	err = os.WriteFile(filePath, buf.Bytes(), 0644)
-	if err != nil {
-		return "", "", err
-	}
-
-	return qrCode, filePath, nil
-}
-
-func (q *QRCode) ensureOutputDir() error {
-	if _, err := os.Stat(q.OutputDir); os.IsNotExist(err) {
-		err = os.MkdirAll(q.OutputDir, os.ModePerm)
-		if err != nil {
-			return fmt.Errorf("failed to create output directory: %v", err)
-		}
-	}
-	return nil
-}
-
-func (q *QRCode) Delete(filePath string) error {
-	err := os.Remove(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to delete QR code file: %v", err)
-	}
-	return nil
+	return buf.Bytes(), nil
 }

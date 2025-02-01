@@ -14,14 +14,16 @@ import (
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/service"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/banner"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/location"
-	"github.com/Badsnus/cu-clubs-bot/bot/pkg/generator"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger/types"
+	qr "github.com/Badsnus/cu-clubs-bot/bot/pkg/qrcode"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/smtp"
 	"github.com/nlypage/intele"
 	"github.com/spf13/viper"
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/layout"
 	"gorm.io/gorm"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -33,13 +35,8 @@ type userService interface {
 	GetByQRCodeID(ctx context.Context, qrCodeID string) (*entity.User, error)
 	SendAuthCode(ctx context.Context, email string) (string, string, error)
 	Update(ctx context.Context, user *entity.User) (*entity.User, error)
-	GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]entity.Event, error)
+	GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]dto.UserEvent, error)
 	CountUserEvents(ctx context.Context, userID int64) (int64, error)
-}
-
-type qrCodesGenerator interface {
-	Generate() (string, string, error)
-	Delete(filePath string) error
 }
 
 type eventService interface {
@@ -49,24 +46,33 @@ type eventService interface {
 }
 
 type eventParticipantService interface {
-	Register(ctx context.Context, userID int64, eventID string) (*entity.EventParticipant, error)
+	Register(ctx context.Context, eventID string, userID int64) (*entity.EventParticipant, error)
 	Get(ctx context.Context, eventID string, userID int64) (*entity.EventParticipant, error)
 	CountByEventID(ctx context.Context, eventID string) (int, error)
+}
+
+type qrService interface {
+	GetUserQR(ctx context.Context, userID int64) (qr tele.File, err error)
+}
+
+type notificationService interface {
+	SendClubWarning(clubID string, what interface{}, opts ...interface{}) error
 }
 
 type Handler struct {
 	userService             userService
 	eventService            eventService
 	eventParticipantService eventParticipantService
+	qrService               qrService
+	notificationService     notificationService
 
 	menuHandler *menu.Handler
 
-	qrCodesGenerator qrCodesGenerator
-	codesStorage     *codes.Storage
-	emailsStorage    *emails.Storage
-	input            *intele.InputManager
-	layout           *layout.Layout
-	logger           *types.Logger
+	codesStorage  *codes.Storage
+	emailsStorage *emails.Storage
+	input         *intele.InputManager
+	layout        *layout.Layout
+	logger        *types.Logger
 }
 
 func New(b *bot.Bot) *Handler {
@@ -74,25 +80,50 @@ func New(b *bot.Bot) *Handler {
 	studentDataStorage := postgres.NewStudentDataStorage(b.DB)
 	eventStorage := postgres.NewEventStorage(b.DB)
 	eventParticipantStorage := postgres.NewEventParticipantStorage(b.DB)
+	clubOwnerStorage := postgres.NewClubOwnerStorage(b.DB)
 
-	eventPartService := service.NewEventParticipantService(eventParticipantStorage)
+	eventPartService := service.NewEventParticipantService(nil, eventParticipantStorage, nil, nil, nil, "")
 
-	smtpClient := smtp.NewClient(b.SMTPDialer)
-	botName := viper.GetString("bot.username")
-	qrCodeLogo := viper.GetString("settings.qr.logo-path")
-	qrCodeOutputDir := viper.GetString("settings.qr.output-dir")
+	smtpClient := smtp.NewClient(b.SMTPDialer, viper.GetString("service.smtp.domain"), viper.GetString("service.smtp.email"))
+
+	wd, _ := os.Getwd()
+	emailHTMLFilePath := filepath.Join(wd, viper.GetString("settings.html.email-confirmation"))
+
+	userSrvc := service.NewUserService(userStorage, studentDataStorage, eventPartService, smtpClient, emailHTMLFilePath)
+
+	qrSrvc, err := service.NewQrService(
+		b.Bot,
+		qr.CU,
+		userSrvc,
+		nil,
+		viper.GetInt64("bot.qr.chat-id"),
+		viper.GetString("settings.qr.logo-path"),
+	)
+
+	if err != nil {
+		b.Logger.Fatalf("failed to create qr service: %v", err)
+	}
 
 	return &Handler{
-		userService:             service.NewUserService(userStorage, studentDataStorage, eventPartService, smtpClient),
+		userService:             userSrvc,
 		eventService:            service.NewEventService(eventStorage),
 		eventParticipantService: eventPartService,
-		qrCodesGenerator:        generator.NewQrCode(generator.CU, qrCodeOutputDir, qrCodeLogo, botName),
-		menuHandler:             menu.New(b),
-		codesStorage:            b.Redis.Codes,
-		emailsStorage:           b.Redis.Emails,
-		layout:                  b.Layout,
-		input:                   b.Input,
-		logger:                  b.Logger,
+		qrService:               qrSrvc,
+		notificationService: service.NewNotifyService(
+			b.Bot,
+			b.Layout,
+			b.Logger,
+			service.NewClubOwnerService(clubOwnerStorage, userStorage),
+			nil,
+			nil,
+			nil,
+		),
+		menuHandler:   menu.New(b),
+		codesStorage:  b.Redis.Codes,
+		emailsStorage: b.Redis.Emails,
+		layout:        b.Layout,
+		input:         b.Input,
+		logger:        b.Logger,
 	}
 }
 
@@ -103,87 +134,18 @@ func (h Handler) Hide(c tele.Context) error {
 func (h Handler) qrCode(c tele.Context) error {
 	h.logger.Infof("(user: %d) requested QR code", c.Sender().ID)
 
-	user, err := h.userService.Get(context.Background(), c.Sender().ID)
-	if err != nil {
-		h.logger.Errorf("(user: %d) error while getting user from db: %v", c.Sender().ID, err)
-		return c.Send(
-			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
-			h.layout.Markup(c, "mainMenu:back"),
-		)
-	}
-
-	var file tele.File
-	if user.QRCodeID != "" {
-		h.logger.Infof("(user: %d) existing QR code found, sending...", c.Sender().ID)
-		file, err = c.Bot().FileByID(user.QRFileID)
-		if err != nil {
-			h.logger.Errorf("(user: %d) failed to retrieve existing QR file: %v", c.Sender().ID, err)
-			return c.Edit(
-				banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
-				h.layout.Markup(c, "mainMenu:back"),
-			)
-		}
-
-		return c.Edit(
-			&tele.Photo{
-				File:    file,
-				Caption: h.layout.Text(c, "qr_text"),
-			},
-			h.layout.Markup(c, "mainMenu:back"),
-		)
-	}
+	h.logger.Infof("(user: %d) getting user QR code", c.Sender().ID)
 	loading, _ := c.Bot().Send(c.Chat(), h.layout.Text(c, "loading"))
-	h.logger.Infof("(user: %d) generating new QR code...", c.Sender().ID)
-	qrID, qrFilePath, err := h.qrCodesGenerator.Generate()
+	file, err := h.qrService.GetUserQR(context.Background(), c.Sender().ID)
 	if err != nil {
-		h.logger.Errorf("(user: %d) failed to generate QR code: %v", c.Sender().ID, err)
-		return c.Edit(
-			h.layout.Text(c, "technical_issues", err.Error()),
-		)
-	}
-
-	qrChatID := viper.GetInt64("bot.qr.chat-id")
-	qrImg := &tele.Photo{File: tele.FromDisk(qrFilePath)}
-	_, err = c.Bot().Send(&tele.Chat{ID: qrChatID}, qrImg)
-	if err != nil {
-		h.logger.Errorf("(user: %d) failed to send QR code to admin chat: %v", c.Sender().ID, err)
+		h.logger.Errorf("(user: %d) error while getting user QR code: %v", c.Sender().ID, err)
 		return c.Edit(
 			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
 			h.layout.Markup(c, "mainMenu:back"),
 		)
 	}
-
-	user.QRCodeID = qrID
-	user.QRFileID = qrImg.FileID
-	user, err = h.userService.Update(context.Background(), user)
-	if err != nil {
-		h.logger.Errorf("(user: %d) failed to update user data: %v", c.Sender().ID, err)
-		return c.Edit(
-			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
-			h.layout.Markup(c, "mainMenu:back"),
-		)
-	}
-
-	if err = h.qrCodesGenerator.Delete(qrFilePath); err != nil {
-		h.logger.Errorf("(user: %d) failed to delete temporary QR code file: %v", c.Sender().ID, err)
-		return c.Edit(
-			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
-			h.layout.Markup(c, "mainMenu:back"),
-		)
-	}
-
-	h.logger.Infof("(user: %d) sending QR code to user...", c.Sender().ID)
-
-	file, err = c.Bot().FileByID(user.QRFileID)
-	if err != nil {
-		h.logger.Errorf("(user: %d) failed to retrieve final QR file: %v", c.Sender().ID, err)
-		return c.Edit(
-			banner.Menu.Caption(h.layout.Text(c, "technical_issues", err.Error())),
-			h.layout.Markup(c, "mainMenu:back"),
-		)
-	}
-
 	_ = c.Bot().Delete(loading)
+
 	return c.Edit(
 		&tele.Photo{
 			File:    file,
@@ -194,7 +156,7 @@ func (h Handler) qrCode(c tele.Context) error {
 }
 
 func (h Handler) eventsList(c tele.Context) error {
-	const eventsOnPage = 10
+	const eventsOnPage = 5
 	h.logger.Infof("(user: %d) edit events list", c.Sender().ID)
 
 	var (
@@ -382,8 +344,8 @@ func (h Handler) event(c tele.Context) error {
 
 	if c.Callback().Unique == "event_register" {
 		if !registered {
-			if (event.MaxParticipants == 0 || participantsCount < event.MaxParticipants) && event.RegistrationEnd.After(time.Now().In(location.Location)) {
-				_, err = h.eventParticipantService.Register(context.Background(), c.Sender().ID, eventID)
+			if (event.MaxParticipants == 0 || participantsCount < event.MaxParticipants) && event.RegistrationEnd.After(time.Now().In(location.Location())) {
+				_, err = h.eventParticipantService.Register(context.Background(), eventID, c.Sender().ID)
 				if err != nil {
 					h.logger.Errorf("(user: %d) error while register to event: %v", c.Sender().ID, err)
 					return c.Edit(
@@ -395,11 +357,43 @@ func (h Handler) event(c tele.Context) error {
 						}),
 					)
 				}
+
+				if participantsCount+1 == event.ExpectedParticipants {
+					errSendWarning := h.notificationService.SendClubWarning(event.ClubID,
+						h.layout.Text(c, "expected_participants_reached_warning", struct {
+							Name              string
+							ParticipantsCount int
+						}{
+							Name:              event.Name,
+							ParticipantsCount: participantsCount + 1,
+						}),
+						h.layout.Markup(c, "core:hide"),
+					)
+					if errSendWarning != nil {
+						h.logger.Errorf("(user: %d) error while send expected participants reached warning: %v", c.Sender().ID, errSendWarning)
+					}
+				}
+
+				if participantsCount+1 == event.MaxParticipants {
+					errSendWarning := h.notificationService.SendClubWarning(event.ClubID,
+						h.layout.Text(c, "max_participants_reached_warning", struct {
+							Name              string
+							ParticipantsCount int
+						}{
+							Name:              event.Name,
+							ParticipantsCount: participantsCount + 1,
+						}),
+						h.layout.Markup(c, "core:hide"),
+					)
+					if errSendWarning != nil {
+						h.logger.Errorf("(user: %d) error while send expected participants reached warning: %v", c.Sender().ID, errSendWarning)
+					}
+				}
 				registered = true
 
 			} else {
 				switch {
-				case event.RegistrationEnd.Before(time.Now().In(location.Location)):
+				case event.RegistrationEnd.Before(time.Now().In(location.Location())):
 					return c.Respond(&tele.CallbackResponse{
 						Text:      h.layout.Text(c, "registration_ended"),
 						ShowAlert: true,
@@ -414,8 +408,8 @@ func (h Handler) event(c tele.Context) error {
 		}
 	}
 
-	endTime := event.EndTime.Format("02.01.2006 15:04")
-	if event.EndTime.IsZero() {
+	endTime := event.EndTime.In(location.Location()).Format("02.01.2006 15:04")
+	if event.EndTime.Year() == 1 {
 		endTime = ""
 	}
 
@@ -434,9 +428,9 @@ func (h Handler) event(c tele.Context) error {
 			Name:                  event.Name,
 			Description:           event.Description,
 			Location:              event.Location,
-			StartTime:             event.StartTime.Format("02.01.2006 15:04"),
+			StartTime:             event.StartTime.In(location.Location()).Format("02.01.2006 15:04"),
 			EndTime:               endTime,
-			RegistrationEnd:       event.RegistrationEnd.Format("02.01.2006 15:04"),
+			RegistrationEnd:       event.RegistrationEnd.In(location.Location()).Format("02.01.2006 15:04"),
 			MaxParticipants:       event.MaxParticipants,
 			AfterRegistrationText: event.AfterRegistrationText,
 			IsRegistered:          registered,
@@ -454,7 +448,7 @@ func (h Handler) event(c tele.Context) error {
 }
 
 func (h Handler) myEvents(c tele.Context) error {
-	const eventsOnPage = 10
+	const eventsOnPage = 5
 	h.logger.Infof("(user: %d) edit my events list", c.Sender().ID)
 
 	var (
@@ -463,7 +457,7 @@ func (h Handler) myEvents(c tele.Context) error {
 		nextPage    int
 		err         error
 		eventsCount int64
-		events      []entity.Event
+		events      []dto.UserEvent
 		rows        []tele.Row
 		menuRow     tele.Row
 	)
@@ -510,15 +504,17 @@ func (h Handler) myEvents(c tele.Context) error {
 	markup := c.Bot().NewMarkup()
 	for _, event := range events {
 		rows = append(rows, markup.Row(*h.layout.Button(c, "user:myEvents:event", struct {
-			ID     string
-			Name   string
-			Page   int
-			IsOver bool
+			ID        string
+			Name      string
+			Page      int
+			IsOver    bool
+			IsVisited bool
 		}{
-			ID:     event.ID,
-			Name:   event.Name,
-			Page:   p,
-			IsOver: event.IsOver(),
+			ID:        event.ID,
+			Name:      event.Name,
+			Page:      p,
+			IsOver:    event.IsOver(0),
+			IsVisited: event.IsVisited,
 		})))
 	}
 
@@ -603,6 +599,24 @@ func (h Handler) myEvent(c tele.Context) error {
 		)
 	}
 
+	eventParticipant, err := h.eventParticipantService.Get(context.Background(), eventID, c.Sender().ID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while getting event participant from db: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.Events.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "user:myEvents:back", struct {
+				Page string
+			}{
+				Page: page,
+			}),
+		)
+	}
+
+	endTime := event.EndTime.In(location.Location()).Format("02.01.2006 15:04")
+	if event.EndTime.Year() == 1 {
+		endTime = ""
+	}
+
 	_ = c.Edit(
 		banner.Events.Caption(h.layout.Text(c, "my_event_text", struct {
 			Name                  string
@@ -614,16 +628,18 @@ func (h Handler) myEvent(c tele.Context) error {
 			MaxParticipants       int
 			AfterRegistrationText string
 			IsOver                bool
+			IsVisited             bool
 		}{
 			Name:                  event.Name,
 			Description:           event.Description,
 			Location:              event.Location,
-			StartTime:             event.StartTime.Format("02.01.2006 15:04"),
-			EndTime:               event.EndTime.Format("02.01.2006 15:04"),
-			RegistrationEnd:       event.RegistrationEnd.Format("02.01.2006 15:04"),
+			StartTime:             event.StartTime.In(location.Location()).Format("02.01.2006 15:04"),
+			EndTime:               endTime,
+			RegistrationEnd:       event.RegistrationEnd.In(location.Location()).Format("02.01.2006 15:04"),
 			MaxParticipants:       event.MaxParticipants,
 			AfterRegistrationText: event.AfterRegistrationText,
-			IsOver:                event.IsOver(),
+			IsOver:                event.IsOver(0),
+			IsVisited:             eventParticipant.IsEventQr || eventParticipant.IsUserQr,
 		})),
 		h.layout.Markup(c, "user:myEvents:event", struct {
 			ID   string

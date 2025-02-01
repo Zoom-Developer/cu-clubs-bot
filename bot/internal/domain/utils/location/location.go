@@ -6,12 +6,16 @@ import (
 	"time"
 )
 
-var Location *time.Location
+var location *time.Location
 
-func init() {
+func Location() *time.Location {
+	if location != nil {
+		return location
+	}
 	var err error
-	Location, err = time.LoadLocation(viper.GetString("settings.timezone"))
+	location, err = time.LoadLocation(viper.GetString("settings.timezone"))
 	if err != nil {
 		log.Fatalf("error while load time location: %v", err)
 	}
+	return location
 }
