@@ -20,8 +20,8 @@ service:
     email: email@domain.ru
 
 bot:
+  name: "bot_name"
   token: "BOT_TOKEN"
-  grant-chat-id: -500000
   admin-ids:
     - 500000000
   session:
@@ -42,8 +42,13 @@ bot:
     chat-id: -400000000
 
 settings:
+    pass-email: email@domain.ru # Почта, куда будут отправляться списки на пропуска
+
     qr:
       logo-path: "./logo.png"
+
+    html:
+      email-confirmation: "./mail.html"
 
     timezone: "Europe/Moscow"
     logging:
