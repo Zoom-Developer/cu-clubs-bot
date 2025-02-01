@@ -56,7 +56,7 @@ func (h Handler) LoadBanners(next tele.HandlerFunc) tele.HandlerFunc {
 	return func(c tele.Context) error {
 		err := banner.Load(c.Bot())
 		if err != nil {
-			return nil
+			return err
 		}
 		return next(c)
 	}

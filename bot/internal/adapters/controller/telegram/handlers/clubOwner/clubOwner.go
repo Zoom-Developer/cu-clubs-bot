@@ -2113,9 +2113,11 @@ func (h Handler) editEventMaxParticipants(c tele.Context) error {
 			Description           string
 			AfterRegistrationText string
 			MaxParticipants       int
+			ParticipantsChanged   bool
 		}{
-			Name:            event.Name,
-			MaxParticipants: event.MaxParticipants,
+			Name:                event.Name,
+			MaxParticipants:     event.MaxParticipants,
+			ParticipantsChanged: true,
 		}),
 		h.layout.Markup(c, "core:hide"),
 	)

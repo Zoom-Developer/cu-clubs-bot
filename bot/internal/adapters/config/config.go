@@ -71,12 +71,13 @@ func Get() *Config {
 		}
 	}
 
-	dsn := fmt.Sprintf("user=%s password=%s dbname=%s host=%s port=%d sslmode=disable TimeZone=GMT+3",
+	dsn := fmt.Sprintf("user=%s password=%s dbname=%s host=%s port=%d sslmode=%s TimeZone=GMT+3",
 		viper.GetString("service.database.user"),
 		viper.GetString("service.database.password"),
 		viper.GetString("service.database.name"),
 		viper.GetString("service.database.host"),
 		viper.GetInt("service.database.port"),
+		viper.GetString("service.database.ssl-mode"),
 	)
 
 	database, err := gorm.Open(postgres.Open(dsn), gormConfig)
