@@ -152,6 +152,7 @@ func (s *UserService) SendAuthCode(_ context.Context, email string) (string, str
 	return data, code, nil
 }
 
+// IgnoreMailing is a function that allows or disallows mailing for a user (returns error and new state)
 func (s *UserService) IgnoreMailing(ctx context.Context, userID int64, clubID string) (error, bool) {
 	return s.userStorage.IgnoreMailing(ctx, userID, clubID)
 }
