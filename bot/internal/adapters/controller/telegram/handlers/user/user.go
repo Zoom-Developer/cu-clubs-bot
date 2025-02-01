@@ -38,7 +38,7 @@ type userService interface {
 	Update(ctx context.Context, user *entity.User) (*entity.User, error)
 	GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]dto.UserEvent, error)
 	CountUserEvents(ctx context.Context, userID int64) (int64, error)
-	IgnoreMailing(ctx context.Context, userID int64, clubID string) (error, bool)
+	IgnoreMailing(ctx context.Context, userID int64, clubID string) (bool, error)
 }
 
 type eventService interface {
@@ -657,7 +657,7 @@ func (h Handler) mailingSwitch(c tele.Context) error {
 	h.logger.Infof("(user: %d) mailing switch (club_id=%s)", c.Sender().ID, c.Callback().Data)
 	clubID := c.Callback().Data
 
-	err, allowed := h.userService.IgnoreMailing(context.Background(), c.Sender().ID, clubID)
+	allowed, err := h.userService.IgnoreMailing(context.Background(), c.Sender().ID, clubID)
 	if err != nil {
 		h.logger.Errorf("(user: %d) error while switching ignore mailing: %v", c.Sender().ID, err)
 		return c.Edit(

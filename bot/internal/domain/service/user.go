@@ -28,7 +28,7 @@ type UserStorage interface {
 	GetWithPagination(ctx context.Context, limit int, offset int, order string) ([]entity.User, error)
 	GetUsersByEventID(ctx context.Context, eventID string) ([]entity.User, error)
 	GetUsersByClubID(ctx context.Context, clubID string) ([]entity.User, error)
-	IgnoreMailing(ctx context.Context, userID int64, clubID string) (error, bool)
+	IgnoreMailing(ctx context.Context, userID int64, clubID string) (bool, error)
 }
 
 type StudentDataStorage interface {
@@ -158,7 +158,7 @@ func (s *UserService) SendAuthCode(_ context.Context, email string) (string, str
 }
 
 // IgnoreMailing is a function that allows or disallows mailing for a user (returns error and new state)
-func (s *UserService) IgnoreMailing(ctx context.Context, userID int64, clubID string) (error, bool) {
+func (s *UserService) IgnoreMailing(ctx context.Context, userID int64, clubID string) (bool, error) {
 	return s.userStorage.IgnoreMailing(ctx, userID, clubID)
 }
 

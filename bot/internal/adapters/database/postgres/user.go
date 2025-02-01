@@ -145,11 +145,11 @@ func (s *UserStorage) GetWithPagination(ctx context.Context, limit, offset int, 
 }
 
 // IgnoreMailing is a function that allows or disallows mailing for a user (returns error and new state)
-func (s *UserStorage) IgnoreMailing(ctx context.Context, userID int64, clubID string) (error, bool) {
+func (s *UserStorage) IgnoreMailing(ctx context.Context, userID int64, clubID string) (bool, error) {
 	var user *entity.User
 	err := s.db.WithContext(ctx).Where("id = ?", userID).Preload("IgnoreMailing").First(&user).Error
 	if err != nil {
-		return err, false
+		return false, err
 	}
 
 	if user.IsMailingAllowed(clubID) {
@@ -158,13 +158,13 @@ func (s *UserStorage) IgnoreMailing(ctx context.Context, userID int64, clubID st
 				UserID: userID,
 				ClubID: clubID,
 			}).Error
-		return err, false
-	} else {
-		err = s.db.
-			WithContext(ctx).
-			Where("user_id = ? AND club_id = ?", userID, clubID).
-			Delete(&entity.IgnoreMailing{}).
-			Error
-		return err, true
+		return false, err
 	}
+
+	err = s.db.
+		WithContext(ctx).
+		Where("user_id = ? AND club_id = ?", userID, clubID).
+		Delete(&entity.IgnoreMailing{}).
+		Error
+	return true, err
 }
