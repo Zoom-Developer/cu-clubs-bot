@@ -143,6 +143,11 @@ buttons:
     callback_data: '{{.ID}}'
     text: '{{if .IsOver}}{{text `event_over` }}{{else if .IsRegistered}}{{ text `registered` }}{{else}}{{ text `register` }}{{end}}'
 
+  mailing:switch:
+    unique: mailing_switch
+    callback_data: '{{.ClubID}}'
+    text: '{{if .Allowed}}{{ text `disable_mailing_from_this_club` }}{{else}}{{ text `enable_mailing_from_this_club` }}{{end}}'
+
   clubOwner:my_clubs:
     unique: clubOwner_myClubs
     callback_data: clubOwner_myClubs
@@ -238,6 +243,21 @@ buttons:
     callback_data: '{{.ID}} {{.Role}}'
     text: '{{if .Allowed}}{{text `tick`}}{{else}}{{text `cross`}}{{end}} {{.RoleName}}'
 
+  clubOwner:confirmMailing:
+    unique: clubOwner_confirmMailing
+    callback_data: clubOwner_confirmMailing
+    text: '{{ text `confirm` }}'
+
+  clubOwner:cancelMailing:
+    unique: clubOwner_cancelMailing
+    callback_data: clubOwner_cancelMailing
+    text: '{{ text `cancel` }}'
+
+  clubOwner:club:mailing:
+    unique: clubOwner_club_mailing
+    callback_data: '{{.ID}}'
+    text: '{{ text `mailing` }}'
+
   clubOwner:club:events:
     unique: clubOwner_club_events
     callback_data: '{{.ID}}'
@@ -272,6 +292,11 @@ buttons:
     unique: cOwner_event_qr
     callback_data: '{{.ID}} {{.Page}}'
     text: '{{ text `qr` }}'
+
+  clubOwner:event:mailing:
+    unique: cOwner_event_mailing
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `mailing` }}'
 
   clubOwner:event:settings:
     unique: clubOwner_event_settings
@@ -438,6 +463,10 @@ markups:
   mainMenu:back:
     - [ mainMenu:back ]
 
+  mailing:
+    - [ mailing:switch ]
+    - [ core:hide ]
+
   user:events:back:
     - [ user:events:back ]
   user:events:event:
@@ -454,6 +483,7 @@ markups:
   clubOwner:club:menu:
     - [ clubOwner:club:events ]
     - [ clubOwner:club:create_event ]
+    - [ clubOwner:club:mailing ]
     - [ clubOwner:club:settings ]
   clubOwner:club:settings:
     - [ clubOwner:club:settings:edit_name ]
@@ -474,6 +504,7 @@ markups:
   clubOwner:event:menu:
     - [ clubOwner:event:settings ]
     - [ clubOwner:event:users ]
+    - [ clubOwner:event:mailing ]
     - [ clubOwner:event:delete ]
     - [ clubOwner:events:back ]
   clubOwner:event:back:
@@ -492,6 +523,8 @@ markups:
     - [ clubOwner:event:back ]
   clubOwner:event:delete:back:
     - [ clubOwner:events:back ]
+  clubOwner:isMailingCorrect:
+    - [ clubOwner:confirmMailing, clubOwner:cancelMailing ]
 
   admin:menu:
     - [ admin:clubs ]
