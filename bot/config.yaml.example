@@ -5,6 +5,7 @@ service:
     password: "password"
     port: 5400
     name: "database"
+    ssl-mode: "disable"
 
   redis:
     host: "redis"
@@ -29,10 +30,10 @@ bot:
     auth-ttl: 10m
     email-ttl: 120m
   banner:
-    auth: "AgACAgIAAxkDAAIG0GecwhuUMGxxQCdLGRCEvxyWPrrEAAJf4TEb9FjoSDBFSB6RAkkuAQADAgADdwADNgQ"
-    menu: "AgACAgIAAxkDAAIG6GecygZ4mVCW3BGIRNTe7KC0stZEAAIu6DEbr4zoSOpDMp0EL5pBAQADAgADeQADNgQ"
-    club-owner: "AgACAgIAAxkDAAIG0mecwh1jJ4DX6TIEB5r_dsHtLe6yAAJh4TEb9FjoSN6BMhVZkF-aAQADAgADdwADNgQ"
-    events: "AgACAgIAAxkDAAIG02ecwh8tOyQGg_bQD9cQZuTO5knbAAJi4TEb9FjoSBdk7k6BzR_OAQADAgADdwADNgQ"
+    auth: "AgACAgIAAxkDAAMjZ54WGso7E9FRgvmxvzD9dAuLF98AAvDlMRvelPFIqs-v4Q8TUswBAAMCAAN3AAM2BA"
+    menu: "AgACAgIAAxkDAAMkZ54WGt_8BtEqxqgplk5LMJ6v4s4AAvHlMRvelPFImOHfDJlYSvUBAAMCAAN3AAM2BA"
+    club-owner: "AgACAgIAAxkDAAMiZ54WGYEjQ3vnJB3qz8_J3cHjwOoAAu_lMRvelPFI-WZmQhkJiYkBAAMCAAN3AAM2BA"
+    events: "AgACAgIAAxkDAAMhZ54WGV8S15EsttBZSXn4fJ0kcZwAAu7lMRvelPFIrnmCmuVplD0BAAMCAAN3AAM2BA"
   auth:
     grant-chat-id: -40000000
     valid-email-domains:

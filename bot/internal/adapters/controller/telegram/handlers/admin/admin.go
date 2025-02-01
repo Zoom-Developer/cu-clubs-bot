@@ -76,7 +76,6 @@ func New(b *bot.Bot) *Handler {
 func (h Handler) adminMenu(c tele.Context) error {
 	h.logger.Infof("(user: %d) edit admin menu", c.Sender().ID)
 	commands := h.layout.Commands()
-	commands = append(commands, tele.Command{Text: "/ban", Description: h.layout.Text(c, "command_ban")})
 	errSetCommands := c.Bot().SetCommands(commands)
 	if errSetCommands != nil {
 		h.logger.Errorf("(user: %d) error while set admin commands: %v", c.Sender().ID, errSetCommands)

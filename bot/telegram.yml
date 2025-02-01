@@ -5,7 +5,7 @@ settings:
     Timeout: 10
 
 commands:
-  /start: 🚀 Запустить бота
+  /start: Перезапустить бота
 
 buttons:
   core:hide:
@@ -433,8 +433,7 @@ markups:
     - [ auth:back_to_menu ]
 
   mainMenu:menu:
-    - [ mainMenu:events ]
-    - [ mainMenu:my_events ]
+    - [ mainMenu:events, mainMenu:my_events ]
     - [ mainMenu:qr ]
   mainMenu:back:
     - [ mainMenu:back ]
