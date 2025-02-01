@@ -47,6 +47,7 @@ type clubOwnerService interface {
 type userService interface {
 	Get(ctx context.Context, userID int64) (*entity.User, error)
 	GetUsersByEventID(ctx context.Context, eventID string) ([]entity.User, error)
+	GetEventUsers(ctx context.Context, eventID string) ([]dto.EventUser, error)
 }
 
 type eventService interface {
@@ -2373,7 +2374,7 @@ func (h Handler) declineEventDelete(c tele.Context) error {
 	)
 }
 
-func (h Handler) registeredUsers(c tele.Context) error {
+func (h Handler) users(c tele.Context) error {
 	data := strings.Split(c.Callback().Data, " ")
 	if len(data) != 2 {
 		return errorz.ErrInvalidCallbackData
@@ -2429,7 +2430,7 @@ func (h Handler) registeredUsers(c tele.Context) error {
 		)
 	}
 
-	users, err := h.userService.GetUsersByEventID(context.Background(), eventID)
+	users, err := h.userService.GetEventUsers(context.Background(), eventID)
 	if err != nil {
 		return c.Send(
 			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
@@ -2627,7 +2628,7 @@ func (h Handler) ClubOwnerSetup(group *tele.Group, middle *middlewares.Handler) 
 	group.Handle(h.layout.Callback("clubOwner:event:delete"), h.deleteEvent)
 	group.Handle(h.layout.Callback("clubOwner:event:delete:accept"), h.acceptEventDelete)
 	group.Handle(h.layout.Callback("clubOwner:event:delete:decline"), h.declineEventDelete)
-	group.Handle(h.layout.Callback("clubOwner:event:users"), h.registeredUsers)
+	group.Handle(h.layout.Callback("clubOwner:event:users"), h.users)
 	group.Handle(h.layout.Callback("clubOwner:event:qr"), h.eventQRCode)
 
 	group.Handle(h.layout.Callback("clubOwner:club:settings"), h.clubSettings)
@@ -2663,7 +2664,7 @@ func parseEventCallback(callbackData string) (string, int, error) {
 	return clubID, p, nil
 }
 
-func usersToXLSX(users []entity.User) (*bytes.Buffer, error) {
+func usersToXLSX(users []dto.EventUser) (*bytes.Buffer, error) {
 	f := excelize.NewFile()
 
 	sheet := "Sheet1"
@@ -2672,6 +2673,7 @@ func usersToXLSX(users []entity.User) (*bytes.Buffer, error) {
 	_ = f.SetCellValue(sheet, "C1", "Имя")
 	_ = f.SetCellValue(sheet, "D1", "Отчество")
 	_ = f.SetCellValue(sheet, "E1", "Username")
+	_ = f.SetCellValue(sheet, "F1", "Посетил")
 
 	for i, user := range users {
 		fio := strings.Split(user.FIO, " ")
@@ -2682,6 +2684,7 @@ func usersToXLSX(users []entity.User) (*bytes.Buffer, error) {
 		_ = f.SetCellValue(sheet, "C"+strconv.Itoa(row), fio[1])
 		_ = f.SetCellValue(sheet, "D"+strconv.Itoa(row), fio[2])
 		_ = f.SetCellValue(sheet, "E"+strconv.Itoa(row), user.Username)
+		_ = f.SetCellValue(sheet, "F"+strconv.Itoa(row), user.UserVisit)
 	}
 
 	var buf bytes.Buffer

@@ -22,6 +22,7 @@ type UserStorage interface {
 	GetByQRCodeID(ctx context.Context, qrCodeID string) (*entity.User, error)
 	GetMany(ctx context.Context, ids []int64) ([]entity.User, error)
 	GetAll(ctx context.Context) ([]entity.User, error)
+	GetEventUsers(ctx context.Context, eventID string) ([]dto.EventUser, error)
 	Update(ctx context.Context, user *entity.User) (*entity.User, error)
 	Count(ctx context.Context) (int64, error)
 	GetWithPagination(ctx context.Context, limit int, offset int, order string) ([]entity.User, error)
@@ -111,6 +112,10 @@ func (s *UserService) Ban(ctx context.Context, userID int64) (*entity.User, erro
 
 func (s *UserService) GetUsersByEventID(ctx context.Context, eventID string) ([]entity.User, error) {
 	return s.userStorage.GetUsersByEventID(ctx, eventID)
+}
+
+func (s *UserService) GetEventUsers(ctx context.Context, eventID string) ([]dto.EventUser, error) {
+	return s.userStorage.GetEventUsers(ctx, eventID)
 }
 
 func (s *UserService) GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]dto.UserEvent, error) {

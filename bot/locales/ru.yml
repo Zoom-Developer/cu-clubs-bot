@@ -285,7 +285,7 @@ event_created: |-
   <b>Мероприятие {{.Name}} успешно создано</b>
 
 event_settings: Настройки
-event_users: Зарегистрированные пользователи
+event_users: Пользователи
 club_owner_event_text: |-
   Мероприятие <b>{{.Name}}</b>
   <b>Описание:</b>

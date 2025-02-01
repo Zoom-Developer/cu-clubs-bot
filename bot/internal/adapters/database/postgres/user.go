@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/dto"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 	"gorm.io/gorm"
 )
@@ -47,6 +48,34 @@ func (s *UserStorage) GetAll(ctx context.Context) ([]entity.User, error) {
 	var users []entity.User
 	err := s.db.WithContext(ctx).Find(&users).Error
 	return users, err
+}
+
+func (s *UserStorage) GetEventUsers(ctx context.Context, eventID string) ([]dto.EventUser, error) {
+	type userWithQR struct {
+		entity.User
+		IsUserQr  bool
+		IsEventQr bool
+	}
+
+	var users []userWithQR
+
+	err := s.db.
+		WithContext(ctx).
+		Table("event_participants").
+		Select("users.*, event_participants.is_user_qr, event_participants.is_event_qr").
+		Joins("inner join users on event_participants.user_id = users.id").
+		Where("event_participants.event_id = ?", eventID).
+		Find(&users).Error
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]dto.EventUser, len(users))
+	for i, user := range users {
+		result[i] = dto.NewEventUserFromEntity(user.User, user.IsUserQr || user.IsEventQr)
+	}
+
+	return result, nil
 }
 
 func (s *UserStorage) GetUsersByEventID(ctx context.Context, eventID string) ([]entity.User, error) {
