@@ -7,7 +7,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
-	github.com/nlypage/intele v1.1.0
+	github.com/nlypage/intele v1.1.1
 	github.com/redis/go-redis/v9 v9.6.1
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/spf13/viper v1.13.0

@@ -4,15 +4,17 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils"
+	"slices"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/handlers/middlewares"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/location"
 	qr "github.com/Badsnus/cu-clubs-bot/bot/pkg/qrcode"
 	"github.com/spf13/viper"
 	"github.com/xuri/excelize/v2"
-	"slices"
-	"strconv"
-	"strings"
-	"time"
 
 	"github.com/Badsnus/cu-clubs-bot/bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/postgres"
@@ -47,6 +49,7 @@ type clubOwnerService interface {
 type userService interface {
 	Get(ctx context.Context, userID int64) (*entity.User, error)
 	GetUsersByEventID(ctx context.Context, eventID string) ([]entity.User, error)
+	GetUsersByClubID(ctx context.Context, clubID string) ([]entity.User, error)
 }
 
 type eventService interface {
@@ -231,6 +234,197 @@ func (h Handler) clubMenu(c tele.Context) error {
 			Owners: clubOwners,
 		})),
 		menuMarkup,
+	)
+}
+
+func (h Handler) clubMailing(c tele.Context) error {
+	h.logger.Infof("(user: %d) edit club mailing (club_id=%s)", c.Sender().ID, c.Callback().Data)
+	clubID := c.Callback().Data
+
+	club, err := h.clubService.Get(context.Background(), clubID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get club: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "mainMenu:back"),
+		)
+	}
+	inputCollector := collector.New()
+
+	_ = c.Edit(
+		banner.ClubOwner.Caption(h.layout.Text(c, "club_input_mailing")),
+		h.layout.Markup(c, "clubOwner:club:back", struct {
+			ID string
+		}{
+			ID: club.ID,
+		}),
+	)
+	inputCollector.Collect(c.Message())
+
+	var (
+		message interface{}
+		done    bool
+	)
+	for !done {
+		h.logger.Debug("waiting for input")
+		response, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
+		if response.Message != nil {
+			inputCollector.Collect(response.Message)
+		}
+		switch {
+		case response.Canceled:
+			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
+			return nil
+		case errGet != nil:
+			h.logger.Errorf("(user: %d) error while get message: %v", c.Sender().ID, errGet)
+			_ = inputCollector.Send(c,
+				banner.ClubOwner.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "club_input_mailing"))),
+				h.layout.Markup(c, "clubOwner:club:back", struct {
+					ID string
+				}{
+					ID: club.ID,
+				}),
+			)
+		case response.Message == nil:
+			h.logger.Errorf("(user: %d) error while get message: message is nil", c.Sender().ID)
+			_ = inputCollector.Send(c,
+				banner.ClubOwner.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "club_input_mailing"))),
+				h.layout.Markup(c, "clubOwner:club:back", struct {
+					ID string
+				}{
+					ID: club.ID,
+				}),
+			)
+		case !validator.MailingText(utils.GetMessageText(response.Message), nil):
+			_ = inputCollector.Send(c,
+				banner.ClubOwner.Caption(h.layout.Text(c, "invalid_mailing_text")),
+				h.layout.Markup(c, "clubOwner:club:back", struct {
+					ID string
+				}{
+					ID: club.ID,
+				}),
+			)
+		case validator.MailingText(utils.GetMessageText(response.Message), nil):
+			message = utils.ChangeMessageText(
+				response.Message,
+				h.layout.Text(c, "club_mailing", struct {
+					ClubName string
+					Text     string
+				}{
+					ClubName: club.Name,
+					Text:     utils.GetMessageText(response.Message),
+				}),
+			)
+			done = true
+		}
+	}
+	_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
+
+	isCorrectMarkup := h.layout.Markup(c, "clubOwner:isMailingCorrect")
+	confirmMessage, err := c.Bot().Send(
+		c.Chat(),
+		message,
+		isCorrectMarkup,
+	)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while copy message: %v", c.Sender().ID, err)
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:club:back", struct {
+				ID string
+			}{
+				ID: club.ID,
+			}),
+		)
+	}
+
+	response, err := h.input.Get(
+		context.Background(),
+		c.Sender().ID,
+		0,
+		h.layout.Callback("clubOwner:confirmMailing"),
+		h.layout.Callback("clubOwner:cancelMailing"),
+	)
+	_ = c.Bot().Delete(confirmMessage)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get message: %v", c.Sender().ID, err)
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "input_error", err.Error())),
+			h.layout.Markup(c, "clubOwner:club:back", struct {
+				ID string
+			}{
+				ID: club.ID,
+			}),
+		)
+	}
+	if response.Callback == nil {
+		h.logger.Errorf("(user: %d) error while get message: callback is nil", c.Sender().ID)
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "input_error", "callback is nil")),
+			h.layout.Markup(c, "clubOwner:club:back", struct {
+				ID string
+			}{
+				ID: club.ID,
+			}),
+		)
+	}
+
+	if strings.Contains(response.Callback.Data, "cancel") {
+		h.logger.Infof("(user: %d) cancel club mailing (club_id=%s)", c.Sender().ID, club.ID)
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "mailing_canceled")),
+			h.layout.Markup(c, "clubOwner:club:back", struct {
+				ID string
+			}{
+				ID: club.ID,
+			}),
+		)
+	}
+
+	h.logger.Infof("(user: %d) sending club mailing (club_id=%s)", c.Sender().ID, club.ID)
+	clubUsers, err := h.userService.GetUsersByClubID(context.Background(), club.ID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get club users: %v", c.Sender().ID, err)
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:club:back", struct {
+				ID string
+			}{
+				ID: club.ID,
+			}),
+		)
+	}
+
+	loading, _ := c.Bot().Send(c.Chat(), h.layout.Text(c, "loading"))
+	for _, user := range clubUsers {
+		if user.IsMailingAllowed(club.ID) {
+			chat, err := c.Bot().ChatByID(user.ID)
+			if err != nil {
+				continue
+			}
+
+			_, _ = c.Bot().Send(
+				chat,
+				message,
+				h.layout.Markup(c, "mailing", struct {
+					ClubID  string
+					Allowed bool
+				}{
+					ClubID:  club.ID,
+					Allowed: true,
+				}),
+			)
+		}
+	}
+
+	_ = c.Bot().Delete(loading)
+	return c.Send(
+		banner.ClubOwner.Caption(h.layout.Text(c, "mailing_sent")),
+		h.layout.Markup(c, "clubOwner:club:back", struct {
+			ID string
+		}{
+			ID: club.ID,
+		}),
 	)
 }
 
@@ -2137,6 +2331,229 @@ func (h Handler) editEventMaxParticipants(c tele.Context) error {
 	)
 }
 
+func (h Handler) eventMailing(c tele.Context) error {
+	callbackData := strings.Split(c.Callback().Data, " ")
+	eventID, page := callbackData[0], callbackData[1]
+	h.logger.Infof("(user: %d) edit club mailing (event_id=%s)", c.Sender().ID, eventID)
+
+	event, err := h.eventService.Get(context.Background(), eventID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get event: %v", c.Sender().ID, err)
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "mainMenu:back"),
+		)
+	}
+
+	club, err := h.clubService.Get(context.Background(), event.ClubID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get club: %v", c.Sender().ID, err)
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "mainMenu:back"),
+		)
+	}
+
+	inputCollector := collector.New()
+	_ = c.Edit(
+		banner.ClubOwner.Caption(h.layout.Text(c, "event_input_mailing")),
+		h.layout.Markup(c, "clubOwner:event:back", struct {
+			ID   string
+			Page string
+		}{
+			ID:   event.ID,
+			Page: page,
+		}),
+	)
+	inputCollector.Collect(c.Message())
+
+	var (
+		message interface{}
+		done    bool
+	)
+	for !done {
+		h.logger.Debug("waiting for input")
+		response, errGet := h.input.Get(context.Background(), c.Sender().ID, 0)
+		if response.Message != nil {
+			inputCollector.Collect(response.Message)
+		}
+		switch {
+		case response.Canceled:
+			_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true, ExcludeLast: true})
+			return nil
+		case errGet != nil:
+			h.logger.Errorf("(user: %d) error while get message: %v", c.Sender().ID, errGet)
+			_ = inputCollector.Send(c,
+				banner.ClubOwner.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "event_input_mailing"))),
+				h.layout.Markup(c, "clubOwner:event:back", struct {
+					ID   string
+					Page string
+				}{
+					ID:   event.ID,
+					Page: page,
+				}),
+			)
+		case response.Message == nil:
+			h.logger.Errorf("(user: %d) error while get message: message is nil", c.Sender().ID)
+			_ = inputCollector.Send(c,
+				banner.ClubOwner.Caption(h.layout.Text(c, "input_error", h.layout.Text(c, "event_input_mailing"))),
+				h.layout.Markup(c, "clubOwner:event:back", struct {
+					ID   string
+					Page string
+				}{
+					ID:   event.ID,
+					Page: page,
+				}),
+			)
+		case !validator.MailingText(utils.GetMessageText(response.Message), nil):
+			_ = inputCollector.Send(c,
+				banner.ClubOwner.Caption(h.layout.Text(c, "invalid_mailing_text")),
+				h.layout.Markup(c, "clubOwner:event:back", struct {
+					ID   string
+					Page string
+				}{
+					ID:   event.ID,
+					Page: page,
+				}),
+			)
+		case validator.MailingText(utils.GetMessageText(response.Message), nil):
+			message = utils.ChangeMessageText(
+				response.Message,
+				h.layout.Text(c, "event_mailing", struct {
+					ClubName  string
+					EventName string
+					Text      string
+				}{
+					ClubName:  club.Name,
+					EventName: event.Name,
+					Text:      utils.GetMessageText(response.Message),
+				}),
+			)
+			done = true
+		}
+	}
+	_ = inputCollector.Clear(c, collector.ClearOptions{IgnoreErrors: true})
+
+	isCorrectMarkup := h.layout.Markup(c, "clubOwner:isMailingCorrect")
+	confirmMessage, err := c.Bot().Send(
+		c.Chat(),
+		message,
+		isCorrectMarkup,
+	)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while copy message: %v", c.Sender().ID, err)
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:event:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   event.ID,
+				Page: page,
+			}),
+		)
+	}
+
+	response, err := h.input.Get(
+		context.Background(),
+		c.Sender().ID,
+		0,
+		h.layout.Callback("clubOwner:confirmMailing"),
+		h.layout.Callback("clubOwner:cancelMailing"),
+	)
+	_ = c.Bot().Delete(confirmMessage)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get message: %v", c.Sender().ID, err)
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "input_error", err.Error())),
+			h.layout.Markup(c, "clubOwner:event:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   event.ID,
+				Page: page,
+			}),
+		)
+	}
+	if response.Callback == nil {
+		h.logger.Errorf("(user: %d) error while get message: callback is nil", c.Sender().ID)
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "input_error", "callback is nil")),
+			h.layout.Markup(c, "clubOwner:event:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   event.ID,
+				Page: page,
+			}),
+		)
+	}
+
+	if strings.Contains(response.Callback.Data, "cancel") {
+		h.logger.Infof("(user: %d) cancel club mailing (club_id=%s)", c.Sender().ID, club.ID)
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "mailing_canceled")),
+			h.layout.Markup(c, "clubOwner:event:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   event.ID,
+				Page: page,
+			}),
+		)
+	}
+
+	h.logger.Infof("(user: %d) sending club mailing (club_id=%s)", c.Sender().ID, club.ID)
+	eventUsers, err := h.userService.GetUsersByEventID(context.Background(), event.ID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get club users: %v", c.Sender().ID, err)
+		return c.Send(
+			banner.ClubOwner.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "clubOwner:event:back", struct {
+				ID   string
+				Page string
+			}{
+				ID:   event.ID,
+				Page: page,
+			}),
+		)
+	}
+
+	loading, _ := c.Bot().Send(c.Chat(), h.layout.Text(c, "loading"))
+	for _, user := range eventUsers {
+		if user.IsMailingAllowed(club.ID) {
+			chat, err := c.Bot().ChatByID(user.ID)
+			if err != nil {
+				continue
+			}
+
+			_, _ = c.Bot().Send(
+				chat,
+				message,
+				h.layout.Markup(c, "mailing", struct {
+					ClubID  string
+					Allowed bool
+				}{
+					ClubID:  club.ID,
+					Allowed: true,
+				}),
+			)
+		}
+	}
+
+	_ = c.Bot().Delete(loading)
+	return c.Send(
+		banner.ClubOwner.Caption(h.layout.Text(c, "mailing_sent")),
+		h.layout.Markup(c, "clubOwner:event:back", struct {
+			ID   string
+			Page string
+		}{
+			ID:   event.ID,
+			Page: page,
+		}),
+	)
+}
+
 func (h Handler) deleteEvent(c tele.Context) error {
 	data := strings.Split(c.Callback().Data, " ")
 	if len(data) != 2 {
@@ -2629,6 +3046,9 @@ func (h Handler) ClubOwnerSetup(group *tele.Group, middle *middlewares.Handler) 
 	group.Handle(h.layout.Callback("clubOwner:event:delete:decline"), h.declineEventDelete)
 	group.Handle(h.layout.Callback("clubOwner:event:users"), h.registeredUsers)
 	group.Handle(h.layout.Callback("clubOwner:event:qr"), h.eventQRCode)
+
+	group.Handle(h.layout.Callback("clubOwner:event:mailing"), h.eventMailing)
+	group.Handle(h.layout.Callback("clubOwner:club:mailing"), h.clubMailing)
 
 	group.Handle(h.layout.Callback("clubOwner:club:settings"), h.clubSettings)
 	group.Handle(h.layout.Callback("clubOwner:club:settings:back"), h.clubSettings)

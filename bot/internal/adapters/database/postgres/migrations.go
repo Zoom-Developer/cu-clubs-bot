@@ -7,6 +7,7 @@ var Migrations = []interface{}{
 	&entity.User{},
 	&entity.Club{},
 	&entity.ClubOwner{},
+	&entity.IgnoreMailing{},
 	&entity.Event{},
 	&entity.EventParticipant{},
 	&entity.EventNotification{},
