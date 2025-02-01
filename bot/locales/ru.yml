@@ -10,7 +10,7 @@ loading: ⏳
 unknown_command: <i>❓ Неизвестная команда, пропишите “/start”</i>
 cancel: ❌ Отменить
 hide: ❌ Скрыть
-delete: ❌ Удалить
+delete: 🗑 Удалить
 skip: ➡️ Пропустить
 technical_issues: |-
   <b>❌ Возникла непредвиденная техническая ошибка</b>
@@ -93,8 +93,9 @@ events_list: |-
   <b>Список мероприятий</b>
 event_text: |-
   <b>{{.Name}}</b>
-  <blockquote>
-  {{if .Description}}{{.Description}}{{else}}<i>Не указано</i>{{end}}</blockquote>
+  
+  <b>Описание:</b>
+  <blockquote>{{if .Description}}{{.Description}}{{else}}<i>Не указано</i>{{end}}</blockquote>
   <b>Локация:</b> {{.Location}}
 
   <b>Начало:</b> {{.StartTime}}
@@ -103,8 +104,7 @@ event_text: |-
   <b>Максимальное количество участников:</b> {{if .MaxParticipants}}{{.MaxParticipants}}{{else}}<i>Не ограничено</i>{{end}}
 
   {{if .IsRegistered}}{{if .AfterRegistrationText}}<b>Текст после регистрации:</b>
-  <blockquote>
-  {{.AfterRegistrationText}}</blockquote>{{end}}{{end}}
+  <blockquote>{{.AfterRegistrationText}}</blockquote>{{end}}{{end}}
 register: Зарегистрироваться
 registration_ended: |-
   К сожалению, регистрация на это мероприятие завершена
@@ -116,8 +116,9 @@ my_events_list: |-
 event_over: ⌛️ Мероприятие прошло
 my_event_text: |-
   <b>{{.Name}}</b>
-  <blockquote>
-  {{if .Description}}{{.Description}}{{else}}<i>Не указано</i>{{end}}</blockquote>
+  
+  <b>Описание:</b>
+  <blockquote>{{if .Description}}{{.Description}}{{else}}<i>Не указано</i>{{end}}</blockquote>
   <b>Локация:</b> {{.Location}}
 
   <b>Начало:</b> {{.StartTime}}
@@ -126,8 +127,7 @@ my_event_text: |-
   <b>Максимальное количество участников:</b> {{if .MaxParticipants}}{{.MaxParticipants}}{{else}}<i>Не ограничено</i>{{end}}
 
   {{if .AfterRegistrationText}}<b>Текст после регистрации:</b>
-  <blockquote>
-  {{.AfterRegistrationText}}</blockquote>{{end}}
+  <blockquote>{{.AfterRegistrationText}}</blockquote>{{end}}
   
   {{if .IsOver}}<i>⌛️ Мероприятие прошло</i>{{else}}<b>✅ Вы зарегистрированы</b>{{end}}
   {{if .IsVisited}}<b>✅ Вы посетили мероприятие</b>{{else}}{{if .IsOver}}<i>❌ Вы не посетили мероприятие</i>{{end}}{{end}}
@@ -143,10 +143,9 @@ club_owner_club_menu_text: |-
   Клуб: <b>{{.Club.Name}}</b>
 
   <u>Организаторы:</u>
-  {{if .Owners}}{{range .Owners}}- <b>{{.FIO}}</b> (id: <code>{{.UserID}}</code>){{"\n"}}{{end}}{{else}}<i>- Отсутствуют</i>{{"\n"}}{{end}}
+  {{if .Owners}}{{range .Owners}}- <b>{{.FIO}}</b> (@{{.Username}}){{"\n"}}{{end}}{{else}}<i>- Отсутствуют</i>{{"\n"}}{{end}}
   <b>Описание:</b>
-  <blockquote>
-  {{if .Club.Description}}{{.Club.Description}}{{else}}<i>Не указано</i>{{end}}</blockquote>
+  <blockquote>{{if .Club.Description}}{{.Club.Description}}{{else}}<i>Не указано</i>{{end}}</blockquote>
 
 club_settings: Настройки
 club_settings_text: |-
@@ -155,8 +154,7 @@ club_settings_text: |-
   <u>Организаторы:</u>
   {{if .Owners}}{{range .Owners}}- <b>{{.FIO}}</b> (id: <code>{{.UserID}}</code>){{"\n"}}{{end}}{{else}}<i>- Отсутствуют</i>{{"\n"}}{{end}}
   <b>Описание:</b>
-  <blockquote>
-  {{if .Club.Description}}{{.Club.Description}}{{else}}<i>Не указано</i>{{end}}</blockquote>
+  <blockquote>{{if .Club.Description}}{{.Club.Description}}{{else}}<i>Не указано</i>{{end}}</blockquote>
 edit_name: Изменить название
 name_changed: <b>Название клуба успешно изменено ✅</b>
 edit_description: Изменить описание
@@ -273,8 +271,7 @@ event_confirmation: |-
   <b>Ожидаемое количество участников:</b> {{if .ExpectedParticipants}}{{.ExpectedParticipants}}{{else}}<i>Не указано</i>{{end}}
 
   <b>Текст после регистрации:</b>
-  <blockquote>
-  {{if .AfterRegistrationText}}{{.AfterRegistrationText}}{{else}}<i>Не указан</i>{{end}}</blockquote>
+  <blockquote>{{if .AfterRegistrationText}}{{.AfterRegistrationText}}{{else}}<i>Не указан</i>{{end}}</blockquote>
 
   <b>Всё верно?</b>
 
@@ -292,8 +289,7 @@ event_users: Зарегистрированные пользователи
 club_owner_event_text: |-
   Мероприятие <b>{{.Name}}</b>
   <b>Описание:</b>
-  <blockquote>
-  {{if .Description}}{{.Description}}{{else}}<i>Не указано</i>{{end}}</blockquote>
+  <blockquote>{{if .Description}}{{.Description}}{{else}}<i>Не указано</i>{{end}}</blockquote>
   <b>Локация:</b> {{.Location}}
 
   <b>Начало:</b> {{.StartTime}}
@@ -306,8 +302,7 @@ club_owner_event_text: |-
   <b>Посетили: {{.VisitedCount}}</b>
 
   <b>Текст после регистрации:</b>
-  <blockquote>
-  {{if .AfterRegistrationText}}{{.AfterRegistrationText}}{{else}}<i>Не указан</i>{{end}}</blockquote>
+  <blockquote>{{if .AfterRegistrationText}}{{.AfterRegistrationText}}{{else}}<i>Не указан</i>{{end}}</blockquote>
 
   <b>Ссылка на мероприятие:</b> <code>{{.Link}}</code>
 
@@ -439,8 +434,7 @@ admin_club_menu_text: |-
   <u>Организаторы:</u>
   {{if .Owners}}{{range .Owners}}- <b>{{.FIO}}</b> (id: <code>{{.UserID}}</code>){{"\n"}}{{end}}{{else}}<i>- Отсутствуют</i>{{"\n"}}{{end}}
   <b>Описание:</b>
-  <blockquote>
-  {{if .Club.Description}}{{.Club.Description}}{{else}}<i>Не указано</i>{{end}}</blockquote>
+  <blockquote>{{if .Club.Description}}{{.Club.Description}}{{else}}<i>Не указано</i>{{end}}</blockquote>
 qr_allowed: QR-код ивента
 club_deleted: |-
   Клуб <b>{{.Name}}</b> успешно удален
