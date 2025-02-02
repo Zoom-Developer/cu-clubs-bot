@@ -113,7 +113,7 @@ func New(b *bot.Bot) *Handler {
 }
 
 func (h Handler) Start(c tele.Context) error {
-	h.logger.Infof("(user: %d) press start button", c.Sender().ID)
+	h.logger.Infof("(user: %d) enter /start", c.Sender().ID)
 
 	user, err := h.userService.Get(context.Background(), c.Sender().ID)
 
