@@ -90,6 +90,8 @@ type Handler struct {
 	eventParticipantService eventParticipantService
 	qrService               qrService
 	notificationService     notificationService
+
+	mailingChannelID int64
 }
 
 func NewHandler(b *bot.Bot) *Handler {
@@ -135,6 +137,8 @@ func NewHandler(b *bot.Bot) *Handler {
 			nil,
 			eventParticipantStorage,
 		),
+
+		mailingChannelID: viper.GetInt64("bot.mailing.channel-id"),
 	}
 }
 
@@ -416,6 +420,21 @@ func (h Handler) clubMailing(c tele.Context) error {
 					Allowed: true,
 				}),
 			)
+		}
+	}
+
+	h.logger.Infof("(user: %d) club mailing sent (club_id=%s)", c.Sender().ID, club.ID)
+
+	mailingChannel, err := c.Bot().ChatByID(h.mailingChannelID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get mailing channel: %v", c.Sender().ID, err)
+	} else {
+		_, err = c.Bot().Send(
+			mailingChannel,
+			message,
+		)
+		if err != nil {
+			h.logger.Errorf("(user: %d) error while send message to mailing channel: %v", c.Sender().ID, err)
 		}
 	}
 
@@ -2540,6 +2559,21 @@ func (h Handler) eventMailing(c tele.Context) error {
 					Allowed: true,
 				}),
 			)
+		}
+	}
+
+	h.logger.Infof("(user: %d) event mailing sent (club_id=%s, event_id=%s)", c.Sender().ID, club.ID, event.ID)
+
+	mailingChannel, err := c.Bot().ChatByID(h.mailingChannelID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get mailing channel: %v", c.Sender().ID, err)
+	} else {
+		_, err = c.Bot().Send(
+			mailingChannel,
+			message,
+		)
+		if err != nil {
+			h.logger.Errorf("(user: %d) error while send message to mailing channel: %v", c.Sender().ID, err)
 		}
 	}
 
