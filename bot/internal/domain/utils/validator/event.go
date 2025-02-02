@@ -22,7 +22,7 @@ func EventLocation(location string, _ map[string]interface{}) bool {
 func EventStartTime(start string, _ map[string]interface{}) bool {
 	const layout = "02.01.2006 15:04"
 
-	startTime, err := time.Parse(layout, start)
+	startTime, err := time.ParseInLocation(layout, start, location.Location())
 	if err != nil {
 		return false
 	}
@@ -43,9 +43,9 @@ func EventEndTime(end string, params map[string]interface{}) bool {
 	if !ok {
 		return false
 	}
-	startTime, _ := time.Parse(layout, startTimeStr)
+	startTime, _ := time.ParseInLocation(layout, startTimeStr, location.Location())
 
-	endTime, err := time.Parse(layout, end)
+	endTime, err := time.ParseInLocation(layout, end, location.Location())
 	if err != nil {
 		return false
 	}
@@ -64,13 +64,19 @@ func EventRegisteredEndTime(registeredEnd string, params map[string]interface{})
 	if !ok {
 		return false
 	}
-	startTime, _ := time.Parse(layout, startTimeStr)
-	registeredEndTime, err := time.Parse(layout, registeredEnd)
+	startTime, _ := time.ParseInLocation(layout, startTimeStr, location.Location())
+	registeredEndTime, err := time.ParseInLocation(layout, registeredEnd, location.Location())
 	if err != nil {
 		return false
 	}
 
-	return registeredEndTime.In(location.Location()).Add(22 * time.Hour).Before(startTime)
+	// Check if registration end time is at least 1 hour later than current time
+	now := time.Now().In(location.Location())
+	if registeredEndTime.Before(now.Add(time.Hour)) {
+		return false
+	}
+
+	return registeredEndTime.Add(22 * time.Hour).Before(startTime)
 }
 
 func EventAfterRegistrationText(afterRegistrationText string, _ map[string]interface{}) bool {
@@ -86,8 +92,11 @@ func EventMaxParticipants(maxParticipantsStr string, _ map[string]interface{}) b
 }
 
 func EventExpectedParticipants(expectedParticipants string, _ map[string]interface{}) bool {
-	_, err := strconv.Atoi(expectedParticipants)
-	return err == nil
+	expected, err := strconv.Atoi(expectedParticipants)
+	if err != nil {
+		return false
+	}
+	return expected >= 0
 }
 
 func EventEditMaxParticipants(maxParticipantsStr string, params map[string]interface{}) bool {
