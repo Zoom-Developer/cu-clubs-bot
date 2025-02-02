@@ -176,7 +176,7 @@ func (h Handler) clubsList(c tele.Context) error {
 
 	markup.Inline(rows...)
 
-	h.logger.Debugf("(user: %d) club owner clubs list", c.Sender().ID)
+	h.logger.Infof("(user: %d) club owner clubs list", c.Sender().ID)
 	return c.Edit(
 		banner.ClubOwner.Caption(h.layout.Text(c, "my_clubs_list", clubsCount)),
 		markup,
@@ -1517,7 +1517,7 @@ func (h Handler) eventsList(c tele.Context) error {
 
 	markup.Inline(rows...)
 
-	h.logger.Debugf("(user: %d) events list (pages_count=%d, page=%d, club_id=%s events_count=%d, next_page=%d, prev_page=%d)",
+	h.logger.Infof("(user: %d) events list (pages_count=%d, page=%d, club_id=%s events_count=%d, next_page=%d, prev_page=%d)",
 		c.Sender().ID,
 		pagesCount,
 		p,

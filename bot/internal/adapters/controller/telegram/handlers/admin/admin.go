@@ -260,7 +260,7 @@ func (h Handler) clubsList(c tele.Context) error {
 
 	markup.Inline(rows...)
 
-	h.logger.Debugf("(user: %d) clubs list (pages_count=%d, page=%d, clubs_count=%d, next_page=%d, prev_page=%d)",
+	h.logger.Infof("(user: %d) clubs list (pages_count=%d, page=%d, clubs_count=%d, next_page=%d, prev_page=%d)",
 		c.Sender().ID,
 		pagesCount,
 		p,

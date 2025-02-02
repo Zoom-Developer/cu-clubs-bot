@@ -275,7 +275,7 @@ func (h Handler) eventsList(c tele.Context) error {
 
 	markup.Inline(rows...)
 
-	h.logger.Debugf(
+	h.logger.Infof(
 		"(user: %d) user events list (pages_count=%d, page=%d, events_count=%d, next_page=%d, prev_page=%d)",
 		c.Sender().ID,
 		pagesCount,
@@ -561,7 +561,7 @@ func (h Handler) myEvents(c tele.Context) error {
 
 	markup.Inline(rows...)
 
-	h.logger.Debugf(
+	h.logger.Infof(
 		"(user: %d) user my events list (pages_count=%d, page=%d, events_count=%d, next_page=%d, prev_page=%d)",
 		c.Sender().ID,
 		pagesCount,
