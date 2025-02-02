@@ -90,7 +90,7 @@ func New(b *bot.Bot) *Handler {
 		qr.CU,
 		userSrvc,
 		eventSrvc,
-		viper.GetInt64("bot.qr.chat-id"),
+		viper.GetInt64("bot.qr.channel-id"),
 		viper.GetString("settings.qr.logo-path"),
 	)
 	if err != nil {

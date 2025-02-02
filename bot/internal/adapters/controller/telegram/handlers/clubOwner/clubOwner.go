@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils"
 
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/handlers/middlewares"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/location"
@@ -105,7 +106,7 @@ func NewHandler(b *bot.Bot) *Handler {
 		qr.CU,
 		nil,
 		eventSrvc,
-		viper.GetInt64("bot.qr.chat-id"),
+		viper.GetInt64("bot.qr.channel-id"),
 		viper.GetString("settings.qr.logo-path"),
 	)
 	if err != nil {
