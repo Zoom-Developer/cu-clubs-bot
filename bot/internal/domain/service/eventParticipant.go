@@ -138,7 +138,7 @@ func (s *EventParticipantService) checkAndSend(ctx context.Context) {
 	s.logger.Debugf("Checking for events starting in the next 25 hours")
 	now := time.Now().In(location.Location())
 
-	events, err := s.eventStorage.GetUpcomingEvents(ctx, now.Add(72*time.Hour))
+	events, err := s.eventStorage.GetUpcomingEvents(ctx, now.Add(50*time.Hour))
 	if err != nil {
 		s.logger.Errorf("failed to get upcoming events: %v", err)
 		return

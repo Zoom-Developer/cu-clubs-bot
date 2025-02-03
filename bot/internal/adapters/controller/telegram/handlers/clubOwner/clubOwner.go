@@ -1149,18 +1149,18 @@ func (h Handler) createEvent(c tele.Context) error {
 	)
 
 	eventDescription = *steps[1].result
-	eventStartTime, _ = time.Parse(timeLayout, *steps[3].result)
-	eventStartTimeStr = time.Date(eventStartTime.Year(), eventStartTime.Month(), eventStartTime.Day(), eventStartTime.Hour(), eventStartTime.Minute(), eventStartTime.Second(), eventStartTime.Nanosecond(), location.Location()).Format(timeLayout)
+	eventStartTime, _ = time.ParseInLocation(timeLayout, *steps[3].result, location.Location())
+	eventStartTimeStr = eventStartTime.Format(timeLayout)
 
-	eventEndTime, err = time.Parse(timeLayout, *steps[4].result)
-	eventEndTimeStr = time.Date(eventEndTime.Year(), eventEndTime.Month(), eventEndTime.Day(), eventEndTime.Hour(), eventEndTime.Minute(), eventEndTime.Second(), eventEndTime.Nanosecond(), location.Location()).Format(timeLayout)
+	eventEndTime, err = time.ParseInLocation(timeLayout, *steps[4].result, location.Location())
+	eventEndTimeStr = eventEndTime.Format(timeLayout)
 	if err != nil {
 		eventEndTime = time.Time{}
 		eventEndTimeStr = ""
 	}
 
-	eventRegistrationEndTime, _ = time.Parse(timeLayout, *steps[5].result)
-	eventRegistrationEndTimeStr = time.Date(eventRegistrationEndTime.Year(), eventRegistrationEndTime.Month(), eventRegistrationEndTime.Day(), eventRegistrationEndTime.Hour(), eventRegistrationEndTime.Minute(), eventRegistrationEndTime.Second(), eventRegistrationEndTime.Nanosecond(), location.Location()).Format(timeLayout)
+	eventRegistrationEndTime, _ = time.ParseInLocation(timeLayout, *steps[5].result, location.Location())
+	eventRegistrationEndTimeStr = eventRegistrationEndTime.Format(timeLayout)
 
 	eventAfterRegistrationText = *steps[6].result
 	eventMaxParticipants, _ = strconv.Atoi(*steps[7].result)
@@ -1171,9 +1171,9 @@ func (h Handler) createEvent(c tele.Context) error {
 		Name:                  *steps[0].result,
 		Description:           eventDescription,
 		Location:              *steps[2].result,
-		StartTime:             time.Date(eventStartTime.Year(), eventStartTime.Month(), eventStartTime.Day(), eventStartTime.Hour(), eventStartTime.Minute(), eventStartTime.Second(), eventStartTime.Nanosecond(), location.Location()),
-		EndTime:               time.Date(eventEndTime.Year(), eventEndTime.Month(), eventEndTime.Day(), eventEndTime.Hour(), eventEndTime.Minute(), eventEndTime.Second(), eventEndTime.Nanosecond(), location.Location()),
-		RegistrationEnd:       time.Date(eventRegistrationEndTime.Year(), eventRegistrationEndTime.Month(), eventRegistrationEndTime.Day(), eventRegistrationEndTime.Hour(), eventRegistrationEndTime.Minute(), eventRegistrationEndTime.Second(), eventRegistrationEndTime.Nanosecond(), location.Location()),
+		StartTime:             eventStartTime,
+		EndTime:               eventEndTime,
+		RegistrationEnd:       eventRegistrationEndTime,
 		AfterRegistrationText: eventAfterRegistrationText,
 		MaxParticipants:       eventMaxParticipants,
 		ExpectedParticipants:  eventMaxExpectedParticipants,
