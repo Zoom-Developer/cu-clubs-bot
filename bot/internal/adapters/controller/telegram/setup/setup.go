@@ -33,12 +33,15 @@ func Setup(b *bot.Bot) {
 		nil,
 	)
 	eventParticipantService := service.NewEventParticipantService(
+		b.Bot,
+		b.Layout,
 		b.Logger,
 		postgres.NewEventParticipantStorage(b.DB),
 		postgres.NewEventStorage(b.DB),
 		postgres.NewUserStorage(b.DB),
 		smtp.NewClient(b.SMTPDialer, viper.GetString("service.smtp.domain"), viper.GetString("service.smtp.email")),
 		viper.GetString("settings.pass-email"),
+		viper.GetInt64("bot.pass.channel-id"),
 	)
 	notifyService.StartNotifyScheduler()
 	eventParticipantService.StartPassScheduler()

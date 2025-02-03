@@ -7,6 +7,8 @@ import (
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/location"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger/types"
 	"github.com/xuri/excelize/v2"
+	tele "gopkg.in/telebot.v3"
+	"gopkg.in/telebot.v3/layout"
 	"strconv"
 	"strings"
 	"time"
@@ -39,6 +41,8 @@ type eventParticipantSMTPClient interface {
 }
 
 type EventParticipantService struct {
+	bot    *tele.Bot
+	layout *layout.Layout
 	logger *types.Logger
 
 	storage                    EventParticipantStorage
@@ -46,18 +50,24 @@ type EventParticipantService struct {
 	userStorage                userStorage
 	eventParticipantSMTPClient eventParticipantSMTPClient
 
-	passEmail string
+	passEmail  string
+	passChatID int64
 }
 
 func NewEventParticipantService(
+	bot *tele.Bot,
+	layout *layout.Layout,
 	logger *types.Logger,
 	storage EventParticipantStorage,
 	eventStorage eventParticipantEventStorage,
 	userStorage userStorage,
 	eventParticipantSMTPClient eventParticipantSMTPClient,
 	passEmail string,
+	passChatID int64,
 ) *EventParticipantService {
 	return &EventParticipantService{
+		bot:    bot,
+		layout: layout,
 		logger: logger,
 
 		storage:                    storage,
@@ -65,7 +75,8 @@ func NewEventParticipantService(
 		userStorage:                userStorage,
 		eventParticipantSMTPClient: eventParticipantSMTPClient,
 
-		passEmail: passEmail,
+		passEmail:  passEmail,
+		passChatID: passChatID,
 	}
 }
 
@@ -150,8 +161,8 @@ func (s *EventParticipantService) checkAndSend(ctx context.Context) {
 		}
 
 		_ = notificationTime
-		// Check if it's time to send the notification
-		if !(now.Before(notificationTime) || now.After(notificationTime.Add(1*time.Hour))) {
+		// Check if it's valid event for notification and it's time to send the notification
+		if (strings.Contains(event.Location, "Гашека 7")) && !(now.Before(notificationTime) || now.After(notificationTime.Add(1*time.Hour))) {
 			eventIDs = append(eventIDs, event.ID)
 		}
 	}
@@ -171,6 +182,23 @@ func (s *EventParticipantService) checkAndSend(ctx context.Context) {
 	}
 
 	s.eventParticipantSMTPClient.Send(s.passEmail, "Event passes", "Event passes", "Event passes", buf)
+
+	chat, errGetChat := s.bot.ChatByID(s.passChatID)
+	if errGetChat != nil {
+		s.logger.Errorf("failed to get chat %d: %v", s.passChatID, errGetChat)
+		return
+	}
+
+	file := &tele.Document{
+		File:     tele.FromReader(buf),
+		Caption:  s.layout.TextLocale("ru", "pass_users"),
+		FileName: "users.xlsx",
+	}
+	_, errSend := s.bot.Send(chat, file)
+	if errSend != nil {
+		s.logger.Errorf("failed to send notification to chat %d: %v", s.passChatID, errSend)
+		return
+	}
 }
 
 func participantsToXLSX(users []entity.User) (*bytes.Buffer, error) {
