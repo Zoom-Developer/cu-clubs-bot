@@ -40,6 +40,8 @@ bot:
         - centraluniversity.ru
   qr:
     channel-id: -400000000
+  pass:
+    channel-id: -400000000
   mailing:
     channel-id: -400000000
 
