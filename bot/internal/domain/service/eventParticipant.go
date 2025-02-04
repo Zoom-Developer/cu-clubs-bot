@@ -6,6 +6,7 @@ import (
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/dto"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/location"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger/types"
+	"github.com/robfig/cron/v3"
 	"github.com/xuri/excelize/v2"
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/layout"
@@ -124,13 +125,25 @@ func (s *EventParticipantService) CountUserEvents(ctx context.Context, userID in
 func (s *EventParticipantService) StartPassScheduler() {
 	s.logger.Info("Starting pass scheduler")
 	go func() {
-		ticker := time.NewTicker(45 * time.Minute)
-		defer ticker.Stop()
-
-		for range ticker.C {
+		c := cron.New(cron.WithLocation(location.Location()))
+		if _, err := c.AddFunc("0 16 * * 1-5", func() {
 			ctx := context.Background()
 			s.checkAndSend(ctx)
+		}); err != nil {
+			s.logger.Error("Failed to start pass scheduler:", err)
+			return
 		}
+
+		if _, err := c.AddFunc("0 12 * * 6", func() {
+			ctx := context.Background()
+			s.checkAndSend(ctx)
+		}); err != nil {
+			s.logger.Error("Failed to start pass scheduler:", err)
+			return
+		}
+		c.Start()
+
+		select {}
 	}()
 }
 
@@ -138,7 +151,7 @@ func (s *EventParticipantService) checkAndSend(ctx context.Context) {
 	s.logger.Debugf("Checking for events starting in the next 25 hours")
 	now := time.Now().In(location.Location())
 
-	events, err := s.eventStorage.GetUpcomingEvents(ctx, now.Add(50*time.Hour))
+	events, err := s.eventStorage.GetUpcomingEvents(ctx, now.Add(72*time.Hour))
 	if err != nil {
 		s.logger.Errorf("failed to get upcoming events: %v", err)
 		return
