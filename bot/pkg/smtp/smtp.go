@@ -45,7 +45,9 @@ func (c *Client) Send(to string, body, message string, subject string, file *byt
 	if file != nil {
 		msg.Attach("participants.xlsx", gomail.SetCopyFunc(func(w io.Writer) error {
 			_, err := w.Write(file.Bytes())
-			logger.Log.Error(err)
+			if err != nil {
+				logger.Log.Error(err)
+			}
 			return err
 		}))
 	}
