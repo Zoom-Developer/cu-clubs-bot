@@ -22,10 +22,13 @@ type UserStorage interface {
 	GetByQRCodeID(ctx context.Context, qrCodeID string) (*entity.User, error)
 	GetMany(ctx context.Context, ids []int64) ([]entity.User, error)
 	GetAll(ctx context.Context) ([]entity.User, error)
+	GetEventUsers(ctx context.Context, eventID string) ([]dto.EventUser, error)
 	Update(ctx context.Context, user *entity.User) (*entity.User, error)
 	Count(ctx context.Context) (int64, error)
 	GetWithPagination(ctx context.Context, limit int, offset int, order string) ([]entity.User, error)
 	GetUsersByEventID(ctx context.Context, eventID string) ([]entity.User, error)
+	GetUsersByClubID(ctx context.Context, clubID string) ([]entity.User, error)
+	IgnoreMailing(ctx context.Context, userID int64, clubID string) (bool, error)
 }
 
 type StudentDataStorage interface {
@@ -113,6 +116,14 @@ func (s *UserService) GetUsersByEventID(ctx context.Context, eventID string) ([]
 	return s.userStorage.GetUsersByEventID(ctx, eventID)
 }
 
+func (s *UserService) GetEventUsers(ctx context.Context, eventID string) ([]dto.EventUser, error) {
+	return s.userStorage.GetEventUsers(ctx, eventID)
+}
+
+func (s *UserService) GetUsersByClubID(ctx context.Context, clubID string) ([]entity.User, error) {
+	return s.userStorage.GetUsersByClubID(ctx, clubID)
+}
+
 func (s *UserService) GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]dto.UserEvent, error) {
 	return s.eventParticipantStorage.GetUserEvents(ctx, userID, limit, offset)
 }
@@ -144,6 +155,11 @@ func (s *UserService) SendAuthCode(_ context.Context, email string) (string, str
 	}
 
 	return data, code, nil
+}
+
+// IgnoreMailing is a function that allows or disallows mailing for a user (returns error and new state)
+func (s *UserService) IgnoreMailing(ctx context.Context, userID int64, clubID string) (bool, error) {
+	return s.userStorage.IgnoreMailing(ctx, userID, clubID)
 }
 
 func generateRandomCode(length int) (string, error) {

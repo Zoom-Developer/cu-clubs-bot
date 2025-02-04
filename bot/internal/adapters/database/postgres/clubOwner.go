@@ -66,7 +66,7 @@ func (s *ClubOwnerStorage) GetByClubID(ctx context.Context, clubID string) ([]dt
 	var result []dto.ClubOwner
 	err := s.db.WithContext(ctx).
 		Table("club_owners").
-		Select("club_owners.club_id, club_owners.user_id, club_owners.warnings, users.fio, users.email, users.role, users.is_banned").
+		Select("club_owners.club_id, club_owners.user_id, users.username, club_owners.warnings, users.fio, users.email, users.role, users.is_banned").
 		Joins("LEFT JOIN users ON users.id = club_owners.user_id").
 		Where("club_owners.club_id = ?", clubID).
 		Scan(&result).Error

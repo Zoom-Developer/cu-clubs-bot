@@ -203,7 +203,7 @@ func (s *NotifyService) sendNotifications(ctx context.Context, event entity.Even
 	}
 
 	for _, participant := range participants {
-		s.logger.Debugf(
+		s.logger.Infof(
 			"Sending %s notification to user (user_id=%d, event_id=%s, notification_type=%s)",
 			notificationType,
 			participant.UserID,

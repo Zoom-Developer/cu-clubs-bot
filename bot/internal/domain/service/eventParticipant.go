@@ -6,7 +6,10 @@ import (
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/dto"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/location"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger/types"
+	"github.com/robfig/cron/v3"
 	"github.com/xuri/excelize/v2"
+	tele "gopkg.in/telebot.v3"
+	"gopkg.in/telebot.v3/layout"
 	"strconv"
 	"strings"
 	"time"
@@ -31,7 +34,7 @@ type eventParticipantEventStorage interface {
 }
 
 type userStorage interface {
-	GetUsersByEventID(ctx context.Context, eventID string) ([]entity.User, error)
+	GetManyUsersByEventIDs(ctx context.Context, eventIDs []string) ([]entity.User, error)
 }
 
 type eventParticipantSMTPClient interface {
@@ -39,6 +42,8 @@ type eventParticipantSMTPClient interface {
 }
 
 type EventParticipantService struct {
+	bot    *tele.Bot
+	layout *layout.Layout
 	logger *types.Logger
 
 	storage                    EventParticipantStorage
@@ -46,18 +51,24 @@ type EventParticipantService struct {
 	userStorage                userStorage
 	eventParticipantSMTPClient eventParticipantSMTPClient
 
-	passEmail string
+	passEmail  string
+	passChatID int64
 }
 
 func NewEventParticipantService(
+	bot *tele.Bot,
+	layout *layout.Layout,
 	logger *types.Logger,
 	storage EventParticipantStorage,
 	eventStorage eventParticipantEventStorage,
 	userStorage userStorage,
 	eventParticipantSMTPClient eventParticipantSMTPClient,
 	passEmail string,
+	passChatID int64,
 ) *EventParticipantService {
 	return &EventParticipantService{
+		bot:    bot,
+		layout: layout,
 		logger: logger,
 
 		storage:                    storage,
@@ -65,7 +76,8 @@ func NewEventParticipantService(
 		userStorage:                userStorage,
 		eventParticipantSMTPClient: eventParticipantSMTPClient,
 
-		passEmail: passEmail,
+		passEmail:  passEmail,
+		passChatID: passChatID,
 	}
 }
 
@@ -113,13 +125,25 @@ func (s *EventParticipantService) CountUserEvents(ctx context.Context, userID in
 func (s *EventParticipantService) StartPassScheduler() {
 	s.logger.Info("Starting pass scheduler")
 	go func() {
-		ticker := time.NewTicker(45 * time.Minute)
-		defer ticker.Stop()
-
-		for range ticker.C {
+		c := cron.New(cron.WithLocation(location.Location()))
+		if _, err := c.AddFunc("0 16 * * 1-5", func() {
 			ctx := context.Background()
 			s.checkAndSend(ctx)
+		}); err != nil {
+			s.logger.Error("Failed to start pass scheduler:", err)
+			return
 		}
+
+		if _, err := c.AddFunc("0 12 * * 6", func() {
+			ctx := context.Background()
+			s.checkAndSend(ctx)
+		}); err != nil {
+			s.logger.Error("Failed to start pass scheduler:", err)
+			return
+		}
+		c.Start()
+
+		select {}
 	}()
 }
 
@@ -133,38 +157,60 @@ func (s *EventParticipantService) checkAndSend(ctx context.Context) {
 		return
 	}
 
+	var eventIDs []string
+
 	for _, event := range events {
 		eventStartTime := event.StartTime.In(location.Location())
 		weekday := eventStartTime.Weekday()
 
 		// Determine notification time
 		var notificationTime time.Time
-		if weekday == time.Sunday || weekday == time.Monday {
-			notificationTime = time.Date(eventStartTime.Year(), eventStartTime.Month(), eventStartTime.Day(), 12, 0, 0, 0, location.Location())
+		if weekday == time.Sunday {
+			notificationTime = time.Date(eventStartTime.Year(), eventStartTime.Month(), eventStartTime.Day()-1, 12, 0, 0, 0, location.Location())
+		} else if weekday == time.Monday {
+			notificationTime = time.Date(eventStartTime.Year(), eventStartTime.Month(), eventStartTime.Day()-2, 12, 0, 0, 0, location.Location())
 		} else {
 			notificationTime = time.Date(eventStartTime.Year(), eventStartTime.Month(), eventStartTime.Day(), 0, 0, 0, 0, eventStartTime.Location()).Add(-24 * time.Hour).Add(16 * time.Hour)
 		}
 
-		// Check if it's time to send the notification
-		if now.Before(notificationTime) || now.After(notificationTime.Add(1*time.Hour)) {
-			continue
+		_ = notificationTime
+		// Check if it's valid event for notification and it's time to send the notification
+		if (strings.Contains(event.Location, "Гашека 7")) && !(now.Before(notificationTime) || now.After(notificationTime.Add(1*time.Hour))) {
+			eventIDs = append(eventIDs, event.ID)
 		}
+	}
 
-		var participants []entity.User
-		participants, err = s.userStorage.GetUsersByEventID(ctx, event.ID)
-		if err != nil {
-			s.logger.Errorf("failed to get participants for event %s: %v", event.ID, err)
-			continue
-		}
+	var participants []entity.User
+	participants, err = s.userStorage.GetManyUsersByEventIDs(ctx, eventIDs)
+	if err != nil {
+		s.logger.Errorf("failed to get participants for events %s: %v", eventIDs, err)
+		return
+	}
 
-		var buf *bytes.Buffer
-		buf, err = participantsToXLSX(participants)
-		if err != nil {
-			s.logger.Errorf("failed to form xlsx with participants %s: %v", event.ID, err)
-			continue
-		}
+	var buf *bytes.Buffer
+	buf, err = participantsToXLSX(participants)
+	if err != nil {
+		s.logger.Errorf("failed to form xlsx with participants %s: %v", eventIDs, err)
+		return
+	}
 
-		s.eventParticipantSMTPClient.Send(s.passEmail, "Event passes", "Event passes", "Event passes", buf)
+	s.eventParticipantSMTPClient.Send(s.passEmail, "Event passes", "Event passes", "Event passes", buf)
+
+	chat, errGetChat := s.bot.ChatByID(s.passChatID)
+	if errGetChat != nil {
+		s.logger.Errorf("failed to get chat %d: %v", s.passChatID, errGetChat)
+		return
+	}
+
+	file := &tele.Document{
+		File:     tele.FromReader(buf),
+		Caption:  s.layout.TextLocale("ru", "pass_users"),
+		FileName: "users.xlsx",
+	}
+	_, errSend := s.bot.Send(chat, file)
+	if errSend != nil {
+		s.logger.Errorf("failed to send notification to chat %d: %v", s.passChatID, errSend)
+		return
 	}
 }
 

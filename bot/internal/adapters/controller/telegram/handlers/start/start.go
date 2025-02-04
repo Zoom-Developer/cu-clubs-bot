@@ -90,7 +90,7 @@ func New(b *bot.Bot) *Handler {
 		qr.CU,
 		userSrvc,
 		eventSrvc,
-		viper.GetInt64("bot.qr.chat-id"),
+		viper.GetInt64("bot.qr.channel-id"),
 		viper.GetString("settings.qr.logo-path"),
 	)
 	if err != nil {
@@ -101,7 +101,7 @@ func New(b *bot.Bot) *Handler {
 		userService:             userSrvc,
 		clubService:             service.NewClubService(clubStorage),
 		eventService:            eventSrvc,
-		eventParticipantService: service.NewEventParticipantService(nil, eventParticipantStorage, nil, nil, nil, ""),
+		eventParticipantService: service.NewEventParticipantService(b.Bot, b.Layout, b.Logger, eventParticipantStorage, nil, nil, nil, "", 0),
 		qrService:               qrSrvc,
 		callbacksStorage:        b.Redis.Callbacks,
 		menuHandler:             menu.New(b),
@@ -113,7 +113,7 @@ func New(b *bot.Bot) *Handler {
 }
 
 func (h Handler) Start(c tele.Context) error {
-	h.logger.Infof("(user: %d) press start button", c.Sender().ID)
+	h.logger.Infof("(user: %d) enter /start", c.Sender().ID)
 
 	user, err := h.userService.Get(context.Background(), c.Sender().ID)
 

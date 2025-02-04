@@ -12,6 +12,7 @@ import (
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/dto"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/service"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/banner"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/location"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger/types"
@@ -37,6 +38,7 @@ type userService interface {
 	Update(ctx context.Context, user *entity.User) (*entity.User, error)
 	GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]dto.UserEvent, error)
 	CountUserEvents(ctx context.Context, userID int64) (int64, error)
+	IgnoreMailing(ctx context.Context, userID int64, clubID string) (bool, error)
 }
 
 type eventService interface {
@@ -82,7 +84,7 @@ func New(b *bot.Bot) *Handler {
 	eventParticipantStorage := postgres.NewEventParticipantStorage(b.DB)
 	clubOwnerStorage := postgres.NewClubOwnerStorage(b.DB)
 
-	eventPartService := service.NewEventParticipantService(nil, eventParticipantStorage, nil, nil, nil, "")
+	eventPartService := service.NewEventParticipantService(nil, nil, nil, eventParticipantStorage, nil, nil, nil, "", 0)
 
 	smtpClient := smtp.NewClient(b.SMTPDialer, viper.GetString("service.smtp.domain"), viper.GetString("service.smtp.email"))
 
@@ -96,7 +98,7 @@ func New(b *bot.Bot) *Handler {
 		qr.CU,
 		userSrvc,
 		nil,
-		viper.GetInt64("bot.qr.chat-id"),
+		viper.GetInt64("bot.qr.channel-id"),
 		viper.GetString("settings.qr.logo-path"),
 	)
 
@@ -273,7 +275,7 @@ func (h Handler) eventsList(c tele.Context) error {
 
 	markup.Inline(rows...)
 
-	h.logger.Debugf(
+	h.logger.Infof(
 		"(user: %d) user events list (pages_count=%d, page=%d, events_count=%d, next_page=%d, prev_page=%d)",
 		c.Sender().ID,
 		pagesCount,
@@ -559,7 +561,7 @@ func (h Handler) myEvents(c tele.Context) error {
 
 	markup.Inline(rows...)
 
-	h.logger.Debugf(
+	h.logger.Infof(
 		"(user: %d) user my events list (pages_count=%d, page=%d, events_count=%d, next_page=%d, prev_page=%d)",
 		c.Sender().ID,
 		pagesCount,
@@ -651,6 +653,31 @@ func (h Handler) myEvent(c tele.Context) error {
 	return nil
 }
 
+func (h Handler) mailingSwitch(c tele.Context) error {
+	h.logger.Infof("(user: %d) mailing switch (club_id=%s)", c.Sender().ID, c.Callback().Data)
+	clubID := c.Callback().Data
+
+	allowed, err := h.userService.IgnoreMailing(context.Background(), c.Sender().ID, clubID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while switching ignore mailing: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.Events.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "mainMenu:back"),
+		)
+	}
+
+	return c.Edit(
+		utils.ChangeMessageText(c.Message(), utils.GetMessageText(c.Message())),
+		h.layout.Markup(c, "mailing", struct {
+			ClubID  string
+			Allowed bool
+		}{
+			ClubID:  clubID,
+			Allowed: allowed,
+		}),
+	)
+}
+
 func (h Handler) UserSetup(group *tele.Group) {
 	group.Handle(h.layout.Callback("mainMenu:qr"), h.qrCode)
 
@@ -666,4 +693,6 @@ func (h Handler) UserSetup(group *tele.Group) {
 	group.Handle(h.layout.Callback("user:myEvents:next_page"), h.myEvents)
 	group.Handle(h.layout.Callback("user:myEvents:event"), h.myEvent)
 	group.Handle(h.layout.Callback("user:myEvents:back"), h.myEvents)
+
+	group.Handle(h.layout.Callback("mailing:switch"), h.mailingSwitch)
 }

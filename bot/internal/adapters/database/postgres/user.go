@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/dto"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 	"gorm.io/gorm"
 )
@@ -49,6 +50,36 @@ func (s *UserStorage) GetAll(ctx context.Context) ([]entity.User, error) {
 	return users, err
 }
 
+// GetEventUsers is a function that get users with visit field by event id.
+func (s *UserStorage) GetEventUsers(ctx context.Context, eventID string) ([]dto.EventUser, error) {
+	type userWithQR struct {
+		entity.User
+		IsUserQr  bool
+		IsEventQr bool
+	}
+
+	var users []userWithQR
+
+	err := s.db.
+		WithContext(ctx).
+		Table("event_participants").
+		Select("users.*, event_participants.is_user_qr, event_participants.is_event_qr").
+		Joins("inner join users on event_participants.user_id = users.id").
+		Where("event_participants.event_id = ?", eventID).
+		Find(&users).Error
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]dto.EventUser, len(users))
+	for i, user := range users {
+		result[i] = dto.NewEventUserFromEntity(user.User, user.IsUserQr || user.IsEventQr)
+	}
+
+	return result, nil
+}
+
+// GetUsersByEventID is a function that get users that registered on event by event id.
 func (s *UserStorage) GetUsersByEventID(ctx context.Context, eventID string) ([]entity.User, error) {
 	var users []entity.User
 
@@ -58,6 +89,37 @@ func (s *UserStorage) GetUsersByEventID(ctx context.Context, eventID string) ([]
 		Select("users.*").
 		Joins("inner join users on event_participants.user_id = users.id").
 		Where("event_participants.event_id = ?", eventID).
+		Preload("IgnoreMailing").
+		Find(&users).Error
+	return users, err
+}
+
+// GetUsersByClubID is a function that returns all user that registered to club event at least once
+func (s *UserStorage) GetUsersByClubID(ctx context.Context, clubID string) ([]entity.User, error) {
+	var users []entity.User
+
+	err := s.db.
+		WithContext(ctx).
+		Table("event_participants").
+		Select("DISTINCT users.*").
+		Joins("inner join users on event_participants.user_id = users.id").
+		Joins("inner join events on event_participants.event_id = events.id").
+		Where("events.club_id = ?", clubID).
+		Preload("IgnoreMailing").
+		Find(&users).Error
+	return users, err
+}
+
+// GetManyUsersByEventIDs is a function that get users that registered on event by event ids without duplicates.
+func (s *UserStorage) GetManyUsersByEventIDs(ctx context.Context, eventIDs []string) ([]entity.User, error) {
+	var users []entity.User
+
+	err := s.db.
+		WithContext(ctx).
+		Table("event_participants").
+		Select("DISTINCT ON (users.id) users.*").
+		Joins("inner join users on event_participants.user_id = users.id").
+		Where("event_participants.event_id IN ?", eventIDs).
 		Find(&users).Error
 	return users, err
 }
@@ -80,4 +142,29 @@ func (s *UserStorage) GetWithPagination(ctx context.Context, limit, offset int, 
 	var users []entity.User
 	err := s.db.WithContext(ctx).Order(order).Limit(limit).Offset(offset).Find(&users).Error
 	return users, err
+}
+
+// IgnoreMailing is a function that allows or disallows mailing for a user (returns error and new state)
+func (s *UserStorage) IgnoreMailing(ctx context.Context, userID int64, clubID string) (bool, error) {
+	var user *entity.User
+	err := s.db.WithContext(ctx).Where("id = ?", userID).Preload("IgnoreMailing").First(&user).Error
+	if err != nil {
+		return false, err
+	}
+
+	if user.IsMailingAllowed(clubID) {
+		err = s.db.WithContext(ctx).
+			Create(&entity.IgnoreMailing{
+				UserID: userID,
+				ClubID: clubID,
+			}).Error
+		return false, err
+	}
+
+	err = s.db.
+		WithContext(ctx).
+		Where("user_id = ? AND club_id = ?", userID, clubID).
+		Delete(&entity.IgnoreMailing{}).
+		Error
+	return true, err
 }
