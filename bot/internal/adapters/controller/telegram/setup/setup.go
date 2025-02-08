@@ -40,7 +40,7 @@ func Setup(b *bot.Bot) {
 		postgres.NewEventStorage(b.DB),
 		postgres.NewUserStorage(b.DB),
 		smtp.NewClient(b.SMTPDialer, viper.GetString("service.smtp.domain"), viper.GetString("service.smtp.email")),
-		viper.GetString("settings.pass-email"),
+		viper.GetStringSlice("settings.pass-emails"),
 		viper.GetInt64("bot.pass.channel-id"),
 	)
 	notifyService.StartNotifyScheduler()

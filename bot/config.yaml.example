@@ -46,7 +46,9 @@ bot:
     channel-id: -400000000
 
 settings:
-    pass-email: email@domain.ru # Почта, куда будут отправляться списки на пропуска
+    pass-emails: # Почты, куда будут отправляться списки на пропуска
+        - firstemail@domain.ru
+        - secondemail@domain.ru
 
     html:
       email-confirmation: "./mail.html"
