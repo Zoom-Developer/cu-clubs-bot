@@ -346,7 +346,28 @@ func (h Handler) event(c tele.Context) error {
 
 	if c.Callback().Unique == "event_register" {
 		if !registered {
-			if (event.MaxParticipants == 0 || participantsCount < event.MaxParticipants) && event.RegistrationEnd.After(time.Now().In(location.Location())) {
+			var user *entity.User
+			user, err = h.userService.Get(context.Background(), c.Sender().ID)
+			if err != nil {
+				h.logger.Errorf("(user: %d) error while get user: %v", c.Sender().ID, err)
+				return c.Edit(
+					banner.Events.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+					h.layout.Markup(c, "user:events:back", struct {
+						Page string
+					}{
+						Page: page,
+					}),
+				)
+			}
+
+			var roleAllowed bool
+			for _, role := range event.AllowedRoles {
+				if role == string(user.Role) {
+					roleAllowed = true
+				}
+			}
+
+			if (event.MaxParticipants == 0 || participantsCount < event.MaxParticipants) && event.RegistrationEnd.After(time.Now().In(location.Location())) && roleAllowed {
 				_, err = h.eventParticipantService.Register(context.Background(), eventID, c.Sender().ID)
 				if err != nil {
 					h.logger.Errorf("(user: %d) error while register to event: %v", c.Sender().ID, err)
@@ -403,6 +424,11 @@ func (h Handler) event(c tele.Context) error {
 				case event.MaxParticipants > 0 && participantsCount >= event.MaxParticipants:
 					return c.Respond(&tele.CallbackResponse{
 						Text:      h.layout.Text(c, "max_participants_reached"),
+						ShowAlert: true,
+					})
+				case !roleAllowed:
+					return c.Respond(&tele.CallbackResponse{
+						Text:      h.layout.Text(c, "not_allowed_role"),
 						ShowAlert: true,
 					})
 				}
