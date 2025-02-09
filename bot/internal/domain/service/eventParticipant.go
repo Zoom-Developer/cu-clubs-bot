@@ -51,7 +51,7 @@ type EventParticipantService struct {
 	userStorage                userStorage
 	eventParticipantSMTPClient eventParticipantSMTPClient
 
-	passEmail  string
+	passEmails []string
 	passChatID int64
 }
 
@@ -63,7 +63,7 @@ func NewEventParticipantService(
 	eventStorage eventParticipantEventStorage,
 	userStorage userStorage,
 	eventParticipantSMTPClient eventParticipantSMTPClient,
-	passEmail string,
+	passEmails []string,
 	passChatID int64,
 ) *EventParticipantService {
 	return &EventParticipantService{
@@ -76,7 +76,7 @@ func NewEventParticipantService(
 		userStorage:                userStorage,
 		eventParticipantSMTPClient: eventParticipantSMTPClient,
 
-		passEmail:  passEmail,
+		passEmails: passEmails,
 		passChatID: passChatID,
 	}
 }
@@ -186,6 +186,9 @@ func (s *EventParticipantService) checkAndSend(ctx context.Context) {
 		s.logger.Errorf("failed to get participants for events %s: %v", eventIDs, err)
 		return
 	}
+	if len(participants) == 0 {
+		return
+	}
 
 	var buf *bytes.Buffer
 	buf, err = participantsToXLSX(participants)
@@ -194,7 +197,9 @@ func (s *EventParticipantService) checkAndSend(ctx context.Context) {
 		return
 	}
 
-	s.eventParticipantSMTPClient.Send(s.passEmail, "Event passes", "Event passes", "Event passes", buf)
+	for _, passEmail := range s.passEmails {
+		s.eventParticipantSMTPClient.Send(passEmail, "Event passes", "Event passes", "Event passes", buf)
+	}
 
 	chat, errGetChat := s.bot.ChatByID(s.passChatID)
 	if errGetChat != nil {
