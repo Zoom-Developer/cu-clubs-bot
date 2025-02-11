@@ -3,6 +3,7 @@ package start
 import (
 	"context"
 	"errors"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/entity"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/banner"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/location"
 	tele "gopkg.in/telebot.v3"
@@ -114,7 +115,24 @@ func (h Handler) eventRegister(c tele.Context) error {
 
 	if c.Callback().Unique == "user_url_event_reg" {
 		if !registered {
-			if (event.MaxParticipants == 0 || participantsCount < event.MaxParticipants) && !event.IsOver(0) {
+			var user *entity.User
+			user, err = h.userService.Get(context.Background(), c.Sender().ID)
+			if err != nil {
+				h.logger.Errorf("(user: %d) error while get user: %v", c.Sender().ID, err)
+				return c.Edit(
+					banner.Events.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+					h.layout.Markup(c, "mainMenu:back"),
+				)
+			}
+
+			var roleAllowed bool
+			for _, role := range event.AllowedRoles {
+				if role == string(user.Role) {
+					roleAllowed = true
+				}
+			}
+
+			if (event.MaxParticipants == 0 || participantsCount < event.MaxParticipants) && event.RegistrationEnd.After(time.Now().In(location.Location())) && roleAllowed {
 				_, err = h.eventParticipantService.Register(context.Background(), eventID, c.Sender().ID)
 				if err != nil {
 					h.logger.Errorf("(user: %d) error while register to event: %v", c.Sender().ID, err)
@@ -123,8 +141,40 @@ func (h Handler) eventRegister(c tele.Context) error {
 						h.layout.Markup(c, "mainMenu:back"),
 					)
 				}
-				registered = true
 
+				if participantsCount+1 == event.ExpectedParticipants {
+					errSendWarning := h.notificationService.SendClubWarning(event.ClubID,
+						h.layout.Text(c, "expected_participants_reached_warning", struct {
+							Name              string
+							ParticipantsCount int
+						}{
+							Name:              event.Name,
+							ParticipantsCount: participantsCount + 1,
+						}),
+						h.layout.Markup(c, "core:hide"),
+					)
+					if errSendWarning != nil {
+						h.logger.Errorf("(user: %d) error while send expected participants reached warning: %v", c.Sender().ID, errSendWarning)
+					}
+				}
+
+				if participantsCount+1 == event.MaxParticipants {
+					errSendWarning := h.notificationService.SendClubWarning(event.ClubID,
+						h.layout.Text(c, "max_participants_reached_warning", struct {
+							Name              string
+							ParticipantsCount int
+						}{
+							Name:              event.Name,
+							ParticipantsCount: participantsCount + 1,
+						}),
+						h.layout.Markup(c, "core:hide"),
+					)
+					if errSendWarning != nil {
+						h.logger.Errorf("(user: %d) error while send expected participants reached warning: %v", c.Sender().ID, errSendWarning)
+					}
+				}
+
+				registered = true
 			} else {
 				switch {
 				case event.RegistrationEnd.Before(time.Now().In(location.Location())):
@@ -135,6 +185,11 @@ func (h Handler) eventRegister(c tele.Context) error {
 				case event.MaxParticipants > 0 && participantsCount >= event.MaxParticipants:
 					return c.Respond(&tele.CallbackResponse{
 						Text:      h.layout.Text(c, "max_participants_reached"),
+						ShowAlert: true,
+					})
+				case !roleAllowed:
+					return c.Respond(&tele.CallbackResponse{
+						Text:      h.layout.Text(c, "not_allowed_role"),
 						ShowAlert: true,
 					})
 				}

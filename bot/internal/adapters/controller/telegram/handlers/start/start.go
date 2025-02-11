@@ -58,12 +58,17 @@ type qrService interface {
 	RevokeUserQR(ctx context.Context, userID int64) error
 }
 
+type notificationService interface {
+	SendClubWarning(clubID string, what interface{}, opts ...interface{}) error
+}
+
 type Handler struct {
 	userService             userService
 	clubService             clubService
 	eventService            eventService
 	eventParticipantService eventParticipantService
 	qrService               qrService
+	notificationService     notificationService
 
 	callbacksStorage callbacks.CallbackStorage
 
@@ -81,9 +86,12 @@ func New(b *bot.Bot) *Handler {
 	eventStorage := postgres.NewEventStorage(b.DB)
 	clubStorage := postgres.NewClubStorage(b.DB)
 	eventParticipantStorage := postgres.NewEventParticipantStorage(b.DB)
+	clubOwnerStorage := postgres.NewClubOwnerStorage(b.DB)
+	notificationStorage := postgres.NewNotificationStorage(b.DB)
 
 	userSrvc := service.NewUserService(userStorage, studentDataStorage, nil, nil, "")
 	eventSrvc := service.NewEventService(eventStorage)
+	clubOwnerSrvc := service.NewClubOwnerService(clubOwnerStorage, userStorage)
 
 	qrSrvc, err := service.NewQrService(
 		b.Bot,
@@ -103,6 +111,7 @@ func New(b *bot.Bot) *Handler {
 		eventService:            eventSrvc,
 		eventParticipantService: service.NewEventParticipantService(b.Bot, b.Layout, b.Logger, eventParticipantStorage, nil, nil, nil, nil, 0),
 		qrService:               qrSrvc,
+		notificationService:     service.NewNotifyService(b.Bot, b.Layout, b.Logger, clubOwnerSrvc, eventStorage, notificationStorage, eventParticipantStorage),
 		callbacksStorage:        b.Redis.Callbacks,
 		menuHandler:             menu.New(b),
 		codesStorage:            b.Redis.Codes,
