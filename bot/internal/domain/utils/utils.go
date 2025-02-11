@@ -1,9 +1,11 @@
 package utils
 
 import (
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/location"
 	"github.com/spf13/viper"
 	tele "gopkg.in/telebot.v3"
 	"slices"
+	"time"
 )
 
 func IsAdmin(userID int64) bool {
@@ -39,4 +41,11 @@ func GetMessageText(msg *tele.Message) string {
 	default:
 		return ""
 	}
+}
+
+func GetMaxRegisteredEndTime(startTimeStr string) string {
+	const layout = "02.01.2006 15:04"
+
+	startTime, _ := time.ParseInLocation(layout, startTimeStr, location.Location())
+	return time.Date(startTime.Year(), startTime.Month(), startTime.Day(), 0, 0, 0, 0, startTime.Location()).Add(-24 * time.Hour).Add(16 * time.Hour).Format(layout)
 }

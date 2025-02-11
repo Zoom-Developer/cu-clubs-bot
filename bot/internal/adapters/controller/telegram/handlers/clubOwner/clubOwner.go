@@ -956,6 +956,7 @@ func (h Handler) createEvent(c tele.Context) error {
 
 	var steps []struct {
 		promptKey   string
+		objectFunc  func() interface{}
 		errorKey    string
 		result      *string
 		validator   func(string, map[string]interface{}) bool
@@ -965,6 +966,7 @@ func (h Handler) createEvent(c tele.Context) error {
 
 	steps = []struct {
 		promptKey   string
+		objectFunc  func() interface{}
 		errorKey    string
 		result      *string
 		validator   func(string, map[string]interface{}) bool
@@ -972,7 +974,10 @@ func (h Handler) createEvent(c tele.Context) error {
 		callbackBtn *tele.Btn
 	}{
 		{
-			promptKey:   "input_event_name",
+			promptKey: "input_event_name",
+			objectFunc: func() interface{} {
+				return struct{}{}
+			},
 			errorKey:    "invalid_event_name",
 			result:      new(string),
 			validator:   validator.EventName,
@@ -981,7 +986,10 @@ func (h Handler) createEvent(c tele.Context) error {
 		},
 
 		{
-			promptKey:   "input_event_description",
+			promptKey: "input_event_description",
+			objectFunc: func() interface{} {
+				return struct{}{}
+			},
 			errorKey:    "invalid_event_description",
 			result:      new(string),
 			validator:   validator.EventDescription,
@@ -990,7 +998,10 @@ func (h Handler) createEvent(c tele.Context) error {
 		},
 
 		{
-			promptKey:   "input_event_location",
+			promptKey: "input_event_location",
+			objectFunc: func() interface{} {
+				return struct{}{}
+			},
 			errorKey:    "invalid_event_location",
 			result:      new(string),
 			validator:   validator.EventLocation,
@@ -998,7 +1009,10 @@ func (h Handler) createEvent(c tele.Context) error {
 			callbackBtn: nil,
 		},
 		{
-			promptKey:   "input_event_start_time",
+			promptKey: "input_event_start_time",
+			objectFunc: func() interface{} {
+				return struct{}{}
+			},
 			errorKey:    "invalid_event_start_time",
 			result:      new(string),
 			validator:   validator.EventStartTime,
@@ -1007,6 +1021,9 @@ func (h Handler) createEvent(c tele.Context) error {
 		},
 		{
 			promptKey: "input_event_end_time",
+			objectFunc: func() interface{} {
+				return struct{}{}
+			},
 			errorKey:  "invalid_event_end_time",
 			result:    new(string),
 			validator: validator.EventEndTime,
@@ -1021,6 +1038,13 @@ func (h Handler) createEvent(c tele.Context) error {
 		},
 		{
 			promptKey: "input_event_registered_end_time",
+			objectFunc: func() interface{} {
+				return struct {
+					MaxRegisteredEndTime string
+				}{
+					MaxRegisteredEndTime: utils.GetMaxRegisteredEndTime(*steps[3].result),
+				}
+			},
 			errorKey:  "invalid_event_registered_end_time",
 			result:    new(string),
 			validator: validator.EventRegisteredEndTime,
@@ -1034,7 +1058,10 @@ func (h Handler) createEvent(c tele.Context) error {
 			callbackBtn: nil,
 		},
 		{
-			promptKey:   "input_after_registration_text",
+			promptKey: "input_after_registration_text",
+			objectFunc: func() interface{} {
+				return struct{}{}
+			},
 			errorKey:    "invalid_after_registration_text",
 			result:      new(string),
 			validator:   validator.EventAfterRegistrationText,
@@ -1042,7 +1069,10 @@ func (h Handler) createEvent(c tele.Context) error {
 			callbackBtn: h.layout.Button(c, "clubOwner:create_event:after_registration_text_skip"),
 		},
 		{
-			promptKey:   "input_max_participants",
+			promptKey: "input_max_participants",
+			objectFunc: func() interface{} {
+				return struct{}{}
+			},
 			errorKey:    "invalid_max_participants",
 			result:      new(string),
 			validator:   validator.EventMaxParticipants,
@@ -1050,7 +1080,10 @@ func (h Handler) createEvent(c tele.Context) error {
 			callbackBtn: nil,
 		},
 		{
-			promptKey:   "input_expected_participants",
+			promptKey: "input_expected_participants",
+			objectFunc: func() interface{} {
+				return struct{}{}
+			},
 			errorKey:    "invalid_expected_participants",
 			result:      new(string),
 			validator:   validator.EventExpectedParticipants,
@@ -1081,12 +1114,12 @@ func (h Handler) createEvent(c tele.Context) error {
 
 		if isFirst {
 			_ = c.Edit(
-				banner.ClubOwner.Caption(h.layout.Text(c, step.promptKey)),
+				banner.ClubOwner.Caption(h.layout.Text(c, step.promptKey, step.objectFunc())),
 				markup,
 			)
 		} else {
 			_ = inputCollector.Send(c,
-				banner.ClubOwner.Caption(h.layout.Text(c, step.promptKey)),
+				banner.ClubOwner.Caption(h.layout.Text(c, step.promptKey, step.objectFunc())),
 				markup,
 			)
 		}
@@ -1117,7 +1150,7 @@ func (h Handler) createEvent(c tele.Context) error {
 				done = true
 			case !step.validator(response.Message.Text, params):
 				_ = inputCollector.Send(c,
-					banner.ClubOwner.Caption(h.layout.Text(c, step.errorKey)),
+					banner.ClubOwner.Caption(h.layout.Text(c, step.errorKey, step.objectFunc())),
 					h.layout.Markup(c, "clubOwner:club:back", struct {
 						ID string
 					}{

@@ -126,7 +126,7 @@ func (s *EventParticipantService) StartPassScheduler() {
 	s.logger.Info("Starting pass scheduler")
 	go func() {
 		c := cron.New(cron.WithLocation(location.Location()))
-		if _, err := c.AddFunc("0 16 * * 1-5", func() {
+		if _, err := c.AddFunc("1 16 * * 1-5", func() {
 			ctx := context.Background()
 			s.checkAndSend(ctx)
 		}); err != nil {
@@ -134,7 +134,7 @@ func (s *EventParticipantService) StartPassScheduler() {
 			return
 		}
 
-		if _, err := c.AddFunc("0 12 * * 6", func() {
+		if _, err := c.AddFunc("1 12 * * 6", func() {
 			ctx := context.Background()
 			s.checkAndSend(ctx)
 		}); err != nil {

@@ -70,13 +70,15 @@ func EventRegisteredEndTime(registeredEnd string, params map[string]interface{})
 		return false
 	}
 
-	// Check if registration end time is at least 1 hour later than current time
-	now := time.Now().In(location.Location())
-	if registeredEndTime.Before(now.Add(time.Hour)) {
+	maxRegisteredEndTime := time.Date(startTime.Year(), startTime.Month(), startTime.Day(), 0, 0, 0, 0, startTime.Location()).Add(-24 * time.Hour).Add(16 * time.Hour)
+
+	if registeredEndTime.After(maxRegisteredEndTime) {
 		return false
 	}
 
-	return registeredEndTime.Add(22 * time.Hour).Before(startTime)
+	// Check if registration end time is at least 1 hour later than current time
+	now := time.Now().In(location.Location())
+	return registeredEndTime.After(now.Add(time.Hour))
 }
 
 func EventAfterRegistrationText(afterRegistrationText string, _ map[string]interface{}) bool {
