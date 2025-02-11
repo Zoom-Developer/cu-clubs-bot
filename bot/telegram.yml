@@ -503,7 +503,6 @@ markups:
     - [ clubOwner:club:back ]
   clubOwner:event:menu:
     - [ clubOwner:event:settings ]
-    - [ clubOwner:event:users ]
     - [ clubOwner:event:mailing ]
     - [ clubOwner:event:delete ]
     - [ clubOwner:events:back ]
