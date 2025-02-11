@@ -3113,7 +3113,8 @@ func (h Handler) ClubOwnerSetup(group *tele.Group, middle *middlewares.Handler) 
 	group.Handle(h.layout.Callback("clubOwner:event:delete"), h.deleteEvent)
 	group.Handle(h.layout.Callback("clubOwner:event:delete:accept"), h.acceptEventDelete)
 	group.Handle(h.layout.Callback("clubOwner:event:delete:decline"), h.declineEventDelete)
-	group.Handle(h.layout.Callback("clubOwner:event:users"), h.users)
+	// removed due to legal issues
+	//group.Handle(h.layout.Callback("clubOwner:event:users"), h.users)
 	group.Handle(h.layout.Callback("clubOwner:event:qr"), h.eventQRCode)
 
 	group.Handle(h.layout.Callback("clubOwner:event:mailing"), h.eventMailing)
