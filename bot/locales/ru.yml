@@ -49,6 +49,8 @@ log: |-
 
 # personal data agreement menu
 personal_data_agreement_text: |-
+  Соглашения — https://telegra.ph/Soglashenie-02-09-4
+  
   Чтобы продолжить работу с ботом <b>нажмите «Согласен»</b>
 accept: Согласен
 decline: Не согласен
