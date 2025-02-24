@@ -66,6 +66,7 @@ func (s *UserStorage) GetEventUsers(ctx context.Context, eventID string) ([]dto.
 		Select("users.*, event_participants.is_user_qr, event_participants.is_event_qr").
 		Joins("inner join users on event_participants.user_id = users.id").
 		Where("event_participants.event_id = ?", eventID).
+		Preload("IgnoreMailing").
 		Find(&users).Error
 	if err != nil {
 		return nil, err
