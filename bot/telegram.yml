@@ -298,6 +298,21 @@ buttons:
     callback_data: '{{.ID}} {{.Page}}'
     text: '{{ text `mailing` }}'
 
+  clubOwner:event:mailing:back:
+    unique: cOwner_event_mail_back
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `back` }}'
+
+  clubOwner:event:mailing:registered:
+    unique: cOwner_mailing_reg
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `mailing_registered_users` }}'
+
+  clubOwner:event:mailing:visited:
+    unique: cOwner_mailing_vis
+    callback_data: '{{.ID}} {{.Page}}'
+    text: '{{ text `mailing_visited_users` }}'
+
   clubOwner:event:settings:
     unique: clubOwner_event_settings
     callback_data: '{{.ID}} {{.Page}}'
@@ -525,6 +540,12 @@ markups:
     - [ clubOwner:events:back ]
   clubOwner:isMailingCorrect:
     - [ clubOwner:confirmMailing, clubOwner:cancelMailing ]
+  clubOwner:event:mailing:
+    - [ clubOwner:event:mailing:registered ]
+    - [ clubOwner:event:mailing:visited ]
+    - [ clubOwner:event:back ]
+  clubOwner:event:mailing:back:
+    - [ clubOwner:event:mailing:back ]
 
   admin:menu:
     - [ admin:clubs ]

@@ -5,19 +5,13 @@ import (
 )
 
 type EventUser struct {
-	ID        int64
-	Username  string
-	Email     string
-	FIO       string
+	User      entity.User
 	UserVisit bool
 }
 
 func NewEventUserFromEntity(user entity.User, userVisit bool) EventUser {
 	return EventUser{
-		ID:        user.ID,
-		Username:  user.Username,
-		Email:     user.Email,
-		FIO:       user.FIO,
+		User:      user,
 		UserVisit: userVisit,
 	}
 }
