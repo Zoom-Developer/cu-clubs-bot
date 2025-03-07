@@ -186,12 +186,19 @@ func (s *EventParticipantService) checkAndSend(ctx context.Context) {
 		s.logger.Errorf("failed to get participants for events %s: %v", eventIDs, err)
 		return
 	}
-	if len(participants) == 0 {
+
+	var participantsWithoutStudents []entity.User
+	for _, participant := range participants {
+		if !(participant.Role == entity.Student) {
+			participantsWithoutStudents = append(participantsWithoutStudents, participant)
+		}
+	}
+	if len(participantsWithoutStudents) == 0 {
 		return
 	}
 
 	var buf *bytes.Buffer
-	buf, err = participantsToXLSX(participants)
+	buf, err = participantsToXLSX(participantsWithoutStudents)
 	if err != nil {
 		s.logger.Errorf("failed to form xlsx with participants %s: %v", eventIDs, err)
 		return
