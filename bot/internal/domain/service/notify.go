@@ -164,19 +164,7 @@ func (s *NotifyService) checkAndNotify(ctx context.Context) {
 	}
 
 	for _, event := range events {
-		// Convert event time to Moscow time zone since it's stored without timezone
-		eventStartTime := time.Date(
-			event.StartTime.Year(),
-			event.StartTime.Month(),
-			event.StartTime.Day(),
-			event.StartTime.Hour(),
-			event.StartTime.Minute(),
-			event.StartTime.Second(),
-			event.StartTime.Nanosecond(),
-			location.Location(),
-		)
-
-		timeUntilStart := eventStartTime.Sub(now)
+		timeUntilStart := event.StartTime.Sub(now)
 		s.logger.Debugf("Event %s starts in %s", event.ID, timeUntilStart)
 
 		// Check for day notification (between 23-24 hours before start)
