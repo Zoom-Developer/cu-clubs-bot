@@ -39,6 +39,7 @@ func Setup(b *bot.Bot) {
 		postgres.NewEventParticipantStorage(b.DB),
 		postgres.NewEventStorage(b.DB),
 		postgres.NewUserStorage(b.DB),
+		postgres.NewClubStorage(b.DB),
 		smtp.NewClient(b.SMTPDialer, viper.GetString("service.smtp.domain"), viper.GetString("service.smtp.email")),
 		viper.GetStringSlice("settings.pass-emails"),
 		viper.GetInt64("bot.pass.channel-id"),

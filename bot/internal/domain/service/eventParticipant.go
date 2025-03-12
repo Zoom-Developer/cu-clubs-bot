@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/dto"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/location"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger/types"
@@ -41,6 +42,10 @@ type eventParticipantSMTPClient interface {
 	Send(to string, body, message string, subject string, file *bytes.Buffer)
 }
 
+type clubStorage interface {
+	GetManyByIDs(ctx context.Context, clubIDs []string) ([]entity.Club, error)
+}
+
 type EventParticipantService struct {
 	bot    *tele.Bot
 	layout *layout.Layout
@@ -49,6 +54,7 @@ type EventParticipantService struct {
 	storage                    EventParticipantStorage
 	eventStorage               eventParticipantEventStorage
 	userStorage                userStorage
+	clubStorage                clubStorage
 	eventParticipantSMTPClient eventParticipantSMTPClient
 
 	passEmails []string
@@ -62,6 +68,7 @@ func NewEventParticipantService(
 	storage EventParticipantStorage,
 	eventStorage eventParticipantEventStorage,
 	userStorage userStorage,
+	clubStorage clubStorage,
 	eventParticipantSMTPClient eventParticipantSMTPClient,
 	passEmails []string,
 	passChatID int64,
@@ -74,6 +81,7 @@ func NewEventParticipantService(
 		storage:                    storage,
 		eventStorage:               eventStorage,
 		userStorage:                userStorage,
+		clubStorage:                clubStorage,
 		eventParticipantSMTPClient: eventParticipantSMTPClient,
 
 		passEmails: passEmails,
@@ -158,6 +166,7 @@ func (s *EventParticipantService) checkAndSend(ctx context.Context) {
 	}
 
 	var eventIDs []string
+	var clubsIDs []string
 
 	for _, event := range events {
 		eventStartTime := event.StartTime.In(location.Location())
@@ -173,10 +182,10 @@ func (s *EventParticipantService) checkAndSend(ctx context.Context) {
 			notificationTime = time.Date(eventStartTime.Year(), eventStartTime.Month(), eventStartTime.Day(), 0, 0, 0, 0, eventStartTime.Location()).Add(-24 * time.Hour).Add(16 * time.Hour)
 		}
 
-		_ = notificationTime
 		// Check if it's valid event for notification and it's time to send the notification
 		if (strings.Contains(event.Location, "Гашека 7")) && !(now.Before(notificationTime) || now.After(notificationTime.Add(1*time.Hour))) {
 			eventIDs = append(eventIDs, event.ID)
+			clubsIDs = append(clubsIDs, event.ClubID)
 		}
 	}
 
@@ -197,6 +206,17 @@ func (s *EventParticipantService) checkAndSend(ctx context.Context) {
 		return
 	}
 
+	clubs, err := s.clubStorage.GetManyByIDs(context.Background(), clubsIDs)
+	if err != nil {
+		s.logger.Errorf("failed to get clubs: %v", err)
+		return
+	}
+	clubsName := make([]string, len(clubs))
+	for i, club := range clubs {
+		clubsName[i] = club.Name
+	}
+	clubsNameStr := strings.Join(clubsName, ", ")
+
 	var buf *bytes.Buffer
 	buf, err = participantsToXLSX(participantsWithoutStudents)
 	if err != nil {
@@ -204,8 +224,10 @@ func (s *EventParticipantService) checkAndSend(ctx context.Context) {
 		return
 	}
 
+	message := fmt.Sprintf("Внешние гости_%s_%s", clubsNameStr, time.Now().Format("02.01.2006"))
+
 	for _, passEmail := range s.passEmails {
-		s.eventParticipantSMTPClient.Send(passEmail, "Event passes", "Event passes", "Event passes", buf)
+		s.eventParticipantSMTPClient.Send(passEmail, message, message, message, buf)
 	}
 
 	chat, errGetChat := s.bot.ChatByID(s.passChatID)
