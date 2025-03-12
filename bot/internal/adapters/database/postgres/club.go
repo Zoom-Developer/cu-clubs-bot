@@ -34,6 +34,19 @@ func (s *ClubStorage) GetByOwnerID(ctx context.Context, id int64) ([]entity.Club
 	return user.Clubs, err
 }
 
+// GetManyByIDs is a function that get clubs by ids.
+func (s *ClubStorage) GetManyByIDs(ctx context.Context, clubIDs []string) ([]entity.Club, error) {
+	var clubs []entity.Club
+
+	err := s.db.
+		WithContext(ctx).
+		Table("clubs").
+		Select("DISTINCT ON (id) *").
+		Where("id IN ?", clubIDs).
+		Find(&clubs).Error
+	return clubs, err
+}
+
 func (s *ClubStorage) Update(ctx context.Context, club *entity.Club) (*entity.Club, error) {
 	err := s.db.WithContext(ctx).Save(&club).Error
 	return club, err

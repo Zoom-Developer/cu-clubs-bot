@@ -109,7 +109,7 @@ func New(b *bot.Bot) *Handler {
 		userService:             userSrvc,
 		clubService:             service.NewClubService(clubStorage),
 		eventService:            eventSrvc,
-		eventParticipantService: service.NewEventParticipantService(b.Bot, b.Layout, b.Logger, eventParticipantStorage, nil, nil, nil, nil, 0),
+		eventParticipantService: service.NewEventParticipantService(b.Bot, b.Layout, b.Logger, eventParticipantStorage, nil, nil, nil, nil, nil, 0),
 		qrService:               qrSrvc,
 		notificationService:     service.NewNotifyService(b.Bot, b.Layout, b.Logger, clubOwnerSrvc, eventStorage, notificationStorage, eventParticipantStorage),
 		callbacksStorage:        b.Redis.Callbacks,
