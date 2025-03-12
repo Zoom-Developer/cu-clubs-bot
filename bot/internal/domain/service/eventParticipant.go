@@ -233,18 +233,16 @@ func participantsToXLSX(users []entity.User) (*bytes.Buffer, error) {
 	_ = f.SetCellValue(sheet, "A1", "Фамилия")
 	_ = f.SetCellValue(sheet, "B1", "Имя")
 	_ = f.SetCellValue(sheet, "C1", "Отчество")
-	_ = f.SetCellValue(sheet, "D1", "Username")
 	for i, user := range users {
-		if user.Role == entity.Student {
+		fio := strings.Split(user.FIO, " ")
+		if len(fio) != 3 {
 			continue
 		}
-		fio := strings.Split(user.FIO, " ")
 
 		row := i + 2
 		_ = f.SetCellValue(sheet, "A"+strconv.Itoa(row), fio[0])
 		_ = f.SetCellValue(sheet, "B"+strconv.Itoa(row), fio[1])
 		_ = f.SetCellValue(sheet, "C"+strconv.Itoa(row), fio[2])
-		_ = f.SetCellValue(sheet, "D"+strconv.Itoa(row), user.Username)
 	}
 
 	var buf bytes.Buffer
