@@ -10,87 +10,74 @@ commands:
 buttons:
   core:hide:
     unique: core_hide
-    callback_data: core_hide
     text: '{{ text `hide` }}'
 
   core:cancel:
     unique: core_cancel
-    callback_data: core_cancel
     text: '{{ text `cancel` }}'
 
   core:back:
     unique: core_back
-    callback_data: core_back
     text: '{{ text `back` }}'
 
   core:page_counter:
     unique: core_pageCounter
-    callback_data: core_pageCounter
     text: '📃 {{.Page}}/{{.PagesCount}}'
 
   auth:personalData:accept:
     unique: personalData_accept
-    callback_data: personalData_accept
     text: '{{ text `accept` }}'
 
   auth:personalData:decline:
     unique: personalData_decline
-    callback_data: personalData_decline
     text: '{{ text `decline` }}'
 
   auth:external_user:
     unique: auth_externalUser
-    callback_data: auth_externalUser
     text: '{{ text `external_user` }}'
 
   auth:grant_user:
     unique: auth_grantUser
-    callback_data: auth_grantUser
     text: '{{ text `grant_user` }}'
 
   auth:student:
     unique: auth_student
-    callback_data: auth_student
     text: '{{ text `student` }}'
 
   auth:back_to_menu:
     unique: auth_backToMenu
-    callback_data: auth_backToMenu
     text: '{{ text `back` }}'
 
   auth:resend_email:
     unique: auth_resendEmail
-    callback_data: auth_resendEmail
     text: '{{ text `resend` }}'
 
   mainMenu:events:
     unique: mainMenu_events
-    callback_data: mainMenu_events
     text: '{{ text `events` }}'
 
   mainMenu:my_events:
     unique: mainMenu_myEvents
-    callback_data: mainMenu_myEvents
     text: '{{ text `my_events` }}'
+
+  my_events:export:
+    unique: myEvents_export
+    text: '{{ text `my_events_export` }}'
 
   mainMenu:qr:
     unique: mainMenu_qr
-    callback_data: mainMenu_qr
     text: '{{ text `qr` }}'
 
   mainMenu:my_clubs:
     unique: mainMenu_myClubs
-    callback_data: mainMenu_myClubs
     text: '{{ text `my_clubs` }}'
 
   mainMenu:admin_menu:
     unique: mainMenu_adminMenu
-    callback_data: mainMenu_adminMenu
     text: '{{ text `admin_menu` }}'
 
   mainMenu:back:
     unique: mainMenu_back
-    callback_data: mainMenu_back
     text: '{{ text `back` }}'
 
   user:events:event:
@@ -150,12 +137,10 @@ buttons:
 
   clubOwner:my_clubs:
     unique: clubOwner_myClubs
-    callback_data: clubOwner_myClubs
     text: '{{ text `my_clubs` }}'
 
   clubOwner:back_to_menu:
     unique: clubOwner_backToMenu
-    callback_data: clubOwner_backToMenu
     text: '{{ text `back` }}'
 
   clubOwner:myClubs:club:
@@ -165,7 +150,6 @@ buttons:
 
   clubOwner:myClubs:back:
     unique: clubOwner_myClubs_back
-    callback_data: clubOwner_myClubs_back
     text: '{{ text `back` }}'
 
   clubOwner:club:back:
@@ -245,12 +229,10 @@ buttons:
 
   clubOwner:confirmMailing:
     unique: clubOwner_confirmMailing
-    callback_data: clubOwner_confirmMailing
     text: '{{ text `confirm` }}'
 
   clubOwner:cancelMailing:
     unique: clubOwner_cancelMailing
-    callback_data: clubOwner_cancelMailing
     text: '{{ text `cancel` }}'
 
   clubOwner:club:mailing:
@@ -385,17 +367,14 @@ buttons:
 
   admin:create_club:
     unique: admin_createClub
-    callback_data: admin_createClub
     text: '{{ text `create_club` }}'
 
   admin:clubs:
     unique: admin_clubs
-    callback_data: admin_clubs
     text: '{{ text `clubs` }}'
 
   admin:back_to_menu:
     unique: admin_backToMenu
-    callback_data: admin_backToMenu
     text: '{{ text `back` }}'
 
   admin:clubs:club:

@@ -85,6 +85,7 @@ main_menu_text: |-
   <b>Главное меню:</b>
 events: Мероприятия
 my_events: Мои мероприятия
+my_events_export: Экспорт в календарь
 my_clubs: Мои клубы
 admin_menu: Админ-меню
 qr: QR-код
