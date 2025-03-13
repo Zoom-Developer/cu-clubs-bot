@@ -51,6 +51,7 @@ type eventParticipantService interface {
 	Register(ctx context.Context, eventID string, userID int64) (*entity.EventParticipant, error)
 	Get(ctx context.Context, eventID string, userID int64) (*entity.EventParticipant, error)
 	CountByEventID(ctx context.Context, eventID string) (int, error)
+	ExportUserEventsToICS(ctx context.Context, userID int64) (*tele.Document, error)
 }
 
 type qrService interface {
@@ -582,6 +583,11 @@ func (h Handler) myEvents(c tele.Context) error {
 	rows = append(
 		rows,
 		menuRow,
+		markup.Row(*h.layout.Button(c, "user:myEvents:export", struct {
+			Page int
+		}{
+			Page: p,
+		})),
 		markup.Row(*h.layout.Button(c, "mainMenu:back")),
 	)
 
@@ -603,6 +609,31 @@ func (h Handler) myEvents(c tele.Context) error {
 	)
 	return nil
 
+}
+
+func (h Handler) myEventsExport(c tele.Context) error {
+	h.logger.Infof("(user: %d) export my events", c.Sender().ID)
+	if c.Callback() == nil {
+		return errorz.ErrInvalidCallbackData
+	}
+
+	ics, err := h.eventParticipantService.ExportUserEventsToICS(context.Background(), c.Sender().ID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while export my events: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.Events.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "user:myEvents:back"),
+		)
+	}
+	ics.Caption = h.layout.Text(c, "my_events_export_text")
+	return c.Edit(
+		ics,
+		h.layout.Markup(c, "user:myEvents:back", struct {
+			Page string
+		}{
+			Page: c.Callback().Data,
+		}),
+	)
 }
 
 func (h Handler) myEvent(c tele.Context) error {
@@ -718,6 +749,7 @@ func (h Handler) UserSetup(group *tele.Group) {
 	group.Handle(h.layout.Callback("user:myEvents:prev_page"), h.myEvents)
 	group.Handle(h.layout.Callback("user:myEvents:next_page"), h.myEvents)
 	group.Handle(h.layout.Callback("user:myEvents:event"), h.myEvent)
+	group.Handle(h.layout.Callback("user:myEvents:export"), h.myEventsExport)
 	group.Handle(h.layout.Callback("user:myEvents:back"), h.myEvents)
 
 	group.Handle(h.layout.Callback("mailing:switch"), h.mailingSwitch)

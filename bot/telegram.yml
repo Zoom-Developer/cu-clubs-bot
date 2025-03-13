@@ -60,10 +60,6 @@ buttons:
     unique: mainMenu_myEvents
     text: '{{ text `my_events` }}'
 
-  my_events:export:
-    unique: myEvents_export
-    text: '{{ text `my_events_export` }}'
-
   mainMenu:qr:
     unique: mainMenu_qr
     text: '{{ text `qr` }}'
@@ -119,6 +115,11 @@ buttons:
     unique: user_myEvents_prevPage
     callback_data: '{{.Page}}'
     text: '{{ text `prev` }}'
+
+  user:myEvents:export:
+    unique: myEvents_export
+    callback_data: '{{.Page}}'
+    text: '{{ text `my_events_export` }}'
 
   user:myEvents:back:
     unique: user_myEvents_back
