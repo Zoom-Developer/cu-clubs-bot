@@ -53,6 +53,12 @@ func (s *EventStorage) GetAll(ctx context.Context) ([]entity.Event, error) {
 }
 
 // GetByClubID is a function that gets events by club_id with pagination from the database.
+//
+// It returns events in the order of start_time (upcoming first, then past).
+// If there are more events than limit, it returns only first limit events.
+// If there are fewer events than limit, it returns all events.
+// If there are no events, it returns empty list.
+// If error occurs during the process, it returns error.
 func (s *EventStorage) GetByClubID(ctx context.Context, limit, offset int, order string, clubID string) ([]entity.Event, error) {
 	var events []entity.Event
 
@@ -98,11 +104,23 @@ func (s *EventStorage) GetByClubID(ctx context.Context, limit, offset int, order
 	return events, nil
 }
 
-// GetFutureByClubID is a function that gets future events by club_id with pagination from the database.
+// GetFutureByClubID retrieves future events for a specific club from the database.
+// The events are filtered by club ID and a start time greater than the current time
+// minus the additional time parameter. The results are ordered and paginated
+// according to the provided parameters.
 //
-// NOTE:
+// Parameters:
 //
-// additionalTime time.Duration is a time, the time that will be subtracted from the current time when checking start_time > time.Now()
+//	ctx - the context for managing request-scoped values, cancellation, and timeouts
+//	limit - the maximum number of events to retrieve
+//	offset - the number of events to skip before starting to collect the result set
+//	order - the order in which to return the events (e.g., "start_time ASC")
+//	clubID - the unique identifier of the club for which to retrieve events
+//	additionalTime - a duration to subtract from the current time to adjust the start time filter
+//
+// Returns:
+//
+//	A slice of entity.Event containing the future events that match the criteria, or an error if any occurs during the query.
 func (s *EventStorage) GetFutureByClubID(
 	ctx context.Context,
 	limit, offset int,

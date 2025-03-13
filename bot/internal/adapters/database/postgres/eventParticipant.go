@@ -81,6 +81,12 @@ func (s *EventParticipantStorage) CountVisitedByEventID(ctx context.Context, eve
 	return count, err
 }
 
+// GetUserEvents returns events that user with given id has registered on, with pagination.
+// It returns events in the order of start_time (upcoming first, then past).
+// If user has registered on more events than limit, it returns only first limit events.
+// If user has registered on fewer events than limit, it returns all events.
+// If user has registered on no events, it returns empty list.
+// If error occurs during the process, it returns error.
 func (s *EventParticipantStorage) GetUserEvents(ctx context.Context, userID int64, limit, offset int) ([]dto.UserEvent, error) {
 	type eventWithQR struct {
 		entity.Event

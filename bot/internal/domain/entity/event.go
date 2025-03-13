@@ -29,10 +29,21 @@ type Event struct {
 	AllowedRoles          pq.StringArray `gorm:"type:text[]"`
 }
 
+// IsOver checks if the event is over, considering the additional time
+// if additionalTime is 0, the function just checks if the event has started
+// if additionalTime is positive, the function checks if the event has started
+// and if the event has ended before the current time minus additionalTime
+// if additionalTime is negative, the function checks if the event has started
+// and if the event has ended after the current time plus additionalTime
 func (e *Event) IsOver(additionalTime time.Duration) bool {
 	return e.StartTime.Before(time.Now().In(location.Location()).Add(-additionalTime))
 }
 
+// Link generates a link to the event in the bot
+//
+// The link is in the format https://t.me/<botName>?start=event_<eventID>
+//
+// The link can be used to open the event in the bot
 func (e *Event) Link(botName string) string {
 	return fmt.Sprintf("https://t.me/%s?start=event_%s", botName, e.ID)
 }
