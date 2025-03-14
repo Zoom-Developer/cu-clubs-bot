@@ -135,10 +135,10 @@ my_event_text: |-
   <b>Окончание:</b> {{if .EndTime}}{{.EndTime}}{{else}}<i>Не указано</i>{{end}}
   <b>Завершение регистрации:</b> {{.RegistrationEnd}}
   <b>Максимальное количество участников:</b> {{if .MaxParticipants}}{{.MaxParticipants}}{{else}}<i>Не ограничено</i>{{end}}
-
-  {{if .AfterRegistrationText}}<b>Текст после регистрации:</b>
-  <blockquote>{{.AfterRegistrationText}}</blockquote>{{end}}
-
+  {{if .AfterRegistrationText}}
+  <b>Текст после регистрации:</b>
+  <blockquote>{{.AfterRegistrationText}}</blockquote>
+  {{end}}
   {{if .IsOver}}<i>⌛️ Мероприятие прошло</i>{{else}}<b>✅ Вы зарегистрированы</b>{{end}}
   {{if .IsVisited}}<b>✅ Вы посетили мероприятие</b>{{else}}{{if .IsOver}}<i>❌ Вы не посетили мероприятие</i>{{end}}{{end}}
 
