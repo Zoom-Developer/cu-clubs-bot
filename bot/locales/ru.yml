@@ -118,9 +118,9 @@ not_allowed_role: |-
 registered: ✅ Вы зарегистрированы
 my_events_list: |-
   <b>Список мероприятий на которые вы регистрировались</b>
-my_events_export: Экспорт в календарь
-my_events_export_text: |-
-  Файл <b>user_events.ics</b> содержит информацию о мероприятиях, на которые вы регистрировались
+event_export: Экспорт в календарь
+event_exported_text: |-
+  Файл <code>{{.FileName}}</code> содержит информацию о мероприятии
   
   <i>Импортируйте его в ваш календарь</i>
 event_over: ⌛️ Мероприятие прошло

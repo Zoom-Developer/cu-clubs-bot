@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/dto"
-	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/calendar"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/location"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger/types"
 	"github.com/robfig/cron/v3"
@@ -129,22 +128,6 @@ func (s *EventParticipantService) GetUserEvents(ctx context.Context, userID int6
 
 func (s *EventParticipantService) CountUserEvents(ctx context.Context, userID int64) (int64, error) {
 	return s.storage.CountUserEvents(ctx, userID)
-}
-
-func (s *EventParticipantService) ExportUserEventsToICS(ctx context.Context, userID int64) (*tele.Document, error) {
-	events, err := s.storage.GetUserEvents(ctx, userID, 1000, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	buf, err := calendar.ExportEventsToICS(events)
-	if err != nil {
-		return nil, err
-	}
-	return &tele.Document{
-		File:     tele.FromReader(bytes.NewReader(buf)),
-		FileName: "user_events.ics",
-	}, nil
 }
 
 func (s *EventParticipantService) StartPassScheduler() {
