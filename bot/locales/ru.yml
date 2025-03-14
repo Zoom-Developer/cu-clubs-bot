@@ -118,9 +118,9 @@ not_allowed_role: |-
 registered: ✅ Вы зарегистрированы
 my_events_list: |-
   <b>Список мероприятий на которые вы регистрировались</b>
-my_events_export: Экспорт в календарь
-my_events_export_text: |-
-  Файл <b>user_events.ics</b> содержит информацию о мероприятиях, на которые вы регистрировались
+event_export: Экспорт в календарь
+event_exported_text: |-
+  Файл <code>{{.FileName}}</code> содержит информацию о мероприятии
   
   <i>Импортируйте его в ваш календарь</i>
 event_over: ⌛️ Мероприятие прошло
@@ -135,10 +135,10 @@ my_event_text: |-
   <b>Окончание:</b> {{if .EndTime}}{{.EndTime}}{{else}}<i>Не указано</i>{{end}}
   <b>Завершение регистрации:</b> {{.RegistrationEnd}}
   <b>Максимальное количество участников:</b> {{if .MaxParticipants}}{{.MaxParticipants}}{{else}}<i>Не ограничено</i>{{end}}
-
-  {{if .AfterRegistrationText}}<b>Текст после регистрации:</b>
-  <blockquote>{{.AfterRegistrationText}}</blockquote>{{end}}
-
+  {{if .AfterRegistrationText}}
+  <b>Текст после регистрации:</b>
+  <blockquote>{{.AfterRegistrationText}}</blockquote>
+  {{end}}
   {{if .IsOver}}<i>⌛️ Мероприятие прошло</i>{{else}}<b>✅ Вы зарегистрированы</b>{{end}}
   {{if .IsVisited}}<b>✅ Вы посетили мероприятие</b>{{else}}{{if .IsOver}}<i>❌ Вы не посетили мероприятие</i>{{end}}{{end}}
 
@@ -482,7 +482,7 @@ admin_club_menu_text: |-
   Клуб: <b>{{.Club.Name}}</b>
 
   <u>Организаторы:</u>
-  {{if .Owners}}{{range .Owners}}- <b>{{.FIO}}</b> (id: <code>{{.UserID}}</code>){{"\n"}}{{end}}{{else}}<i>- Отсутствуют</i>{{"\n"}}{{end}}
+  {{if .Owners}}{{range .Owners}}- <b>{{.FIO}}</b> (@{{.Username}} id: <code>{{.UserID}}</code>){{"\n"}}{{end}}{{else}}<i>- Отсутствуют</i>{{"\n"}}{{end}}
   <b>Описание:</b>
   <blockquote>{{if .Club.Description}}{{.Club.Description}}{{else}}<i>Не указано</i>{{end}}</blockquote>
 qr_allowed: QR-код ивента

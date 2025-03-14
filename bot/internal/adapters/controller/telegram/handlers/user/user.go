@@ -1,8 +1,10 @@
 package user
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"github.com/Badsnus/cu-clubs-bot/bot/cmd/bot"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/controller/telegram/handlers/menu"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/adapters/database/postgres"
@@ -14,6 +16,7 @@ import (
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/service"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/banner"
+	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/calendar"
 	"github.com/Badsnus/cu-clubs-bot/bot/internal/domain/utils/location"
 	"github.com/Badsnus/cu-clubs-bot/bot/pkg/logger/types"
 	qr "github.com/Badsnus/cu-clubs-bot/bot/pkg/qrcode"
@@ -51,7 +54,6 @@ type eventParticipantService interface {
 	Register(ctx context.Context, eventID string, userID int64) (*entity.EventParticipant, error)
 	Get(ctx context.Context, eventID string, userID int64) (*entity.EventParticipant, error)
 	CountByEventID(ctx context.Context, eventID string) (int, error)
-	ExportUserEventsToICS(ctx context.Context, userID int64) (*tele.Document, error)
 }
 
 type qrService interface {
@@ -476,6 +478,45 @@ func (h Handler) event(c tele.Context) error {
 	return nil
 }
 
+func (h Handler) eventExportToICS(c tele.Context) error {
+	eventID := c.Callback().Data
+	h.logger.Infof("(user: %d) export event to ics (event_id=%s)", c.Sender().ID, eventID)
+
+	event, err := h.eventService.Get(context.Background(), eventID)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while get event: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.Events.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "core:hide"),
+		)
+	}
+
+	ics, err := calendar.ExportEventToICS(*event)
+	if err != nil {
+		h.logger.Errorf("(user: %d) error while export event to ics: %v", c.Sender().ID, err)
+		return c.Edit(
+			banner.Events.Caption(h.layout.Text(c, "technical_issues", err.Error())),
+			h.layout.Markup(c, "core:hide"),
+		)
+	}
+
+	fileName := fmt.Sprintf("%s.ics", event.Name)
+	doc := &tele.Document{
+		File: tele.FromReader(bytes.NewReader(ics)),
+		Caption: h.layout.Text(c, "event_exported_text", struct {
+			FileName string
+		}{
+			FileName: fileName,
+		}),
+		FileName: fileName,
+	}
+
+	return c.Send(
+		doc,
+		h.layout.Markup(c, "core:hide"),
+	)
+}
+
 func (h Handler) myEvents(c tele.Context) error {
 	const eventsOnPage = 5
 	h.logger.Infof("(user: %d) edit my events list", c.Sender().ID)
@@ -583,11 +624,6 @@ func (h Handler) myEvents(c tele.Context) error {
 	rows = append(
 		rows,
 		menuRow,
-		markup.Row(*h.layout.Button(c, "user:myEvents:export", struct {
-			Page int
-		}{
-			Page: p,
-		})),
 		markup.Row(*h.layout.Button(c, "mainMenu:back")),
 	)
 
@@ -609,31 +645,6 @@ func (h Handler) myEvents(c tele.Context) error {
 	)
 	return nil
 
-}
-
-func (h Handler) myEventsExport(c tele.Context) error {
-	h.logger.Infof("(user: %d) export my events", c.Sender().ID)
-	if c.Callback() == nil {
-		return errorz.ErrInvalidCallbackData
-	}
-
-	ics, err := h.eventParticipantService.ExportUserEventsToICS(context.Background(), c.Sender().ID)
-	if err != nil {
-		h.logger.Errorf("(user: %d) error while export my events: %v", c.Sender().ID, err)
-		return c.Edit(
-			banner.Events.Caption(h.layout.Text(c, "technical_issues", err.Error())),
-			h.layout.Markup(c, "user:myEvents:back"),
-		)
-	}
-	ics.Caption = h.layout.Text(c, "my_events_export_text")
-	return c.Edit(
-		ics,
-		h.layout.Markup(c, "user:myEvents:back", struct {
-			Page string
-		}{
-			Page: c.Callback().Data,
-		}),
-	)
 }
 
 func (h Handler) myEvent(c tele.Context) error {
@@ -743,13 +754,13 @@ func (h Handler) UserSetup(group *tele.Group) {
 	group.Handle(h.layout.Callback("user:events:next_page"), h.eventsList)
 	group.Handle(h.layout.Callback("user:events:back"), h.eventsList)
 	group.Handle(h.layout.Callback("user:events:event"), h.event)
+	group.Handle(h.layout.Callback("user:myEvents:event:export"), h.eventExportToICS)
 	group.Handle(h.layout.Callback("user:events:event:register"), h.event)
 
 	group.Handle(h.layout.Callback("mainMenu:my_events"), h.myEvents)
 	group.Handle(h.layout.Callback("user:myEvents:prev_page"), h.myEvents)
 	group.Handle(h.layout.Callback("user:myEvents:next_page"), h.myEvents)
 	group.Handle(h.layout.Callback("user:myEvents:event"), h.myEvent)
-	group.Handle(h.layout.Callback("user:myEvents:export"), h.myEventsExport)
 	group.Handle(h.layout.Callback("user:myEvents:back"), h.myEvents)
 
 	group.Handle(h.layout.Callback("mailing:switch"), h.mailingSwitch)

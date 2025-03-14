@@ -106,6 +106,11 @@ buttons:
     callback_data: '{{.ID}} {{.Page}}'
     text: '{{if .IsOver}}{{text `over` }} {{end}}{{.Name}}{{if .IsVisited}} {{text `tick`}}{{end}}'
 
+  user:myEvents:event:export:
+    unique: myEvent_export
+    callback_data: '{{.ID}}'
+    text: '{{ text `event_export` }}'
+
   user:myEvents:next_page:
     unique: user_myEvents_nextPage
     callback_data: '{{.Page}}'
@@ -115,11 +120,6 @@ buttons:
     unique: user_myEvents_prevPage
     callback_data: '{{.Page}}'
     text: '{{ text `prev` }}'
-
-  user:myEvents:export:
-    unique: myEvents_export
-    callback_data: '{{.Page}}'
-    text: '{{ text `my_events_export` }}'
 
   user:myEvents:back:
     unique: user_myEvents_back
@@ -466,10 +466,12 @@ markups:
     - [ user:events:back ]
   user:events:event:
     - [ user:events:event:register ]
+    - [ user:myEvents:event:export ]
     - [ user:events:back ]
   user:myEvents:back:
     - [ user:myEvents:back ]
   user:myEvents:event:
+    - [ user:myEvents:event:export ]
     - [ user:myEvents:back ]
   user:url:event:
     - [ user:url:event:register ]
