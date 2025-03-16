@@ -54,7 +54,6 @@ func (s *EventStorage) GetAll(ctx context.Context) ([]entity.Event, error) {
 
 // GetByClubID is a function that gets events by club_id with pagination from the database.
 //
-// It returns events in the order of start_time (upcoming first, then past).
 // If there are more events than limit, it returns only first limit events.
 // If there are fewer events than limit, it returns all events.
 // If there are no events, it returns empty list.
