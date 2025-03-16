@@ -1469,7 +1469,7 @@ func (h Handler) eventsList(c tele.Context) error {
 		context.Background(),
 		eventsOnPage,
 		p*eventsOnPage,
-		"start_time ASC",
+		"start_time DESC",
 		clubID,
 	)
 	if err != nil {
